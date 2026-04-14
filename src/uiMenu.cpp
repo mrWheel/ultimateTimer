@@ -138,6 +138,10 @@ static WifiSettings wifiEditSettings;
 static String transientMessage = "";
 static uint32_t transientMessageUntilMs = 0;
 
+//--- Status screen refresh interval
+static const uint32_t statusRefreshIntervalMs = 100;
+static uint32_t lastStatusRefreshMs = 0;
+
 //--- Refresh profile list
 static void refreshProfileList();
 
@@ -190,8 +194,9 @@ void uiMenuUpdate()
 {
   EncoderEvent encoderEvent = encoderGetEvent();
   ButtonEvent buttonEvent = buttonGetEvent();
+  uint32_t nowMs = millis();
 
-  if (transientMessageUntilMs != 0 && millis() > transientMessageUntilMs)
+  if (transientMessageUntilMs != 0 && nowMs > transientMessageUntilMs)
   {
     transientMessage = "";
     transientMessageUntilMs = 0;
@@ -223,6 +228,12 @@ void uiMenuUpdate()
     case UI_SCREEN_PROFILE_LIST:
       handleProfileList(encoderEvent, buttonEvent);
       break;
+  }
+
+  if (currentScreen == UI_SCREEN_STATUS && transientMessage.isEmpty() && nowMs - lastStatusRefreshMs >= statusRefreshIntervalMs)
+  {
+    drawCurrentScreen();
+    lastStatusRefreshMs = nowMs;
   }
 
 }   //   uiMenuUpdate()

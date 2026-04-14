@@ -179,7 +179,12 @@ async function callPost(url, body)
 
 async function saveSettings()
 {
-  await callPost('/api/settings', {
+  await callPost('/api/settings', readSettingsFromForm());
+}
+
+function readSettingsFromForm()
+{
+  return {
     onTimeValue: Number(document.getElementById('onTimeValue').value),
     offTimeValue: Number(document.getElementById('offTimeValue').value),
     onTimeUnit: Number(document.getElementById('onTimeUnit').value),
@@ -191,7 +196,66 @@ async function saveSettings()
     lockInputDuringRun: document.getElementById('lockInputDuringRun').value === '1',
     autoSaveLastProfile: document.getElementById('autoSaveLastProfile').value === '1',
     profileName: document.getElementById('profileName').value
-  });
+  };
+}
+
+let applySettingsTimer = null;
+
+function scheduleApplySettings()
+{
+  if (applySettingsTimer !== null)
+  {
+    clearTimeout(applySettingsTimer);
+  }
+
+  applySettingsTimer = setTimeout(async () =>
+  {
+    applySettingsTimer = null;
+
+    try
+    {
+      await fetch('/api/settings/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(readSettingsFromForm())
+      });
+
+      await refreshStatus();
+    }
+    catch (_error)
+    {
+    }
+  }, 250);
+}
+
+function bindLiveApplySettings()
+{
+  const timerSettingIds = [
+    'onTimeValue',
+    'offTimeValue',
+    'onTimeUnit',
+    'offTimeUnit',
+    'repeatCount',
+    'triggerMode',
+    'triggerEdge',
+    'outputPolarityHigh',
+    'lockInputDuringRun',
+    'autoSaveLastProfile',
+    'profileName'
+  ];
+
+  for (const id of timerSettingIds)
+  {
+    const element = document.getElementById(id);
+
+    if (!element)
+    {
+      continue;
+    }
+
+    element.addEventListener('input', scheduleApplySettings);
+    element.addEventListener('change', scheduleApplySettings);
+  }
 }
 
 async function saveProfile()
@@ -216,6 +280,7 @@ async function deleteSelectedProfile()
 }
 
 setInterval(refreshProfiles, 3000);
+bindLiveApplySettings();
 refreshStatus();
 refreshProfiles();
 </script>
@@ -228,6 +293,9 @@ static void handleStatus();
 
 //--- Update settings from request body
 static void handleSaveSettings();
+
+//--- Apply settings from request body without persistence
+static void handleApplySettings();
 
 //--- Return profile list
 static void handleProfiles();
@@ -261,6 +329,7 @@ void webUiInit()
 
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/settings", HTTP_POST, handleSaveSettings);
+  server.on("/api/settings/apply", HTTP_POST, handleApplySettings);
   server.on("/api/start", HTTP_POST, []()
   {
     timerStart();
@@ -381,6 +450,36 @@ static void handleSaveSettings()
   handleStatus();
 
 }   //   handleSaveSettings()
+
+//--- Apply settings from request body without persistence
+static void handleApplySettings()
+{
+  JsonDocument doc;
+
+  if (!parseJsonBody(doc))
+  {
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"invalid_json\"}");
+
+    return;
+  }
+
+  AppSettings settings = timerGetSettings();
+  settings.onTimeValue = doc["onTimeValue"] | settings.onTimeValue;
+  settings.offTimeValue = doc["offTimeValue"] | settings.offTimeValue;
+  settings.onTimeUnit = static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
+  settings.offTimeUnit = static_cast<TimeUnit>(doc["offTimeUnit"] | static_cast<int>(settings.offTimeUnit));
+  settings.repeatCount = static_cast<uint32_t>(doc["repeatCount"] | settings.repeatCount);
+  settings.triggerMode = static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
+  settings.triggerEdge = static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
+  settings.outputPolarityHigh = doc["outputPolarityHigh"] | settings.outputPolarityHigh;
+  settings.lockInputDuringRun = doc["lockInputDuringRun"] | settings.lockInputDuringRun;
+  settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
+  settings.profileName = String(static_cast<const char *>(doc["profileName"] | settings.profileName.c_str()));
+
+  timerSetSettings(settings);
+  handleStatus();
+
+}   //   handleApplySettings()
 
 //--- Return profile list
 static void handleProfiles()

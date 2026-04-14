@@ -60,6 +60,10 @@
 #define TFT_HEIGHT 240
 #endif
 
+#ifndef TFT_ROTATION
+#define TFT_ROTATION 1
+#endif
+
 #ifndef ENCODER_LONG_PRESS_MS
 #define ENCODER_LONG_PRESS_MS 900
 #endif
