@@ -4,6 +4,7 @@
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
+#include <SPI.h>
 #include <esp_log.h>
 
 //--- Logging tag
@@ -39,6 +40,8 @@ void displayInit()
 {
   pinMode(PIN_TFT_BL, OUTPUT);
   digitalWrite(PIN_TFT_BL, HIGH);
+
+  SPI.begin(PIN_TFT_SCL, -1, PIN_TFT_SDA, PIN_TFT_CS);
 
   tft.init(TFT_HEIGHT, TFT_WIDTH);
   tft.setRotation(TFT_ROTATION);

@@ -15,7 +15,7 @@
 #include <WiFi.h>
 #include <esp_log.h>
 
-const char* PROG_VERSION = "0.1.0";
+const char* PROG_VERSION = "0.4.0";
 
 //--- Logging tag
 static const char *logTag = "main";

@@ -112,6 +112,17 @@ function setEditControlsEnabled(enabled)
   }
 }
 
+function applyTimeInputConstraints()
+{
+  const onUnitIsMs = document.getElementById('onTimeUnit').value === '0';
+  const offUnitIsMs = document.getElementById('offTimeUnit').value === '0';
+  const onTimeInput = document.getElementById('onTimeValue');
+  const offTimeInput = document.getElementById('offTimeValue');
+
+  onTimeInput.min = onUnitIsMs ? '900' : '0';
+  offTimeInput.min = offUnitIsMs ? '900' : '0';
+}
+
 async function refreshStatus()
 {
   const response = await fetch('/api/status');
@@ -141,6 +152,7 @@ async function refreshStatus()
   document.getElementById('lockInputDuringRun').value = data.settings.lockInputDuringRun ? '1' : '0';
   document.getElementById('autoSaveLastProfile').value = data.settings.autoSaveLastProfile ? '1' : '0';
   document.getElementById('profileName').value = data.settings.profileName;
+  applyTimeInputConstraints();
 }
 
 async function refreshProfiles()
@@ -184,6 +196,8 @@ async function saveSettings()
 
 function readSettingsFromForm()
 {
+  applyTimeInputConstraints();
+
   return {
     onTimeValue: Number(document.getElementById('onTimeValue').value),
     offTimeValue: Number(document.getElementById('offTimeValue').value),
@@ -315,6 +329,9 @@ static bool parseJsonBody(JsonDocument &doc);
 //--- Fill status document
 static void fillStatusDocument(JsonDocument &doc);
 
+//--- Enforce minimum ON/OFF value for ms units
+static void enforceMsMinimum(AppSettings &settings);
+
 //--- Active state
 static bool serverRunning = false;
 
@@ -438,8 +455,10 @@ static void handleSaveSettings()
   settings.lockInputDuringRun = doc["lockInputDuringRun"] | settings.lockInputDuringRun;
   settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
   settings.profileName = String(static_cast<const char *>(doc["profileName"] | settings.profileName.c_str()));
+  enforceMsMinimum(settings);
 
   timerSetSettings(settings);
+  settings = timerGetSettings();
 
   if (settings.autoSaveLastProfile && !settings.profileName.isEmpty())
   {
@@ -477,6 +496,7 @@ static void handleApplySettings()
   settings.profileName = String(static_cast<const char *>(doc["profileName"] | settings.profileName.c_str()));
 
   timerSetSettings(settings);
+  settings = timerGetSettings();
   handleStatus();
 
 }   //   handleApplySettings()
@@ -617,3 +637,18 @@ static void fillStatusDocument(JsonDocument &doc)
   doc["network"]["address"] = wifiManagerGetAddressString();
 
 }   //   fillStatusDocument()
+
+//--- Enforce minimum ON/OFF value for ms units
+static void enforceMsMinimum(AppSettings &settings)
+{
+  if (settings.onTimeUnit == TIME_UNIT_MS && settings.onTimeValue < 900)
+  {
+    settings.onTimeValue = 900;
+  }
+
+  if (settings.offTimeUnit == TIME_UNIT_MS && settings.offTimeValue < 900)
+  {
+    settings.offTimeValue = 900;
+  }
+
+}   //   enforceMsMinimum()

@@ -21,6 +21,9 @@ static void startOnPhase();
 //--- Start off phase
 static void startOffPhase();
 
+//--- Apply common settings constraints
+static void sanitizeSettings(AppSettings &settings, bool enforceMsMinimum);
+
 //--- Initialize timer engine
 void timerInit()
 {
@@ -83,6 +86,7 @@ void timerUpdate()
 //--- Start timer cycle
 void timerStart()
 {
+  sanitizeSettings(appSettings, true);
   runtimeStatus.totalCycles = appSettings.repeatCount;
   runtimeStatus.currentCycle = 0;
   runtimeStatus.state = TIMER_STATE_RUNNING;
@@ -183,7 +187,10 @@ void timerHandleExternalReset()
 //--- Set settings
 void timerSetSettings(const AppSettings &settings)
 {
-  appSettings = settings;
+  AppSettings sanitizedSettings = settings;
+  sanitizeSettings(sanitizedSettings, timerIsBusy());
+
+  appSettings = sanitizedSettings;
   runtimeStatus.totalCycles = appSettings.repeatCount;
 
   if (!timerIsBusy())
@@ -196,6 +203,21 @@ void timerSetSettings(const AppSettings &settings)
   ESP_LOGI(logTag, "Settings updated");
 
 }   //   timerSetSettings()
+
+//--- Apply common settings constraints
+static void sanitizeSettings(AppSettings &settings, bool enforceMsMinimum)
+{
+  if (enforceMsMinimum && settings.onTimeUnit == TIME_UNIT_MS && settings.onTimeValue < 900)
+  {
+    settings.onTimeValue = 900;
+  }
+
+  if (enforceMsMinimum && settings.offTimeUnit == TIME_UNIT_MS && settings.offTimeValue < 900)
+  {
+    settings.offTimeValue = 900;
+  }
+
+}   //   sanitizeSettings()
 
 //--- Get settings
 const AppSettings &timerGetSettings()

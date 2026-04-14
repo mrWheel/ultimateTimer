@@ -20,6 +20,14 @@
 #define PIN_TFT_BL 16
 #endif
 
+#ifndef PIN_TFT_SCL
+#define PIN_TFT_SCL 18
+#endif
+
+#ifndef PIN_TFT_SDA
+#define PIN_TFT_SDA 23
+#endif
+
 #ifndef PIN_ENC_A
 #define PIN_ENC_A 32
 #endif
