@@ -566,11 +566,6 @@ static void handleNumberEditor(EncoderEvent encoderEvent, ButtonEvent buttonEven
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
-    if (numberEditTarget == NUMBER_EDIT_REPEAT_COUNT && settings.repeatCount == 0)
-    {
-      settings.repeatCount = 1;
-    }
-
     commitSettings(settings);
     openMainMenu();
 

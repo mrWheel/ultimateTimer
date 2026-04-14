@@ -64,7 +64,7 @@ void timerUpdate()
   {
     runtimeStatus.currentCycle++;
 
-    if (runtimeStatus.currentCycle >= runtimeStatus.totalCycles)
+    if (runtimeStatus.totalCycles > 0 && runtimeStatus.currentCycle >= runtimeStatus.totalCycles)
     {
       runtimeStatus.state = TIMER_STATE_FINISHED;
       runtimeStatus.outputActive = false;
@@ -83,7 +83,7 @@ void timerUpdate()
 //--- Start timer cycle
 void timerStart()
 {
-  runtimeStatus.totalCycles = max(static_cast<uint32_t>(1), appSettings.repeatCount);
+  runtimeStatus.totalCycles = appSettings.repeatCount;
   runtimeStatus.currentCycle = 0;
   runtimeStatus.state = TIMER_STATE_RUNNING;
 
@@ -184,7 +184,7 @@ void timerHandleExternalReset()
 void timerSetSettings(const AppSettings &settings)
 {
   appSettings = settings;
-  runtimeStatus.totalCycles = max(static_cast<uint32_t>(1), appSettings.repeatCount);
+  runtimeStatus.totalCycles = appSettings.repeatCount;
 
   if (!timerIsBusy())
   {

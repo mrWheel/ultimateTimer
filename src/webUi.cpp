@@ -24,6 +24,7 @@ static const char *indexHtml = R"HTML(
 <style>
 body { font-family: Arial, sans-serif; max-width: 860px; margin: 20px auto; padding: 0 12px; }
 .card { border: 1px solid #bbb; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+.cardDisabled { background: #e6e6e6; }
 label { display: inline-block; width: 140px; margin-bottom: 6px; }
 input, select, button { margin-bottom: 8px; }
 .row { margin-bottom: 8px; }
@@ -41,13 +42,13 @@ input, select, button { margin-bottom: 8px; }
   <button onclick="callPost('/api/reset')">Reset</button>
 </div>
 
-<div class="card">
+<div id="timerSettingsCard" class="card">
   <h2>Timer Settings</h2>
   <div class="row"><label>On time</label><input id="onTimeValue" type="number" min="0"></div>
   <div class="row"><label>On unit</label><select id="onTimeUnit"><option value="0">ms</option><option value="1">s</option><option value="2">min</option></select></div>
   <div class="row"><label>Off time</label><input id="offTimeValue" type="number" min="0"></div>
   <div class="row"><label>Off unit</label><select id="offTimeUnit"><option value="0">ms</option><option value="1">s</option><option value="2">min</option></select></div>
-  <div class="row"><label>Repeat count</label><input id="repeatCount" type="number" min="1"></div>
+  <div class="row"><label>Repeat count</label><input id="repeatCount" type="number" min="0"></div>
   <div class="row"><label>Trigger mode</label><select id="triggerMode"><option value="0">Manual</option><option value="1">External</option></select></div>
   <div class="row"><label>Trigger edge</label><select id="triggerEdge"><option value="0">Falling</option><option value="1">Rising</option></select></div>
   <div class="row"><label>Output polarity</label><select id="outputPolarityHigh"><option value="1">Active high</option><option value="0">Active low</option></select></div>
@@ -56,7 +57,7 @@ input, select, button { margin-bottom: 8px; }
   <button onclick="saveSettings()">Save Settings</button>
 </div>
 
-<div class="card">
+<div id="profilesCard" class="card">
   <h2>Profiles</h2>
   <div class="row"><label>Profile name</label><input id="profileName" type="text"></div>
   <button onclick="saveProfile()">Save Profile</button>
@@ -66,17 +67,65 @@ input, select, button { margin-bottom: 8px; }
 </div>
 
 <script>
+let statusRefreshTimer = null;
+
+function setStatusAutoRefresh(enabled)
+{
+  if (enabled)
+  {
+    if (statusRefreshTimer === null)
+    {
+      statusRefreshTimer = setInterval(refreshStatus, 1000);
+    }
+
+    return;
+  }
+
+  if (statusRefreshTimer !== null)
+  {
+    clearInterval(statusRefreshTimer);
+    statusRefreshTimer = null;
+  }
+}
+
+function setEditControlsEnabled(enabled)
+{
+  const cardIds = ['timerSettingsCard', 'profilesCard'];
+
+  for (const cardId of cardIds)
+  {
+    const card = document.getElementById(cardId);
+
+    if (!card)
+    {
+      continue;
+    }
+
+    const controls = card.querySelectorAll('input, select, button');
+
+    for (const control of controls)
+    {
+      control.disabled = !enabled;
+    }
+
+    card.classList.toggle('cardDisabled', !enabled);
+  }
+}
+
 async function refreshStatus()
 {
   const response = await fetch('/api/status');
   const data = await response.json();
+
+  setStatusAutoRefresh(data.runtime.state !== 0);
+  setEditControlsEnabled(data.runtime.state === 0);
 
   document.getElementById('status').textContent =
     'State: ' + data.runtime.stateLabel + '\n' +
     'On: ' + data.settings.onTimeValue + ' ' + data.settings.onTimeUnitLabel + '\n' +
     'Off: ' + data.settings.offTimeValue + ' ' + data.settings.offTimeUnitLabel + '\n' +
     'Cycles: ' + data.settings.repeatCount + '\n' +
-    'Done: ' + data.runtime.currentCycle + '/' + data.runtime.totalCycles + '\n' +
+    'Done: ' + data.runtime.currentCycle + '/' + (data.runtime.totalCycles === 0 ? 'INF' : data.runtime.totalCycles) + '\n' +
     'Output: ' + (data.runtime.outputActive ? 'ON' : 'OFF') + '\n' +
     'Profile: ' + data.settings.profileName + '\n' +
     'IP: ' + data.network.address;
@@ -99,6 +148,7 @@ async function refreshProfiles()
   const response = await fetch('/api/profiles');
   const data = await response.json();
   const select = document.getElementById('profiles');
+  const selectedProfileName = select.value;
   select.innerHTML = '';
 
   for (const name of data.profiles)
@@ -107,6 +157,11 @@ async function refreshProfiles()
     option.value = name;
     option.textContent = name;
     select.appendChild(option);
+  }
+
+  if (selectedProfileName)
+  {
+    select.value = selectedProfileName;
   }
 }
 
@@ -160,7 +215,6 @@ async function deleteSelectedProfile()
   });
 }
 
-setInterval(refreshStatus, 1000);
 setInterval(refreshProfiles, 3000);
 refreshStatus();
 refreshProfiles();
@@ -308,7 +362,7 @@ static void handleSaveSettings()
   settings.offTimeValue = doc["offTimeValue"] | settings.offTimeValue;
   settings.onTimeUnit = static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
   settings.offTimeUnit = static_cast<TimeUnit>(doc["offTimeUnit"] | static_cast<int>(settings.offTimeUnit));
-  settings.repeatCount = max(static_cast<uint32_t>(1), static_cast<uint32_t>(doc["repeatCount"] | settings.repeatCount));
+  settings.repeatCount = static_cast<uint32_t>(doc["repeatCount"] | settings.repeatCount);
   settings.triggerMode = static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
   settings.triggerEdge = static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
   settings.outputPolarityHigh = doc["outputPolarityHigh"] | settings.outputPolarityHigh;
