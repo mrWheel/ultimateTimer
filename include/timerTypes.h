@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 13:12 ***/
+/*** Last Changed: 2026-04-15 - 14:23 ***/
 #ifndef TIMER_TYPES_H
 #define TIMER_TYPES_H
 
@@ -43,7 +43,8 @@ enum UiScreen
   UI_SCREEN_TIMER_SETTINGS_MENU = 2,
   UI_SCREEN_SYSTEM_SETTINGS_MENU = 3,
   UI_SCREEN_PROFILE_LIST = 4,
-  UI_SCREEN_FIELD_INPUT = 5
+  UI_SCREEN_FIELD_INPUT = 5,
+  UI_SCREEN_WIFI_MANAGER_PORTAL = 6
 };
 
 //--- Application settings

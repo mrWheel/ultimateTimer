@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 13:12 ***/
+/*** Last Changed: 2026-04-15 - 14:23 ***/
 #ifndef SETTINGS_STORE_H
 #define SETTINGS_STORE_H
 
@@ -16,6 +16,12 @@ void settingsStoreSaveWifiSettings(const WifiSettings& wifiSettings);
 
 //--- Erase stored station WiFi credentials
 void settingsStoreEraseWifiCredentials();
+
+//--- Load WiFi disabled indicator
+bool settingsStoreLoadWifiDisabled();
+
+//--- Save WiFi disabled indicator
+void settingsStoreSaveWifiDisabled(bool disabled);
 
 //--- Load last profile name
 String settingsStoreLoadLastProfileName();

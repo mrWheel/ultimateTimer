@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 13:12 ***/
+/*** Last Changed: 2026-04-15 - 14:23 ***/
 #include "settingsStore.h"
 #include "appConfig.h"
 
@@ -56,6 +56,22 @@ void settingsStoreEraseWifiCredentials()
   ESP_LOGI(logTag, "Stored STA WiFi credentials erased");
 
 } //   settingsStoreEraseWifiCredentials()
+
+//--- Load WiFi disabled indicator
+bool settingsStoreLoadWifiDisabled()
+{
+  return preferences.getBool("wifiOff", false);
+
+} //   settingsStoreLoadWifiDisabled()
+
+//--- Save WiFi disabled indicator
+void settingsStoreSaveWifiDisabled(bool disabled)
+{
+  preferences.putBool("wifiOff", disabled);
+
+  ESP_LOGI(logTag, "WiFi disabled saved: %s", disabled ? "true" : "false");
+
+} //   settingsStoreSaveWifiDisabled()
 
 //--- Load last profile name
 String settingsStoreLoadLastProfileName()

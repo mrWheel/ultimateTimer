@@ -5,6 +5,8 @@ Menu hierarchy:
 ```
 [Start]
 |
+[Connecting to WiFi] (of start WiFiManager)
+|
 V
 [Timer Screen]
 - Start (SHORT press when selected)
@@ -52,10 +54,19 @@ V
 - WiFi SSID (RO)
 - IP Address (RO)
 - MAC Address (RO)
+- WiFi Disabled (RO)
 - Encoder Order (A-B / B-A)
 - Erase WiFi credentials (Are you sure (Y/N))
-- PIN_OUTPUT Polarity (Active High / Active Low)
+- Start WiFi Manager (clears WiFi Disabled indicator and restarts)
+- Output Polarity (Active High / Active Low)
+- Restart ultimateTimer
 - Exit -> return to [Edit Timer Menu]
+
+[WiFi Manager Started]
+- Connect to AP (centered, wrapped if needed)
+- AP name (centered, wrapped if needed)
+- [Cancel WiFi Manager]
+- Cancel WiFi Manager -> sets WiFi Disabled/Ignore flag and returns to [Timer Screen] without restart
 ```
 ======= Field Input =======
 

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 13:12 ***/
+/*** Last Changed: 2026-04-15 - 14:23 ***/
 #include "uiMenu.h"
 #include "displayDriver.h"
 #include "encoderInput.h"
@@ -40,10 +40,13 @@ enum SystemSettingsItem
   SYSTEM_SETTINGS_ITEM_WIFI_SSID = 0,
   SYSTEM_SETTINGS_ITEM_IP_ADDRESS = 1,
   SYSTEM_SETTINGS_ITEM_MAC_ADDRESS = 2,
-  SYSTEM_SETTINGS_ITEM_ENCODER_ORDER = 3,
-  SYSTEM_SETTINGS_ITEM_ERASE_WIFI = 4,
-  SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY = 5,
-  SYSTEM_SETTINGS_ITEM_EXIT = 6
+  SYSTEM_SETTINGS_ITEM_WIFI_DISABLED = 3,
+  SYSTEM_SETTINGS_ITEM_ENCODER_ORDER = 4,
+  SYSTEM_SETTINGS_ITEM_ERASE_WIFI = 5,
+  SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER = 6,
+  SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY = 7,
+  SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER = 8,
+  SYSTEM_SETTINGS_ITEM_EXIT = 9
 };
 
 //--- Profile list modes
@@ -96,9 +99,12 @@ static const String systemSettingsMenuItems[] =
         "WiFi SSID",
         "IP Address",
         "MAC Address",
+        "WiFi Disabled",
         "Encoder Order",
         "Erase WiFi credentials",
-        "PIN_OUTPUT Polarity",
+        "Start WiFi Manager",
+        "Output Polarity",
+        "Restart ultimateTimer",
         "Exit"};
 
 //--- Numeric field tokens
@@ -141,6 +147,7 @@ static int timerSettingsIndex = 0;
 static int timerSettingsFirstVisibleIndex = 0;
 static int systemSettingsIndex = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
 static int statusActionIndex = 0;
+static UiScreen screenBeforeWifiPortal = UI_SCREEN_STATUS;
 
 //--- Profile list state
 static ProfileListMode profileListMode = PROFILE_LIST_LOAD;
@@ -161,6 +168,7 @@ static FieldInputTarget fieldInputTarget = FIELD_INPUT_TARGET_NONE;
 static UiScreen fieldInputReturnScreen = UI_SCREEN_MAIN_MENU;
 
 //--- Transient message
+static String transientTitle = "Message";
 static String transientMessage = "";
 static uint32_t transientMessageUntilMs = 0;
 
@@ -198,6 +206,9 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent);
 //--- Handle system settings menu
 static void handleSystemSettingsMenu(EncoderEvent encoderEvent);
 
+//--- Handle WiFi portal info screen
+static void handleWifiPortalScreen(EncoderEvent encoderEvent);
+
 //--- Handle profile list
 static void handleProfileList(EncoderEvent encoderEvent);
 
@@ -227,6 +238,9 @@ static void commitSettings(const AppSettings& settings);
 
 //--- Log active menu or screen
 static void logActiveScreen(const char* screenName);
+
+//--- Build readable AP SSID lines for portal info screen
+static void buildPortalApLines(const String& apSsid, String& line1, String& line2);
 
 //--- Convert encoder event to text
 static const char* encoderEventToLabel(EncoderEvent event);
@@ -453,7 +467,10 @@ static void applyFieldInputAndReturn()
     if (fieldValue == "Y")
     {
       settingsStoreEraseWifiCredentials();
-      uiMenuShowTransientMessage("WiFi credentials erased");
+      settingsStoreSaveWifiDisabled(true);
+      displayDrawMessage("WiFi Disabled", "Restarting...");
+      delay(250);
+      ESP.restart();
     }
     else
     {
@@ -610,7 +627,7 @@ static void drawCurrentScreen()
 {
   if (!transientMessage.isEmpty())
   {
-    displayDrawMessage("Message", transientMessage.c_str());
+    displayDrawMessage(transientTitle.c_str(), transientMessage.c_str());
 
     return;
   }
@@ -634,8 +651,10 @@ static void drawCurrentScreen()
 
   case UI_SCREEN_SYSTEM_SETTINGS_MENU:
   {
-    String dynamicSystemSettingsItems[7];
+    String dynamicSystemSettingsItems[10];
+    int firstVisibleIndex = 0;
     String wifiSsid = wifiManagerGetSettings().staSsid;
+    bool wifiDisabled = settingsStoreLoadWifiDisabled();
 
     if (wifiSsid.isEmpty())
     {
@@ -645,12 +664,20 @@ static void drawCurrentScreen()
     dynamicSystemSettingsItems[0] = String("SSID: ") + wifiSsid;
     dynamicSystemSettingsItems[1] = String("IP: ") + wifiManagerGetAddressString();
     dynamicSystemSettingsItems[2] = String("MAC: ") + WiFi.macAddress();
-    dynamicSystemSettingsItems[3] = String("Encoder Order: ") + String(encoderGetDirectionReversed() ? "B-A" : "A-B");
-    dynamicSystemSettingsItems[4] = systemSettingsMenuItems[4];
-    dynamicSystemSettingsItems[5] = String("PIN_OUTPUT: ") + String(settings.outputPolarityHigh ? "Active High" : "Active Low");
+    dynamicSystemSettingsItems[3] = String("WiFi Disabled: ") + String(wifiDisabled ? "Yes" : "No");
+    dynamicSystemSettingsItems[4] = String("Encoder Order: ") + String(encoderGetDirectionReversed() ? "B-A" : "A-B");
+    dynamicSystemSettingsItems[5] = systemSettingsMenuItems[5];
     dynamicSystemSettingsItems[6] = systemSettingsMenuItems[6];
+    dynamicSystemSettingsItems[7] = String("Output: ") + String(settings.outputPolarityHigh ? "Active High" : "Active Low");
+    dynamicSystemSettingsItems[8] = systemSettingsMenuItems[8];
+    dynamicSystemSettingsItems[9] = systemSettingsMenuItems[9];
 
-    displayDrawListScreen("Show System Settings", dynamicSystemSettingsItems, 7, systemSettingsIndex, 0);
+    if (systemSettingsIndex > 8)
+    {
+      firstVisibleIndex = systemSettingsIndex - 8;
+    }
+
+    displayDrawListScreen("Show System Settings", dynamicSystemSettingsItems, 10, systemSettingsIndex, firstVisibleIndex);
     break;
   }
 
@@ -683,6 +710,24 @@ static void drawCurrentScreen()
     }
 
     displayDrawFieldInput(fieldInputTitle.c_str(), fieldInputName.c_str(), fieldValue, fieldInputCursorPosition, fieldInputTokenList[prevTokenIndex], fieldInputTokenList[currentTokenIndex], fieldInputTokenList[nextTokenIndex]);
+    break;
+  }
+
+  case UI_SCREEN_WIFI_MANAGER_PORTAL:
+  {
+    String line1;
+    String line2;
+    String line3;
+
+    buildPortalApLines(wifiManagerGetPortalApSsid(), line1, line2);
+    line3 = line2;
+
+    if (line3.isEmpty())
+    {
+      line3 = " ";
+    }
+
+    displayDrawWifiPortalScreen("Connect to AP", line1, line3, "[Cancel WiFi Manager]");
     break;
   }
   }
@@ -917,6 +962,23 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
 
 } //   handleTimerSettingsMenu()
 
+//--- Handle WiFi portal info screen
+static void handleWifiPortalScreen(EncoderEvent encoderEvent)
+{
+  if (encoderEvent != ENCODER_EVENT_SHORT_PRESS)
+  {
+    return;
+  }
+
+  settingsStoreSaveWifiDisabled(true);
+  wifiManagerSetDisabled(true);
+
+  currentScreen = UI_SCREEN_STATUS;
+  logActiveScreen("Timer Screen");
+  drawCurrentScreen();
+
+} //   handleWifiPortalScreen()
+
 //--- Handle system settings menu
 static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
 {
@@ -965,6 +1027,25 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_ERASE_WIFI)
     {
       openFieldInput("Erase WiFi", "Are you sure (Y/N)", 1, yesNoTokens, sizeof(yesNoTokens) / sizeof(yesNoTokens[0]), FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "N");
+
+      return;
+    }
+
+    if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER)
+    {
+      settingsStoreSaveWifiDisabled(false);
+      displayDrawMessage("WiFi Manager", "Restarting...");
+      delay(250);
+      ESP.restart();
+
+      return;
+    }
+
+    if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER)
+    {
+      displayDrawMessage("System", "Restarting...");
+      delay(250);
+      ESP.restart();
 
       return;
     }
@@ -1104,6 +1185,45 @@ static void logActiveScreen(const char* screenName)
 
 } //   logActiveScreen()
 
+//--- Build readable AP SSID lines for portal info screen
+static void buildPortalApLines(const String& apSsid, String& line1, String& line2)
+{
+  const int maxLineLength = 22;
+
+  if (static_cast<int>(apSsid.length()) <= maxLineLength)
+  {
+    line1 = apSsid;
+    line2 = "";
+
+    return;
+  }
+
+  int splitAt = -1;
+
+  for (int index = maxLineLength; index >= 8; index--)
+  {
+    if (apSsid.charAt(index - 1) == '-')
+    {
+      splitAt = index;
+      break;
+    }
+  }
+
+  if (splitAt < 0)
+  {
+    splitAt = maxLineLength;
+  }
+
+  line1 = apSsid.substring(0, splitAt);
+  line2 = apSsid.substring(splitAt);
+
+  if (static_cast<int>(line2.length()) > maxLineLength)
+  {
+    line2 = line2.substring(0, maxLineLength - 3) + "...";
+  }
+
+} //   buildPortalApLines()
+
 //--- Convert encoder event to text
 static const char* encoderEventToLabel(EncoderEvent event)
 {
@@ -1154,6 +1274,9 @@ static const char* uiScreenToLabel(UiScreen screen)
   case UI_SCREEN_FIELD_INPUT:
     return fieldInputTitle.c_str();
 
+  case UI_SCREEN_WIFI_MANAGER_PORTAL:
+    return "WiFi Manager Started";
+
   default:
     return "Unknown";
   }
@@ -1176,6 +1299,22 @@ void uiMenuUpdate()
 {
   EncoderEvent encoderEvent = encoderGetEvent();
   uint32_t nowMs = millis();
+  bool portalActive = wifiManagerShouldOpenPortal();
+
+  if (portalActive && currentScreen != UI_SCREEN_WIFI_MANAGER_PORTAL)
+  {
+    screenBeforeWifiPortal = currentScreen;
+    currentScreen = UI_SCREEN_WIFI_MANAGER_PORTAL;
+    transientMessage = "";
+    transientMessageUntilMs = 0;
+    drawCurrentScreen();
+  }
+
+  if (!portalActive && currentScreen == UI_SCREEN_WIFI_MANAGER_PORTAL)
+  {
+    currentScreen = screenBeforeWifiPortal;
+    drawCurrentScreen();
+  }
 
   if (encoderEvent != ENCODER_EVENT_NONE)
   {
@@ -1219,6 +1358,10 @@ void uiMenuUpdate()
   case UI_SCREEN_FIELD_INPUT:
     handleFieldInput(encoderEvent);
     break;
+
+  case UI_SCREEN_WIFI_MANAGER_PORTAL:
+    handleWifiPortalScreen(encoderEvent);
+    break;
   }
 
   if (currentScreen == UI_SCREEN_STATUS && transientMessage.isEmpty() && nowMs - lastStatusRefreshMs >= statusRefreshIntervalMs)
@@ -1232,8 +1375,9 @@ void uiMenuUpdate()
 //--- Request short status message
 void uiMenuShowTransientMessage(const String& message)
 {
+  transientTitle = "Message";
   transientMessage = message;
   transientMessageUntilMs = millis() + 1800UL;
-  displayDrawMessage("Message", message.c_str());
+  displayDrawMessage(transientTitle.c_str(), message.c_str());
 
 } //   uiMenuShowTransientMessage()

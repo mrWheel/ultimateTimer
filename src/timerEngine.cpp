@@ -1,8 +1,10 @@
-/*** Last Changed: 2026-04-15 - 13:26 ***/
+/*** Last Changed: 2026-04-15 - 14:23 ***/
 #include "timerEngine.h"
 #include "appConfig.h"
 
 #include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 //--- Logging tag
 static const char* logTag = "timerEngine";
@@ -16,6 +18,9 @@ static RuntimeStatus runtimeStatus;
 //--- Internal timing
 static uint32_t phaseStartMs = 0;
 
+//--- Shared state protection
+static SemaphoreHandle_t timerMutex = nullptr;
+
 //--- Start on phase
 static void startOnPhase();
 
@@ -25,10 +30,40 @@ static void startOffPhase();
 //--- Apply common settings constraints
 static void sanitizeSettings(AppSettings& settings, bool enforceMsMinimum);
 
+//--- Check whether timer is busy while timer mutex is held
+static bool timerIsBusyLocked();
+
+//--- Lock timer state
+static inline void lockTimerState()
+{
+  if (timerMutex != nullptr)
+  {
+    xSemaphoreTake(timerMutex, portMAX_DELAY);
+  }
+
+} //   lockTimerState()
+
+//--- Unlock timer state
+static inline void unlockTimerState()
+{
+  if (timerMutex != nullptr)
+  {
+    xSemaphoreGive(timerMutex);
+  }
+
+} //   unlockTimerState()
+
 //--- Initialize timer engine
 void timerInit()
 {
+  if (timerMutex == nullptr)
+  {
+    timerMutex = xSemaphoreCreateMutex();
+  }
+
   timerLoadDefaultSettings(appSettings);
+
+  lockTimerState();
 
   runtimeStatus.state = TIMER_STATE_IDLE;
   runtimeStatus.outputActive = false;
@@ -39,6 +74,8 @@ void timerInit()
   runtimeStatus.inOnPhase = true;
   phaseStartMs = 0;
 
+  unlockTimerState();
+
   ESP_LOGI(logTag, "Timer engine initialized");
 
 } //   timerInit()
@@ -46,10 +83,14 @@ void timerInit()
 //--- Update timer engine
 void timerUpdate()
 {
+  lockTimerState();
+
   uint32_t nowMs = millis();
 
   if (runtimeStatus.state != TIMER_STATE_RUNNING)
   {
+    unlockTimerState();
+
     return;
   }
 
@@ -57,46 +98,56 @@ void timerUpdate()
 
   if (runtimeStatus.currentPhaseElapsedMs < runtimeStatus.currentPhaseDurationMs)
   {
+    unlockTimerState();
+
     return;
   }
 
   if (runtimeStatus.inOnPhase)
   {
     startOffPhase();
+    unlockTimerState();
+
+    return;
   }
-  else
+
+  runtimeStatus.currentCycle++;
+
+  if (runtimeStatus.totalCycles > 0 && runtimeStatus.currentCycle >= runtimeStatus.totalCycles)
   {
-    runtimeStatus.currentCycle++;
+    runtimeStatus.state = TIMER_STATE_FINISHED;
+    runtimeStatus.outputActive = false;
+    runtimeStatus.currentPhaseElapsedMs = runtimeStatus.currentPhaseDurationMs;
 
-    if (runtimeStatus.totalCycles > 0 && runtimeStatus.currentCycle >= runtimeStatus.totalCycles)
-    {
-      runtimeStatus.state = TIMER_STATE_FINISHED;
-      runtimeStatus.outputActive = false;
-      runtimeStatus.currentPhaseElapsedMs = runtimeStatus.currentPhaseDurationMs;
+    unlockTimerState();
 
-      ESP_LOGI(logTag, "Timer finished");
+    ESP_LOGI(logTag, "Timer finished");
 
-      return;
-    }
-
-    startOnPhase();
+    return;
   }
+
+  startOnPhase();
+  unlockTimerState();
 
 } //   timerUpdate()
 
 //--- Start timer cycle
 void timerStart()
 {
+  lockTimerState();
+
   if (runtimeStatus.state == TIMER_STATE_FINISHED)
   {
-    ESP_LOGW(logTag, "Start ignored: timer finished, reset required");
+    unlockTimerState();
+    ESP_LOGD(logTag, "Start ignored: timer finished, reset required");
 
     return;
   }
 
   if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
   {
-    ESP_LOGW(logTag, "Start ignored: timer already active");
+    unlockTimerState();
+    ESP_LOGD(logTag, "Start ignored: timer already active");
 
     return;
   }
@@ -109,15 +160,16 @@ void timerStart()
     runtimeStatus.state = TIMER_STATE_FINISHED;
     runtimeStatus.outputActive = false;
 
-    ESP_LOGW(logTag, "Start ignored: cycles exhausted, reset required");
+    unlockTimerState();
+    ESP_LOGD(logTag, "Start ignored: cycles exhausted, reset required");
 
     return;
   }
 
   runtimeStatus.state = TIMER_STATE_RUNNING;
-
   startOnPhase();
 
+  unlockTimerState();
   ESP_LOGI(logTag, "Timer started");
 
 } //   timerStart()
@@ -125,12 +177,15 @@ void timerStart()
 //--- Stop timer cycle
 void timerStop()
 {
+  lockTimerState();
+
   runtimeStatus.state = TIMER_STATE_IDLE;
   runtimeStatus.outputActive = false;
   runtimeStatus.currentPhaseDurationMs = 0;
   runtimeStatus.currentPhaseElapsedMs = 0;
   runtimeStatus.inOnPhase = true;
 
+  unlockTimerState();
   ESP_LOGI(logTag, "Timer stopped");
 
 } //   timerStop()
@@ -138,14 +193,19 @@ void timerStop()
 //--- Pause timer cycle
 void timerPause()
 {
+  lockTimerState();
+
   if (runtimeStatus.state != TIMER_STATE_RUNNING)
   {
+    unlockTimerState();
+
     return;
   }
 
   runtimeStatus.state = TIMER_STATE_PAUSED;
   runtimeStatus.outputActive = false;
 
+  unlockTimerState();
   ESP_LOGI(logTag, "Timer paused");
 
 } //   timerPause()
@@ -153,8 +213,12 @@ void timerPause()
 //--- Resume timer cycle
 void timerResume()
 {
+  lockTimerState();
+
   if (runtimeStatus.state != TIMER_STATE_PAUSED)
   {
+    unlockTimerState();
+
     return;
   }
 
@@ -162,6 +226,7 @@ void timerResume()
   phaseStartMs = millis() - runtimeStatus.currentPhaseElapsedMs;
   runtimeStatus.outputActive = runtimeStatus.inOnPhase;
 
+  unlockTimerState();
   ESP_LOGI(logTag, "Timer resumed");
 
 } //   timerResume()
@@ -169,6 +234,8 @@ void timerResume()
 //--- Reset timer cycle
 void timerReset()
 {
+  lockTimerState();
+
   runtimeStatus.state = TIMER_STATE_IDLE;
   runtimeStatus.outputActive = false;
   runtimeStatus.currentCycle = 0;
@@ -177,6 +244,7 @@ void timerReset()
   runtimeStatus.currentPhaseElapsedMs = 0;
   runtimeStatus.inOnPhase = true;
 
+  unlockTimerState();
   ESP_LOGI(logTag, "Timer reset");
 
 } //   timerReset()
@@ -184,18 +252,23 @@ void timerReset()
 //--- Request external trigger
 void timerHandleExternalTrigger()
 {
-  if (appSettings.triggerMode != TRIGGER_MODE_EXTERNAL)
+  bool accepted = false;
+
+  lockTimerState();
+
+  if (appSettings.triggerMode == TRIGGER_MODE_EXTERNAL && !timerIsBusyLocked())
   {
-    return;
+    accepted = true;
   }
 
-  if (timerIsBusy())
+  unlockTimerState();
+
+  if (!accepted)
   {
     return;
   }
 
   timerStart();
-
   ESP_LOGI(logTag, "External trigger accepted");
 
 } //   timerHandleExternalTrigger()
@@ -204,7 +277,6 @@ void timerHandleExternalTrigger()
 void timerHandleExternalReset()
 {
   timerReset();
-
   ESP_LOGI(logTag, "External reset accepted");
 
 } //   timerHandleExternalReset()
@@ -212,19 +284,22 @@ void timerHandleExternalReset()
 //--- Set settings
 void timerSetSettings(const AppSettings& settings)
 {
+  lockTimerState();
+
   AppSettings sanitizedSettings = settings;
-  sanitizeSettings(sanitizedSettings, timerIsBusy());
+  sanitizeSettings(sanitizedSettings, timerIsBusyLocked());
 
   appSettings = sanitizedSettings;
   runtimeStatus.totalCycles = appSettings.repeatCount;
 
-  if (!timerIsBusy())
+  if (!timerIsBusyLocked())
   {
     runtimeStatus.currentPhaseDurationMs = 0;
     runtimeStatus.currentPhaseElapsedMs = 0;
     runtimeStatus.inOnPhase = true;
   }
 
+  unlockTimerState();
   ESP_LOGI(logTag, "Settings updated");
 
 } //   timerSetSettings()
@@ -245,25 +320,50 @@ static void sanitizeSettings(AppSettings& settings, bool enforceMsMinimum)
 } //   sanitizeSettings()
 
 //--- Get settings
-const AppSettings& timerGetSettings()
+AppSettings timerGetSettings()
 {
-  return appSettings;
+  AppSettings settingsSnapshot;
+
+  lockTimerState();
+  settingsSnapshot = appSettings;
+  unlockTimerState();
+
+  return settingsSnapshot;
 
 } //   timerGetSettings()
 
 //--- Get runtime status
 RuntimeStatus timerGetRuntimeStatus()
 {
-  return runtimeStatus;
+  RuntimeStatus statusSnapshot;
+
+  lockTimerState();
+  statusSnapshot = runtimeStatus;
+  unlockTimerState();
+
+  return statusSnapshot;
 
 } //   timerGetRuntimeStatus()
 
 //--- Check whether timer is busy
 bool timerIsBusy()
 {
-  return runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED;
+  bool busy;
+
+  lockTimerState();
+  busy = timerIsBusyLocked();
+  unlockTimerState();
+
+  return busy;
 
 } //   timerIsBusy()
+
+//--- Check whether timer is busy while timer mutex is held
+static bool timerIsBusyLocked()
+{
+  return runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED;
+
+} //   timerIsBusyLocked()
 
 //--- Convert value and unit to milliseconds
 uint32_t timerConvertToMs(uint32_t value, TimeUnit unit)

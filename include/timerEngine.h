@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 13:26 ***/
+/*** Last Changed: 2026-04-15 - 14:23 ***/
 #ifndef TIMER_ENGINE_H
 #define TIMER_ENGINE_H
 
@@ -36,7 +36,7 @@ void timerHandleExternalReset();
 void timerSetSettings(const AppSettings& settings);
 
 //--- Get settings
-const AppSettings& timerGetSettings();
+AppSettings timerGetSettings();
 
 //--- Get runtime status
 RuntimeStatus timerGetRuntimeStatus();

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 13:12 ***/
+/*** Last Changed: 2026-04-15 - 14:23 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "timerEngine.h"
@@ -35,6 +35,9 @@ static void invalidateStatusScreenCache();
 
 //--- Draw screen header
 static void drawHeader(const char* title);
+
+//--- Draw centered single line text
+static void drawCenteredLine(const String& lineText, int y, uint16_t textColor, uint16_t backgroundColor);
 
 //--- Initialize display
 void displayInit()
@@ -337,6 +340,35 @@ void displayDrawMessage(const char* title, const char* message)
 
 } //   displayDrawMessage()
 
+//--- Draw centered WiFi portal info screen
+void displayDrawWifiPortalScreen(const String& line1, const String& line2, const String& line3, const String& line4)
+{
+  invalidateStatusScreenCache();
+  tft.fillScreen(ST77XX_BLACK);
+  drawHeader("WiFi Manager Started");
+
+  tft.setTextSize(2);
+
+  drawCenteredLine(line1, 62, ST77XX_WHITE, ST77XX_BLACK);
+  drawCenteredLine(line2, 92, ST77XX_GREEN, ST77XX_BLACK);
+  drawCenteredLine(line3, 122, ST77XX_GREEN, ST77XX_BLACK);
+  drawCenteredLine(line4, 186, ST77XX_YELLOW, ST77XX_BLACK);
+
+} //   displayDrawWifiPortalScreen()
+
+//--- Draw centered startup connection screen
+void displayDrawStartupConnectionScreen(const String& line1, const String& line2)
+{
+  invalidateStatusScreenCache();
+  tft.fillScreen(ST77XX_BLACK);
+  drawHeader("Universal Timer");
+
+  tft.setTextSize(2);
+  drawCenteredLine(line1, 86, ST77XX_WHITE, ST77XX_BLACK);
+  drawCenteredLine(line2, 118, ST77XX_GREEN, ST77XX_BLACK);
+
+} //   displayDrawStartupConnectionScreen()
+
 //--- Set display backlight state
 void displaySetBacklight(bool enabled)
 {
@@ -354,6 +386,29 @@ static void drawHeader(const char* title)
   tft.print(title);
 
 } //   drawHeader()
+
+//--- Draw centered single line text
+static void drawCenteredLine(const String& lineText, int y, uint16_t textColor, uint16_t backgroundColor)
+{
+  int16_t x1;
+  int16_t y1;
+  uint16_t width;
+  uint16_t height;
+  int cursorX;
+
+  tft.getTextBounds(lineText, 0, 0, &x1, &y1, &width, &height);
+  cursorX = (tft.width() - static_cast<int>(width)) / 2;
+
+  if (cursorX < 0)
+  {
+    cursorX = 0;
+  }
+
+  tft.setTextColor(textColor, backgroundColor);
+  tft.setCursor(cursorX, y);
+  tft.print(lineText);
+
+} //   drawCenteredLine()
 
 //--- Draw one status line
 static void drawStatusLine(int lineIndex, const String& lineText)

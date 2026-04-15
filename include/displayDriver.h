@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 13:12 ***/
+/*** Last Changed: 2026-04-15 - 14:23 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
@@ -28,6 +28,12 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
 
 //--- Draw message screen
 void displayDrawMessage(const char* title, const char* message);
+
+//--- Draw centered WiFi portal info screen
+void displayDrawWifiPortalScreen(const String& line1, const String& line2, const String& line3, const String& line4);
+
+//--- Draw centered startup connection screen
+void displayDrawStartupConnectionScreen(const String& line1, const String& line2);
 
 //--- Set display backlight state
 void displaySetBacklight(bool enabled);

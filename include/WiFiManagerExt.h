@@ -1,3 +1,4 @@
+/*** Last Changed: 2026-04-15 - 14:23 ***/
 #ifndef WIFI_MANAGER_EXT_H
 #define WIFI_MANAGER_EXT_H
 
@@ -11,13 +12,28 @@ void wifiManagerInit();
 void wifiManagerUpdate();
 
 //--- Apply stored WiFi settings
-void wifiManagerApplySettings(const WifiSettings &wifiSettings);
+void wifiManagerApplySettings(const WifiSettings& wifiSettings);
 
 //--- Get current WiFi settings
-const WifiSettings &wifiManagerGetSettings();
+const WifiSettings& wifiManagerGetSettings();
 
 //--- Save and apply WiFi settings
-void wifiManagerSaveAndApplySettings(const WifiSettings &wifiSettings);
+void wifiManagerSaveAndApplySettings(const WifiSettings& wifiSettings);
+
+//--- Start WiFi manager config portal explicitly
+void wifiManagerStartPortal();
+
+//--- Stop WiFi manager config portal explicitly
+void wifiManagerStopPortal();
+
+//--- Enable or disable WiFi manager service runtime behavior
+void wifiManagerSetDisabled(bool disabled);
+
+//--- Get effective AP SSID used by portal
+String wifiManagerGetPortalApSsid();
+
+//--- Consume portal started event for UI notification
+bool wifiManagerConsumePortalStartedApSsid(String& apSsid);
 
 //--- Scan available access points and return unique SSIDs
 size_t wifiManagerScanNetworks(String ssids[], size_t maxCount);
@@ -32,13 +48,13 @@ bool wifiManagerShouldOpenPortal();
 String wifiManagerGetAddressString();
 
 //--- Initialize WiFiManager extension
-void wifiManagerExtInit(const WifiSettings &wifiSettings);
+void wifiManagerExtInit(const WifiSettings& wifiSettings);
 
 //--- Update WiFiManager extension
 void wifiManagerExtUpdate();
 
 //--- Apply WiFi settings and reconnect flow
-void wifiManagerExtApplySettings(const WifiSettings &wifiSettings);
+void wifiManagerExtApplySettings(const WifiSettings& wifiSettings);
 
 //--- Check whether STA is connected
 bool wifiManagerExtIsStaConnected();
@@ -50,6 +66,6 @@ bool wifiManagerExtIsPortalActive();
 String wifiManagerExtGetAddressString();
 
 //--- Consume newly configured STA credentials from portal
-bool wifiManagerExtConsumeNewStaCredentials(WifiSettings &wifiSettings);
+bool wifiManagerExtConsumeNewStaCredentials(WifiSettings& wifiSettings);
 
 #endif
