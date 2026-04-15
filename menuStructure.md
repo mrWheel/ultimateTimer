@@ -1,5 +1,9 @@
 Selection rule:
 - Selection of every menu item is always done with a SHORT press on the Rotary Encoder.
+- Menu navigation is clamped: top item stays top, bottom item stays bottom (no wrap-around).
+
+Build flag test mode:
+- If `TEST_COLOR_PATERN` is defined, normal menu flow is bypassed and only a color pattern test screen is shown.
 
 Menu hierarchy:
 ```
@@ -13,6 +17,7 @@ V
 - Start (SHORT press when selected)
 - Stop (SHORT press when selected)
 - Reset (SHORT press when selected)
+- Action row is shown near the bottom of the screen.
 |
 "Encoder Long Press"
 |
@@ -41,6 +46,7 @@ V
 
 [Load Profile Menu]
 - Profile list
+- Loading a profile resets executed cycles to 0
 - Exit (last item) -> return to [Edit Timer Menu]
 
 [New Profile Menu]
@@ -49,6 +55,7 @@ V
 
 [Delete Profile Menu]
 - Profile list
+- Selecting a profile opens confirmation: Are you sure (Y/N)
 - Exit (last item) -> return to [Edit Timer Menu]
 
 [Show System Settings Menu]
@@ -76,7 +83,7 @@ Field input behavior:
 - Rotating the encoder changes the token at the current cursor position.
 - SHORT press confirms the current position and moves to the next position.
 - SHORT press at the last position finalizes input and automatically returns to the previous menu.
-- MEDIUM press shift 1 to the left (if possible)
+- PIN_KEY0 moves 1 position to the left (duration does not matter)
 
 Generic field input parameters:
 - fieldName

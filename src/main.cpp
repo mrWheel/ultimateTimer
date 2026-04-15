@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 14:33 ***/
+/*** Last Changed: 2026-04-15 - 16:11 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -18,7 +18,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-const char* PROG_VERSION = "v0.5.0";
+const char* PROG_VERSION = "v1.0.0";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -225,6 +225,14 @@ void setup()
   Serial.begin(115200);
   delay(100);
 
+#ifdef TEST_COLOR_PATERN
+  displayInit();
+  displayDrawTestColorPattern();
+  ESP_LOGI(logTag, "TEST_COLOR_PATERN enabled: showing color pattern only");
+
+  return;
+#endif
+
   settingsStoreInit();
   wifiDisabled = settingsStoreLoadWifiDisabled();
   profileManagerInit();
@@ -266,6 +274,12 @@ void setup()
 //--- Arduino loop
 void loop()
 {
+#ifdef TEST_COLOR_PATERN
+  delay(250);
+
+  return;
+#endif
+
   if (!wifiDisabled)
   {
     wifiManagerUpdate();

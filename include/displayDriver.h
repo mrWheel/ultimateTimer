@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 14:23 ***/
+/*** Last Changed: 2026-04-15 - 16:11 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
@@ -34,6 +34,9 @@ void displayDrawWifiPortalScreen(const String& line1, const String& line2, const
 
 //--- Draw centered startup connection screen
 void displayDrawStartupConnectionScreen(const String& line1, const String& line2);
+
+//--- Draw color palette test pattern
+void displayDrawTestColorPattern();
 
 //--- Set display backlight state
 void displaySetBacklight(bool enabled);

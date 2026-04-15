@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 13:12 ***/
+/*** Last Changed: 2026-04-15 - 16:11 ***/
 #ifndef APP_CONFIG_H
 #define APP_CONFIG_H
 
@@ -102,7 +102,7 @@
 #endif
 
 #ifndef DEFAULT_AP_SSID
-#define DEFAULT_AP_SSID "UniversalTimer"
+#define DEFAULT_AP_SSID "UTimer"
 #endif
 
 #ifndef DEFAULT_AP_PASSWORD
@@ -110,7 +110,7 @@
 #endif
 
 #ifndef DEFAULT_WIFI_HOSTNAME
-#define DEFAULT_WIFI_HOSTNAME "universal-timer"
+#define DEFAULT_WIFI_HOSTNAME "u-timer"
 #endif
 
 #ifndef DEFAULT_ON_TIME

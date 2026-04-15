@@ -1,3 +1,4 @@
+/*** Last Changed: 2026-04-15 - 16:11 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -9,13 +10,13 @@
 #include <esp_log.h>
 
 //--- Logging tag
-static const char *logTag = "webUi";
+static const char* logTag = "webUi";
 
 //--- Web server instance
 static WebServer server(80);
 
 //--- HTML content
-static const char *indexHtml = R"HTML(
+static const char* indexHtml = R"HTML(
 <!DOCTYPE html>
 <html>
 <head>
@@ -324,13 +325,13 @@ static void handleLoadProfile();
 static void handleDeleteProfile();
 
 //--- Parse JSON body
-static bool parseJsonBody(JsonDocument &doc);
+static bool parseJsonBody(JsonDocument& doc);
 
 //--- Fill status document
-static void fillStatusDocument(JsonDocument &doc);
+static void fillStatusDocument(JsonDocument& doc);
 
 //--- Enforce minimum ON/OFF value for ms units
-static void enforceMsMinimum(AppSettings &settings);
+static void enforceMsMinimum(AppSettings& settings);
 
 //--- Active state
 static bool serverRunning = false;
@@ -339,32 +340,28 @@ static bool serverRunning = false;
 void webUiInit()
 {
   server.on("/", HTTP_GET, []()
-  {
-    server.send(200, "text/html", indexHtml);
-
-  });
+            {
+              server.send(200, "text/html", indexHtml);
+            });
 
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/settings", HTTP_POST, handleSaveSettings);
   server.on("/api/settings/apply", HTTP_POST, handleApplySettings);
   server.on("/api/start", HTTP_POST, []()
-  {
-    timerStart();
-    server.send(200, "application/json", "{\"ok\":true}");
-
-  });
+            {
+              timerStart();
+              server.send(200, "application/json", "{\"ok\":true}");
+            });
   server.on("/api/stop", HTTP_POST, []()
-  {
-    timerStop();
-    server.send(200, "application/json", "{\"ok\":true}");
-
-  });
+            {
+              timerStop();
+              server.send(200, "application/json", "{\"ok\":true}");
+            });
   server.on("/api/reset", HTTP_POST, []()
-  {
-    timerReset();
-    server.send(200, "application/json", "{\"ok\":true}");
-
-  });
+            {
+              timerReset();
+              server.send(200, "application/json", "{\"ok\":true}");
+            });
   server.on("/api/profiles", HTTP_GET, handleProfiles);
   server.on("/api/profile/save", HTTP_POST, handleSaveProfile);
   server.on("/api/profile/load", HTTP_POST, handleLoadProfile);
@@ -375,7 +372,7 @@ void webUiInit()
 
   ESP_LOGI(logTag, "Web UI started");
 
-}   //   webUiInit()
+} //   webUiInit()
 
 //--- Update web UI
 void webUiUpdate()
@@ -387,7 +384,7 @@ void webUiUpdate()
 
   server.handleClient();
 
-}   //   webUiUpdate()
+} //   webUiUpdate()
 
 //--- Suspend web UI server
 void webUiSuspend()
@@ -402,7 +399,7 @@ void webUiSuspend()
 
   ESP_LOGI(logTag, "Web UI suspended");
 
-}   //   webUiSuspend()
+} //   webUiSuspend()
 
 //--- Resume web UI server
 void webUiResume()
@@ -417,7 +414,7 @@ void webUiResume()
 
   ESP_LOGI(logTag, "Web UI resumed");
 
-}   //   webUiResume()
+} //   webUiResume()
 
 //--- Send JSON response with current status
 static void handleStatus()
@@ -429,7 +426,7 @@ static void handleStatus()
   serializeJson(doc, response);
   server.send(200, "application/json", response);
 
-}   //   handleStatus()
+} //   handleStatus()
 
 //--- Update settings from request body
 static void handleSaveSettings()
@@ -454,7 +451,7 @@ static void handleSaveSettings()
   settings.outputPolarityHigh = doc["outputPolarityHigh"] | settings.outputPolarityHigh;
   settings.lockInputDuringRun = doc["lockInputDuringRun"] | settings.lockInputDuringRun;
   settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
-  settings.profileName = String(static_cast<const char *>(doc["profileName"] | settings.profileName.c_str()));
+  settings.profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
   enforceMsMinimum(settings);
 
   timerSetSettings(settings);
@@ -468,7 +465,7 @@ static void handleSaveSettings()
 
   handleStatus();
 
-}   //   handleSaveSettings()
+} //   handleSaveSettings()
 
 //--- Apply settings from request body without persistence
 static void handleApplySettings()
@@ -493,13 +490,13 @@ static void handleApplySettings()
   settings.outputPolarityHigh = doc["outputPolarityHigh"] | settings.outputPolarityHigh;
   settings.lockInputDuringRun = doc["lockInputDuringRun"] | settings.lockInputDuringRun;
   settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
-  settings.profileName = String(static_cast<const char *>(doc["profileName"] | settings.profileName.c_str()));
+  settings.profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
 
   timerSetSettings(settings);
   settings = timerGetSettings();
   handleStatus();
 
-}   //   handleApplySettings()
+} //   handleApplySettings()
 
 //--- Return profile list
 static void handleProfiles()
@@ -519,7 +516,7 @@ static void handleProfiles()
   serializeJson(doc, response);
   server.send(200, "application/json", response);
 
-}   //   handleProfiles()
+} //   handleProfiles()
 
 //--- Save profile from current settings
 static void handleSaveProfile()
@@ -534,7 +531,7 @@ static void handleSaveProfile()
   }
 
   AppSettings settings = timerGetSettings();
-  String profileName = String(static_cast<const char *>(doc["profileName"] | settings.profileName.c_str()));
+  String profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
   settings.profileName = profileName;
 
   bool ok = profileManagerSaveProfile(profileName, settings);
@@ -547,7 +544,7 @@ static void handleSaveProfile()
 
   server.send(ok ? 200 : 500, "application/json", ok ? "{\"ok\":true}" : "{\"ok\":false}");
 
-}   //   handleSaveProfile()
+} //   handleSaveProfile()
 
 //--- Load profile into current settings
 static void handleLoadProfile()
@@ -562,18 +559,19 @@ static void handleLoadProfile()
   }
 
   AppSettings settings = timerGetSettings();
-  String profileName = String(static_cast<const char *>(doc["profileName"] | settings.profileName.c_str()));
+  String profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
   bool ok = profileManagerLoadProfile(profileName, settings);
 
   if (ok)
   {
     timerSetSettings(settings);
+    timerReset();
     settingsStoreSaveLastProfileName(profileName);
   }
 
   server.send(ok ? 200 : 404, "application/json", ok ? "{\"ok\":true}" : "{\"ok\":false}");
 
-}   //   handleLoadProfile()
+} //   handleLoadProfile()
 
 //--- Delete selected profile
 static void handleDeleteProfile()
@@ -588,26 +586,26 @@ static void handleDeleteProfile()
   }
 
   AppSettings settings = timerGetSettings();
-  String profileName = String(static_cast<const char *>(doc["profileName"] | settings.profileName.c_str()));
+  String profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
   bool ok = profileManagerDeleteProfile(profileName);
 
   server.send(ok ? 200 : 404, "application/json", ok ? "{\"ok\":true}" : "{\"ok\":false}");
 
-}   //   handleDeleteProfile()
+} //   handleDeleteProfile()
 
 //--- Parse JSON body
-static bool parseJsonBody(JsonDocument &doc)
+static bool parseJsonBody(JsonDocument& doc)
 {
   DeserializationError error = deserializeJson(doc, server.arg("plain"));
 
   return !error;
 
-}   //   parseJsonBody()
+} //   parseJsonBody()
 
 //--- Fill status document
-static void fillStatusDocument(JsonDocument &doc)
+static void fillStatusDocument(JsonDocument& doc)
 {
-  const AppSettings &settings = timerGetSettings();
+  const AppSettings& settings = timerGetSettings();
   RuntimeStatus runtimeStatus = timerGetRuntimeStatus();
 
   doc["settings"]["onTimeValue"] = settings.onTimeValue;
@@ -636,10 +634,10 @@ static void fillStatusDocument(JsonDocument &doc)
   doc["network"]["connected"] = wifiManagerIsStaConnected();
   doc["network"]["address"] = wifiManagerGetAddressString();
 
-}   //   fillStatusDocument()
+} //   fillStatusDocument()
 
 //--- Enforce minimum ON/OFF value for ms units
-static void enforceMsMinimum(AppSettings &settings)
+static void enforceMsMinimum(AppSettings& settings)
 {
   if (settings.onTimeUnit == TIME_UNIT_MS && settings.onTimeValue < 900)
   {
@@ -651,4 +649,4 @@ static void enforceMsMinimum(AppSettings &settings)
     settings.offTimeValue = 900;
   }
 
-}   //   enforceMsMinimum()
+} //   enforceMsMinimum()

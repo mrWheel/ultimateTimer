@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 14:23 ***/
+/*** Last Changed: 2026-04-15 - 16:11 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "timerEngine.h"
@@ -11,9 +11,27 @@
 //--- TFT instance
 static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
 
+//--- Panel color correction
+//--- Based on hardware test pattern results, this panel maps colors inverted.
+#define PANEL_COLOR(colorValue) static_cast<uint16_t>((colorValue) ^ 0xFFFFU)
+
 //--- Header colors
-static const uint16_t headerBackgroundColor = 0x4208;
-static const uint16_t headerTextColor = ST77XX_WHITE;
+static const uint16_t headerBackgroundColor = PANEL_COLOR(0x001F);
+static const uint16_t headerTextColor = ST77XX_BLACK;
+
+//--- UI accent colors
+//--- Target visual result:
+//--- Selected = blue, Not selected = light gray.
+static const uint16_t selectionFillColor = PANEL_COLOR(0x001F);
+static const uint16_t selectionBorderColor = PANEL_COLOR(0x7DFF);
+static const uint16_t selectionTextColor = ST77XX_BLACK;
+static const uint16_t selectionAccentColor = PANEL_COLOR(0x7DFF);
+static const uint16_t idleButtonFillColor = PANEL_COLOR(0xD69A);
+static const uint16_t idleButtonBorderColor = PANEL_COLOR(0xBDF7);
+
+//--- Keep button text high-contrast regardless of color preset
+static const uint16_t selectedButtonTextColor = ST77XX_BLACK;
+static const uint16_t idleButtonTextColor = ST77XX_BLACK;
 
 //--- Status line layout
 static const int statusLineHeight = 22;
@@ -26,6 +44,9 @@ static String cachedStatusLines[statusLineCount];
 
 //--- Draw one status line
 static void drawStatusLine(int lineIndex, const String& lineText);
+
+//--- Draw status action buttons
+static void drawStatusActionButtons(int statusActionIndex);
 
 //--- Format remaining duration text from milliseconds
 static String formatRemainingMs(uint32_t remainingMs);
@@ -124,42 +145,21 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     nextStatusLines[4] = String("Cycles: ") + String(displayCycle) + String("/") + String(runtimeStatus.totalCycles);
   }
 
-  String actionLine = "";
-
-  if (statusActionIndex == 0)
-  {
-    actionLine += "[Start] ";
-  }
-  else
-  {
-    actionLine += " Start  ";
-  }
-
-  if (statusActionIndex == 1)
-  {
-    actionLine += "[Stop] ";
-  }
-  else
-  {
-    actionLine += " Stop  ";
-  }
-
-  if (statusActionIndex == 2)
-  {
-    actionLine += "[Reset]";
-  }
-  else
-  {
-    actionLine += " Reset";
-  }
-
-  nextStatusLines[5] = actionLine;
+  nextStatusLines[5] = String("ACTION:") + String(statusActionIndex);
 
   for (int lineIndex = 0; lineIndex < statusLineCount; lineIndex++)
   {
     if (cachedStatusLines[lineIndex] != nextStatusLines[lineIndex])
     {
-      drawStatusLine(lineIndex, nextStatusLines[lineIndex]);
+      if (lineIndex == statusLineCount - 1)
+      {
+        drawStatusActionButtons(statusActionIndex);
+      }
+      else
+      {
+        drawStatusLine(lineIndex, nextStatusLines[lineIndex]);
+      }
+
       cachedStatusLines[lineIndex] = nextStatusLines[lineIndex];
     }
   }
@@ -186,17 +186,23 @@ void displayDrawListScreen(const char* title, const String items[], size_t itemC
       break;
     }
 
+    int y = 30 + (line * 22);
+
     if (itemIndex == selectedIndex)
     {
-      tft.setTextColor(ST77XX_WHITE, 0x7BEF);
+      tft.fillRect(0, y, tft.width(), 22, selectionFillColor);
+      tft.setTextColor(selectionTextColor, selectionFillColor);
+      tft.setCursor(6, y);
+      tft.print("> ");
+      tft.print(items[itemIndex]);
     }
     else
     {
+      tft.fillRect(0, y, tft.width(), 22, ST77XX_BLACK);
       tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+      tft.setCursor(6, y);
+      tft.print(items[itemIndex]);
     }
-
-    tft.setCursor(6, 30 + (line * 22));
-    tft.print(items[itemIndex]);
   }
 
 } //   displayDrawListScreen()
@@ -219,7 +225,7 @@ void displayDrawNumberEditor(const char* label, uint32_t value, const char* unit
   tft.setCursor(6, 105);
   tft.printf("%lu", static_cast<unsigned long>(value));
 
-  tft.setTextColor(ST77XX_CYAN);
+  tft.setTextColor(selectionAccentColor);
   tft.setTextSize(2);
   tft.setCursor(6, 170);
   tft.print(unitLabel);
@@ -272,7 +278,7 @@ void displayDrawTextInput(const char* title, const String& textValue, const Stri
   tft.setCursor(6, 75);
   tft.print(textValue);
 
-  tft.setTextColor(ST77XX_CYAN);
+  tft.setTextColor(selectionAccentColor);
   tft.setTextSize(3);
   tft.setCursor(6, 140);
   tft.print("[");
@@ -307,12 +313,12 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
   if (cursorIndex >= 0)
   {
     int cursorX = 18 + (cursorIndex * 12);
-    tft.setTextColor(ST77XX_YELLOW);
+    tft.setTextColor(selectionAccentColor);
     tft.setCursor(cursorX, 98);
     tft.print("^");
   }
 
-  tft.setTextColor(ST77XX_CYAN);
+  tft.setTextColor(selectionAccentColor);
   tft.setCursor(6, 130);
   tft.print(prevToken);
   tft.print(" < ");
@@ -352,7 +358,7 @@ void displayDrawWifiPortalScreen(const String& line1, const String& line2, const
   drawCenteredLine(line1, 62, ST77XX_WHITE, ST77XX_BLACK);
   drawCenteredLine(line2, 92, ST77XX_GREEN, ST77XX_BLACK);
   drawCenteredLine(line3, 122, ST77XX_GREEN, ST77XX_BLACK);
-  drawCenteredLine(line4, 186, ST77XX_YELLOW, ST77XX_BLACK);
+  drawCenteredLine(line4, 186, selectionAccentColor, ST77XX_BLACK);
 
 } //   displayDrawWifiPortalScreen()
 
@@ -369,6 +375,53 @@ void displayDrawStartupConnectionScreen(const String& line1, const String& line2
 
 } //   displayDrawStartupConnectionScreen()
 
+//--- Draw color palette test pattern
+void displayDrawTestColorPattern()
+{
+  struct PaletteCell
+  {
+    const char* label;
+    uint16_t color;
+  };
+
+  const PaletteCell cells[] =
+      {
+          {"Sel Fill", selectionFillColor},
+          {"Sel Border", selectionBorderColor},
+          {"Idle Fill", idleButtonFillColor},
+          {"Idle Border", idleButtonBorderColor},
+          {"Blue", ST77XX_BLUE},
+          {"Yellow", ST77XX_YELLOW},
+          {"Gray", 0x8410},
+          {"White", ST77XX_WHITE}};
+
+  const int cols = 2;
+  const int cellW = 152;
+  const int cellH = 42;
+  const int x0 = 8;
+  const int y0 = 32;
+
+  invalidateStatusScreenCache();
+  tft.fillScreen(ST77XX_BLACK);
+  drawHeader("Color Pattern");
+  tft.setTextSize(2);
+
+  for (int index = 0; index < 8; index++)
+  {
+    int col = index % cols;
+    int row = index / cols;
+    int x = x0 + (col * (cellW + 8));
+    int y = y0 + (row * (cellH + 8));
+
+    tft.fillRoundRect(x, y, cellW, cellH, 6, cells[index].color);
+    tft.drawRoundRect(x, y, cellW, cellH, 6, ST77XX_WHITE);
+    tft.setTextColor(ST77XX_BLACK, cells[index].color);
+    tft.setCursor(x + 8, y + 12);
+    tft.print(cells[index].label);
+  }
+
+} //   displayDrawTestColorPattern()
+
 //--- Set display backlight state
 void displaySetBacklight(bool enabled)
 {
@@ -383,6 +436,8 @@ static void drawHeader(const char* title)
   tft.setCursor(6, 4);
   tft.setTextColor(headerTextColor, headerBackgroundColor);
   tft.setTextSize(2);
+  tft.print(title);
+  tft.setCursor(7, 4);
   tft.print(title);
 
 } //   drawHeader()
@@ -422,6 +477,56 @@ static void drawStatusLine(int lineIndex, const String& lineText)
   tft.print(lineText);
 
 } //   drawStatusLine()
+
+//--- Draw status action buttons
+static void drawStatusActionButtons(int statusActionIndex)
+{
+  static const char* labels[] =
+      {
+          "Start",
+          "Stop",
+          "Reset"};
+
+  const int buttonY = 188;
+  const int buttonHeight = 38;
+  const int buttonWidth = 92;
+  const int buttonSpacing = 10;
+  const int firstButtonX = 11;
+  tft.fillRect(0, 182, tft.width(), 58, ST77XX_BLACK);
+  tft.setTextSize(2);
+
+  for (int buttonIndex = 0; buttonIndex < 3; buttonIndex++)
+  {
+    int buttonX = firstButtonX + (buttonIndex * (buttonWidth + buttonSpacing));
+    bool isSelected = (buttonIndex == statusActionIndex);
+    uint16_t fillColor = isSelected ? selectionFillColor : idleButtonFillColor;
+    uint16_t borderColor = isSelected ? selectionBorderColor : idleButtonBorderColor;
+    uint16_t textColor = isSelected ? selectedButtonTextColor : idleButtonTextColor;
+    int16_t textX1;
+    int16_t textY1;
+    uint16_t textWidth;
+    uint16_t textHeight;
+    int textX;
+    int textY;
+
+    tft.fillRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 8, fillColor);
+    tft.drawRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 8, borderColor);
+
+    if (isSelected)
+    {
+      tft.drawRoundRect(buttonX + 1, buttonY + 1, buttonWidth - 2, buttonHeight - 2, 8, ST77XX_WHITE);
+    }
+
+    tft.getTextBounds(labels[buttonIndex], 0, 0, &textX1, &textY1, &textWidth, &textHeight);
+    textX = buttonX + ((buttonWidth - static_cast<int>(textWidth)) / 2);
+    textY = buttonY + ((buttonHeight - static_cast<int>(textHeight)) / 2) + 5;
+
+    tft.setTextColor(textColor, fillColor);
+    tft.setCursor(textX, textY);
+    tft.print(labels[buttonIndex]);
+  }
+
+} //   drawStatusActionButtons()
 
 //--- Invalidate status screen cache
 static void invalidateStatusScreenCache()

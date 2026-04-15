@@ -1,5 +1,6 @@
-/*** Last Changed: 2026-04-15 - 14:33 ***/
+/*** Last Changed: 2026-04-15 - 16:11 ***/
 #include "uiMenu.h"
+#include "buttonInput.h"
 #include "displayDriver.h"
 #include "encoderInput.h"
 #include "profileManager.h"
@@ -68,7 +69,8 @@ enum FieldInputTarget
   FIELD_INPUT_TARGET_ON_UNIT = 6,
   FIELD_INPUT_TARGET_OFF_UNIT = 7,
   FIELD_INPUT_TARGET_TRIGGER_EDGE = 8,
-  FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM = 9
+  FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM = 9,
+  FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM = 10
 };
 
 //--- Main menu labels
@@ -155,6 +157,7 @@ static String profileNames[profileManagerMaxProfiles + 1];
 static size_t profileCount = 0;
 static int profileIndex = 0;
 static int profileFirstVisibleIndex = 0;
+static String pendingDeleteProfileName = "";
 
 //--- Field input state
 static String fieldInputTitle = "Field Input";
@@ -478,6 +481,26 @@ static void applyFieldInputAndReturn()
     }
     break;
 
+  case FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM:
+    if (fieldValue == "Y")
+    {
+      if (profileManagerDeleteProfile(pendingDeleteProfileName))
+      {
+        uiMenuShowTransientMessage("Profile deleted");
+      }
+      else
+      {
+        uiMenuShowTransientMessage("Delete failed");
+      }
+    }
+    else
+    {
+      uiMenuShowTransientMessage("Delete cancelled");
+    }
+
+    refreshProfileListWithExit();
+    break;
+
   default:
     break;
   }
@@ -525,14 +548,6 @@ static void handleFieldInput(EncoderEvent encoderEvent)
 
     fieldInputCursorPosition++;
     redrawRequired = true;
-  }
-  else if (encoderEvent == ENCODER_EVENT_MEDIUM_PRESS)
-  {
-    if (fieldInputCursorPosition > 0)
-    {
-      fieldInputCursorPosition--;
-      redrawRequired = true;
-    }
   }
 
   if (redrawRequired)
@@ -788,25 +803,19 @@ static void handleStatusScreen(EncoderEvent encoderEvent)
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
-    statusActionIndex--;
-
-    if (statusActionIndex < 0)
+    if (statusActionIndex > 0)
     {
-      statusActionIndex = 2;
+      statusActionIndex--;
+      redrawRequired = true;
     }
-
-    redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
-    statusActionIndex++;
-
-    if (statusActionIndex > 2)
+    if (statusActionIndex < 2)
     {
-      statusActionIndex = 0;
+      statusActionIndex++;
+      redrawRequired = true;
     }
-
-    redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
@@ -1147,6 +1156,7 @@ static void handleProfileList(EncoderEvent encoderEvent)
       if (profileManagerLoadProfile(selectedProfile, settings))
       {
         commitSettings(settings);
+        timerReset();
         settingsStoreSaveLastProfileName(selectedProfile);
         uiMenuShowTransientMessage("Profile loaded");
       }
@@ -1157,14 +1167,10 @@ static void handleProfileList(EncoderEvent encoderEvent)
     }
     else
     {
-      if (profileManagerDeleteProfile(selectedProfile))
-      {
-        uiMenuShowTransientMessage("Profile deleted");
-      }
-      else
-      {
-        uiMenuShowTransientMessage("Delete failed");
-      }
+      pendingDeleteProfileName = selectedProfile;
+      openFieldInput("Delete Profile", "Are you sure (Y/N)", 1, yesNoTokens, sizeof(yesNoTokens) / sizeof(yesNoTokens[0]), FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM, UI_SCREEN_PROFILE_LIST, "N");
+
+      return;
     }
 
     refreshProfileListWithExit();
@@ -1325,8 +1331,18 @@ void uiMenuInit()
 void uiMenuUpdate()
 {
   EncoderEvent encoderEvent = encoderGetEvent();
+  ButtonEvent buttonEvent = buttonGetEvent();
   uint32_t nowMs = millis();
   bool portalActive = wifiManagerShouldOpenPortal();
+
+  if (currentScreen == UI_SCREEN_FIELD_INPUT && buttonEvent != BUTTON_EVENT_NONE)
+  {
+    if (fieldInputCursorPosition > 0)
+    {
+      fieldInputCursorPosition--;
+      drawCurrentScreen();
+    }
+  }
 
   if (portalActive && currentScreen != UI_SCREEN_WIFI_MANAGER_PORTAL)
   {

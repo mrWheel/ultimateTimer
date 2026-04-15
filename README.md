@@ -18,19 +18,23 @@ Read `.codingRules.md`
 - `repeatCount = 0` support for infinite cycles
 - TFT status updates while running with partial line redraw (no full-screen flicker)
 - Build-time configuration through `build_flags` in `platformio.ini`
+- Optional color test mode through `TEST_COLOR_PATERN`
 
 ## Local TFT controls
-- Initial status screen shows only: `State`, `On time`, `Off time`, and `Output`.
-- `Output` line includes a live countdown timer (`mm:ss.t`) to the next ON/OFF switch while running.
+- Timer screen shows: `State`, `On time`, `Off time`, `Output`, and `Cycles`.
+- `Output` line includes a live countdown timer (`MMM:SS`) to the next ON/OFF switch while running/paused.
 - Open the local menu with a **long press on the rotary encoder**.
 - Select menu options with a **short press on the rotary encoder**.
+- Menu navigation is clamped (no wrap-around).
+- Timer action row includes `Start`, `Stop`, `Reset`.
 
 ### Main menu options
-- `Select profile`
-- `Edit Instellingen huidige gegevens`
+- `Timer Settings`
 - `Save Profile`
-- `Show instellingen`
-- `New profile`
+- `Load Profile`
+- `New Profile`
+- `Delete Profile`
+- `Show System Settings`
 - `Exit` (return to status screen)
 
 ### Press duration build flags
@@ -57,8 +61,15 @@ The press durations are configurable in `platformio.ini` via `build_flags`:
 
 ## TFT display behavior
 - All TFT text is rendered with the built-in monospaced font.
-- Status header uses a dark gray background.
+- Header uses the same calibrated blue background as selected action buttons.
+- Selected action button is blue; not-selected action buttons are light gray.
+- Button text is rendered in the calibrated high-contrast mapping used by this panel.
 - Status screen redraws only changed lines for smooth runtime updates.
+
+## TEST_COLOR_PATERN mode
+- Add `-D TEST_COLOR_PATERN` to `build_flags` in `platformio.ini` to enable test mode.
+- In this mode, firmware only initializes the display and shows a color palette test screen.
+- Timer/menu/WiFi runtime logic is skipped in this mode.
 
 ## TFT wiring/configuration hints
 - This project currently targets an ST7789-based 2.4 inch SPI display module.
