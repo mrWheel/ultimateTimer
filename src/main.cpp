@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 13:12 ***/
+/*** Last Changed: 2026-04-15 - 13:26 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -16,7 +16,7 @@
 #include <WiFi.h>
 #include <esp_log.h>
 
-const char* PROG_VERSION = "v0.4.1";
+const char* PROG_VERSION = "v0.4.2";
 
 //--- Logging tag
 static const char* logTag = "main";

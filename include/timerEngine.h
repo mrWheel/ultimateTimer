@@ -1,3 +1,4 @@
+/*** Last Changed: 2026-04-15 - 13:26 ***/
 #ifndef TIMER_ENGINE_H
 #define TIMER_ENGINE_H
 
@@ -32,10 +33,10 @@ void timerHandleExternalTrigger();
 void timerHandleExternalReset();
 
 //--- Set settings
-void timerSetSettings(const AppSettings &settings);
+void timerSetSettings(const AppSettings& settings);
 
 //--- Get settings
-const AppSettings &timerGetSettings();
+const AppSettings& timerGetSettings();
 
 //--- Get runtime status
 RuntimeStatus timerGetRuntimeStatus();
@@ -47,18 +48,18 @@ bool timerIsBusy();
 uint32_t timerConvertToMs(uint32_t value, TimeUnit unit);
 
 //--- Copy defaults into settings
-void timerLoadDefaultSettings(AppSettings &settings);
+void timerLoadDefaultSettings(AppSettings& settings);
 
 //--- Get time unit label
-const char *timerGetTimeUnitLabel(TimeUnit unit);
+const char* timerGetTimeUnitLabel(TimeUnit unit);
 
 //--- Get trigger mode label
-const char *timerGetTriggerModeLabel(TriggerMode mode);
+const char* timerGetTriggerModeLabel(TriggerMode mode);
 
 //--- Get trigger edge label
-const char *timerGetTriggerEdgeLabel(TriggerEdge edge);
+const char* timerGetTriggerEdgeLabel(TriggerEdge edge);
 
 //--- Get timer state label
-const char *timerGetStateLabel(TimerState state);
+const char* timerGetStateLabel(TimerState state);
 
 #endif

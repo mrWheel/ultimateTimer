@@ -1,10 +1,11 @@
+/*** Last Changed: 2026-04-15 - 13:26 ***/
 #include "timerEngine.h"
 #include "appConfig.h"
 
 #include <esp_log.h>
 
 //--- Logging tag
-static const char *logTag = "timerEngine";
+static const char* logTag = "timerEngine";
 
 //--- Internal settings
 static AppSettings appSettings;
@@ -22,7 +23,7 @@ static void startOnPhase();
 static void startOffPhase();
 
 //--- Apply common settings constraints
-static void sanitizeSettings(AppSettings &settings, bool enforceMsMinimum);
+static void sanitizeSettings(AppSettings& settings, bool enforceMsMinimum);
 
 //--- Initialize timer engine
 void timerInit()
@@ -40,7 +41,7 @@ void timerInit()
 
   ESP_LOGI(logTag, "Timer engine initialized");
 
-}   //   timerInit()
+} //   timerInit()
 
 //--- Update timer engine
 void timerUpdate()
@@ -81,21 +82,45 @@ void timerUpdate()
     startOnPhase();
   }
 
-}   //   timerUpdate()
+} //   timerUpdate()
 
 //--- Start timer cycle
 void timerStart()
 {
+  if (runtimeStatus.state == TIMER_STATE_FINISHED)
+  {
+    ESP_LOGW(logTag, "Start ignored: timer finished, reset required");
+
+    return;
+  }
+
+  if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
+  {
+    ESP_LOGW(logTag, "Start ignored: timer already active");
+
+    return;
+  }
+
   sanitizeSettings(appSettings, true);
   runtimeStatus.totalCycles = appSettings.repeatCount;
-  runtimeStatus.currentCycle = 0;
+
+  if (runtimeStatus.totalCycles > 0 && runtimeStatus.currentCycle >= runtimeStatus.totalCycles)
+  {
+    runtimeStatus.state = TIMER_STATE_FINISHED;
+    runtimeStatus.outputActive = false;
+
+    ESP_LOGW(logTag, "Start ignored: cycles exhausted, reset required");
+
+    return;
+  }
+
   runtimeStatus.state = TIMER_STATE_RUNNING;
 
   startOnPhase();
 
   ESP_LOGI(logTag, "Timer started");
 
-}   //   timerStart()
+} //   timerStart()
 
 //--- Stop timer cycle
 void timerStop()
@@ -108,7 +133,7 @@ void timerStop()
 
   ESP_LOGI(logTag, "Timer stopped");
 
-}   //   timerStop()
+} //   timerStop()
 
 //--- Pause timer cycle
 void timerPause()
@@ -123,7 +148,7 @@ void timerPause()
 
   ESP_LOGI(logTag, "Timer paused");
 
-}   //   timerPause()
+} //   timerPause()
 
 //--- Resume timer cycle
 void timerResume()
@@ -139,7 +164,7 @@ void timerResume()
 
   ESP_LOGI(logTag, "Timer resumed");
 
-}   //   timerResume()
+} //   timerResume()
 
 //--- Reset timer cycle
 void timerReset()
@@ -154,7 +179,7 @@ void timerReset()
 
   ESP_LOGI(logTag, "Timer reset");
 
-}   //   timerReset()
+} //   timerReset()
 
 //--- Request external trigger
 void timerHandleExternalTrigger()
@@ -173,7 +198,7 @@ void timerHandleExternalTrigger()
 
   ESP_LOGI(logTag, "External trigger accepted");
 
-}   //   timerHandleExternalTrigger()
+} //   timerHandleExternalTrigger()
 
 //--- Request external reset
 void timerHandleExternalReset()
@@ -182,10 +207,10 @@ void timerHandleExternalReset()
 
   ESP_LOGI(logTag, "External reset accepted");
 
-}   //   timerHandleExternalReset()
+} //   timerHandleExternalReset()
 
 //--- Set settings
-void timerSetSettings(const AppSettings &settings)
+void timerSetSettings(const AppSettings& settings)
 {
   AppSettings sanitizedSettings = settings;
   sanitizeSettings(sanitizedSettings, timerIsBusy());
@@ -202,10 +227,10 @@ void timerSetSettings(const AppSettings &settings)
 
   ESP_LOGI(logTag, "Settings updated");
 
-}   //   timerSetSettings()
+} //   timerSetSettings()
 
 //--- Apply common settings constraints
-static void sanitizeSettings(AppSettings &settings, bool enforceMsMinimum)
+static void sanitizeSettings(AppSettings& settings, bool enforceMsMinimum)
 {
   if (enforceMsMinimum && settings.onTimeUnit == TIME_UNIT_MS && settings.onTimeValue < 900)
   {
@@ -217,51 +242,51 @@ static void sanitizeSettings(AppSettings &settings, bool enforceMsMinimum)
     settings.offTimeValue = 900;
   }
 
-}   //   sanitizeSettings()
+} //   sanitizeSettings()
 
 //--- Get settings
-const AppSettings &timerGetSettings()
+const AppSettings& timerGetSettings()
 {
   return appSettings;
 
-}   //   timerGetSettings()
+} //   timerGetSettings()
 
 //--- Get runtime status
 RuntimeStatus timerGetRuntimeStatus()
 {
   return runtimeStatus;
 
-}   //   timerGetRuntimeStatus()
+} //   timerGetRuntimeStatus()
 
 //--- Check whether timer is busy
 bool timerIsBusy()
 {
   return runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED;
 
-}   //   timerIsBusy()
+} //   timerIsBusy()
 
 //--- Convert value and unit to milliseconds
 uint32_t timerConvertToMs(uint32_t value, TimeUnit unit)
 {
   switch (unit)
   {
-    case TIME_UNIT_MS:
-      return value;
+  case TIME_UNIT_MS:
+    return value;
 
-    case TIME_UNIT_SECONDS:
-      return value * 1000UL;
+  case TIME_UNIT_SECONDS:
+    return value * 1000UL;
 
-    case TIME_UNIT_MINUTES:
-      return value * 60000UL;
+  case TIME_UNIT_MINUTES:
+    return value * 60000UL;
 
-    default:
-      return value;
+  default:
+    return value;
   }
 
-}   //   timerConvertToMs()
+} //   timerConvertToMs()
 
 //--- Copy defaults into settings
-void timerLoadDefaultSettings(AppSettings &settings)
+void timerLoadDefaultSettings(AppSettings& settings)
 {
   settings.onTimeValue = DEFAULT_ON_TIME;
   settings.offTimeValue = DEFAULT_OFF_TIME;
@@ -275,84 +300,84 @@ void timerLoadDefaultSettings(AppSettings &settings)
   settings.autoSaveLastProfile = DEFAULT_AUTO_SAVE_LAST_PROFILE != 0;
   settings.profileName = "default";
 
-}   //   timerLoadDefaultSettings()
+} //   timerLoadDefaultSettings()
 
 //--- Get time unit label
-const char *timerGetTimeUnitLabel(TimeUnit unit)
+const char* timerGetTimeUnitLabel(TimeUnit unit)
 {
   switch (unit)
   {
-    case TIME_UNIT_MS:
-      return "ms";
+  case TIME_UNIT_MS:
+    return "ms";
 
-    case TIME_UNIT_SECONDS:
-      return "s";
+  case TIME_UNIT_SECONDS:
+    return "s";
 
-    case TIME_UNIT_MINUTES:
-      return "min";
+  case TIME_UNIT_MINUTES:
+    return "min";
 
-    default:
-      return "?";
+  default:
+    return "?";
   }
 
-}   //   timerGetTimeUnitLabel()
+} //   timerGetTimeUnitLabel()
 
 //--- Get trigger mode label
-const char *timerGetTriggerModeLabel(TriggerMode mode)
+const char* timerGetTriggerModeLabel(TriggerMode mode)
 {
   switch (mode)
   {
-    case TRIGGER_MODE_MANUAL:
-      return "Manual";
+  case TRIGGER_MODE_MANUAL:
+    return "Manual";
 
-    case TRIGGER_MODE_EXTERNAL:
-      return "External";
+  case TRIGGER_MODE_EXTERNAL:
+    return "External";
 
-    default:
-      return "?";
+  default:
+    return "?";
   }
 
-}   //   timerGetTriggerModeLabel()
+} //   timerGetTriggerModeLabel()
 
 //--- Get trigger edge label
-const char *timerGetTriggerEdgeLabel(TriggerEdge edge)
+const char* timerGetTriggerEdgeLabel(TriggerEdge edge)
 {
   switch (edge)
   {
-    case TRIGGER_EDGE_FALLING:
-      return "Falling";
+  case TRIGGER_EDGE_FALLING:
+    return "Falling";
 
-    case TRIGGER_EDGE_RISING:
-      return "Rising";
+  case TRIGGER_EDGE_RISING:
+    return "Rising";
 
-    default:
-      return "?";
+  default:
+    return "?";
   }
 
-}   //   timerGetTriggerEdgeLabel()
+} //   timerGetTriggerEdgeLabel()
 
 //--- Get timer state label
-const char *timerGetStateLabel(TimerState state)
+const char* timerGetStateLabel(TimerState state)
 {
   switch (state)
   {
-    case TIMER_STATE_IDLE:
-      return "Idle";
+  case TIMER_STATE_IDLE:
+    return "Idle";
 
-    case TIMER_STATE_RUNNING:
-      return "Running";
+  case TIMER_STATE_RUNNING:
+    return "Running";
 
-    case TIMER_STATE_PAUSED:
-      return "Paused";
+  case TIMER_STATE_PAUSED:
+    return "Paused";
 
-    case TIMER_STATE_FINISHED:
-      return "Finished";
+  case TIMER_STATE_FINISHED:
+    return "Finished";
 
-    default:
-      return "?";
+  default:
+    return "?";
   }
 
-}   //   timerGetStateLabel()
+} //   timerGetStateLabel()
 
 //--- Start on phase
 static void startOnPhase()
@@ -368,9 +393,9 @@ static void startOnPhase()
     runtimeStatus.currentPhaseDurationMs = 1;
   }
 
-  ESP_LOGI(logTag, "ON phase started for %lu ms", runtimeStatus.currentPhaseDurationMs);
+  ESP_LOGD(logTag, "ON phase started for %lu ms", runtimeStatus.currentPhaseDurationMs);
 
-}   //   startOnPhase()
+} //   startOnPhase()
 
 //--- Start off phase
 static void startOffPhase()
@@ -386,6 +411,6 @@ static void startOffPhase()
     runtimeStatus.currentPhaseDurationMs = 1;
   }
 
-  ESP_LOGI(logTag, "OFF phase started for %lu ms", runtimeStatus.currentPhaseDurationMs);
+  ESP_LOGD(logTag, "OFF phase started for %lu ms", runtimeStatus.currentPhaseDurationMs);
 
-}   //   startOffPhase()
+} //   startOffPhase()
