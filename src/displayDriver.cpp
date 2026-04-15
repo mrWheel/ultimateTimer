@@ -1,3 +1,4 @@
+/*** Last Changed: 2026-04-15 - 13:12 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "timerEngine.h"
@@ -6,9 +7,6 @@
 #include <Adafruit_ST7789.h>
 #include <SPI.h>
 #include <esp_log.h>
-
-//--- Logging tag
-static const char *logTag = "displayDriver";
 
 //--- TFT instance
 static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
@@ -20,20 +18,23 @@ static const uint16_t headerTextColor = ST77XX_WHITE;
 //--- Status line layout
 static const int statusLineHeight = 22;
 static const int statusLineTopY = 30;
-static const int statusLineCount = 8;
+static const int statusLineCount = 6;
 
 //--- Status screen cache
 static bool statusScreenPrepared = false;
 static String cachedStatusLines[statusLineCount];
 
 //--- Draw one status line
-static void drawStatusLine(int lineIndex, const String &lineText);
+static void drawStatusLine(int lineIndex, const String& lineText);
+
+//--- Format remaining duration text from milliseconds
+static String formatRemainingMs(uint32_t remainingMs);
 
 //--- Invalidate status screen cache
 static void invalidateStatusScreenCache();
 
 //--- Draw screen header
-static void drawHeader(const char *title);
+static void drawHeader(const char* title);
 
 //--- Initialize display
 void displayInit()
@@ -47,14 +48,15 @@ void displayInit()
   tft.setRotation(TFT_ROTATION);
   tft.fillScreen(ST77XX_BLACK);
   tft.setTextWrap(false);
+  tft.setFont(nullptr);
   invalidateStatusScreenCache();
 
-  ESP_LOGI(logTag, "Display initialized");
+  ESP_LOGI("displayDriver", "Display initialized");
 
-}   //   displayInit()
+} //   displayInit()
 
 //--- Update status screen
-void displayDrawStatusScreen(const AppSettings &settings, const RuntimeStatus &runtimeStatus, bool wifiConnected)
+void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& runtimeStatus, bool wifiConnected, int statusActionIndex)
 {
   (void)wifiConnected;
 
@@ -73,13 +75,82 @@ void displayDrawStatusScreen(const AppSettings &settings, const RuntimeStatus &r
 
   String nextStatusLines[statusLineCount];
   nextStatusLines[0] = String("State: ") + String(timerGetStateLabel(runtimeStatus.state));
-  nextStatusLines[1] = String("On: ") + String(settings.onTimeValue) + String(" ") + String(timerGetTimeUnitLabel(settings.onTimeUnit));
-  nextStatusLines[2] = String("Off: ") + String(settings.offTimeValue) + String(" ") + String(timerGetTimeUnitLabel(settings.offTimeUnit));
-  nextStatusLines[3] = String("Cycles: ") + String(settings.repeatCount);
-  nextStatusLines[4] = String("Done: ") + String(runtimeStatus.currentCycle) + String("/") + (runtimeStatus.totalCycles == 0 ? String("INF") : String(runtimeStatus.totalCycles));
-  nextStatusLines[5] = String("Output: ") + String(runtimeStatus.outputActive ? "ON" : "OFF");
-  nextStatusLines[6] = String("Trigger: ") + String(timerGetTriggerModeLabel(settings.triggerMode));
-  nextStatusLines[7] = String("Profile: ") + settings.profileName;
+  nextStatusLines[1] = String("On time: ") + String(settings.onTimeValue) + String(" ") + String(timerGetTimeUnitLabel(settings.onTimeUnit));
+  nextStatusLines[2] = String("Off time: ") + String(settings.offTimeValue) + String(" ") + String(timerGetTimeUnitLabel(settings.offTimeUnit));
+
+  uint32_t remainingMs = 0;
+
+  if (runtimeStatus.currentPhaseDurationMs > runtimeStatus.currentPhaseElapsedMs)
+  {
+    remainingMs = runtimeStatus.currentPhaseDurationMs - runtimeStatus.currentPhaseElapsedMs;
+  }
+
+  String outputLine = String("Output: ") + String(runtimeStatus.outputActive ? "ON " : "OFF ");
+
+  if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
+  {
+    outputLine += formatRemainingMs(remainingMs);
+  }
+  else
+  {
+    outputLine += String("---:--");
+  }
+
+  nextStatusLines[3] = outputLine;
+
+  if (runtimeStatus.totalCycles == 0)
+  {
+    nextStatusLines[4] = "Cycles: Inv.";
+  }
+  else
+  {
+    uint32_t displayCycle = runtimeStatus.currentCycle;
+
+    if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
+    {
+      if (displayCycle < runtimeStatus.totalCycles)
+      {
+        displayCycle++;
+      }
+    }
+    else if (runtimeStatus.state == TIMER_STATE_FINISHED)
+    {
+      displayCycle = runtimeStatus.totalCycles;
+    }
+
+    nextStatusLines[4] = String("Cycles: ") + String(displayCycle) + String("/") + String(runtimeStatus.totalCycles);
+  }
+
+  String actionLine = "";
+
+  if (statusActionIndex == 0)
+  {
+    actionLine += "[Start] ";
+  }
+  else
+  {
+    actionLine += " Start  ";
+  }
+
+  if (statusActionIndex == 1)
+  {
+    actionLine += "[Stop] ";
+  }
+  else
+  {
+    actionLine += " Stop  ";
+  }
+
+  if (statusActionIndex == 2)
+  {
+    actionLine += "[Reset]";
+  }
+  else
+  {
+    actionLine += " Reset";
+  }
+
+  nextStatusLines[5] = actionLine;
 
   for (int lineIndex = 0; lineIndex < statusLineCount; lineIndex++)
   {
@@ -90,10 +161,10 @@ void displayDrawStatusScreen(const AppSettings &settings, const RuntimeStatus &r
     }
   }
 
-}   //   displayDrawStatusScreen()
+} //   displayDrawStatusScreen()
 
 //--- Draw text list
-void displayDrawListScreen(const char *title, const String items[], size_t itemCount, int selectedIndex, int firstVisibleIndex)
+void displayDrawListScreen(const char* title, const String items[], size_t itemCount, int selectedIndex, int firstVisibleIndex)
 {
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
@@ -114,7 +185,7 @@ void displayDrawListScreen(const char *title, const String items[], size_t itemC
 
     if (itemIndex == selectedIndex)
     {
-      tft.setTextColor(ST77XX_BLACK, ST77XX_YELLOW);
+      tft.setTextColor(ST77XX_WHITE, 0x7BEF);
     }
     else
     {
@@ -125,10 +196,10 @@ void displayDrawListScreen(const char *title, const String items[], size_t itemC
     tft.print(items[itemIndex]);
   }
 
-}   //   displayDrawListScreen()
+} //   displayDrawListScreen()
 
 //--- Draw numeric editor
-void displayDrawNumberEditor(const char *label, uint32_t value, const char *unitLabel)
+void displayDrawNumberEditor(const char* label, uint32_t value, const char* unitLabel)
 {
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
@@ -143,7 +214,7 @@ void displayDrawNumberEditor(const char *label, uint32_t value, const char *unit
   tft.setTextColor(ST77XX_GREEN);
   tft.setTextSize(4);
   tft.setCursor(6, 105);
-  tft.printf("%lu", value);
+  tft.printf("%lu", static_cast<unsigned long>(value));
 
   tft.setTextColor(ST77XX_CYAN);
   tft.setTextSize(2);
@@ -154,10 +225,10 @@ void displayDrawNumberEditor(const char *label, uint32_t value, const char *unit
   tft.setCursor(6, 205);
   tft.print("Press=OK  K0=Back");
 
-}   //   displayDrawNumberEditor()
+} //   displayDrawNumberEditor()
 
 //--- Draw enum editor
-void displayDrawEnumEditor(const char *label, const char *valueLabel)
+void displayDrawEnumEditor(const char* label, const char* valueLabel)
 {
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
@@ -179,10 +250,10 @@ void displayDrawEnumEditor(const char *label, const char *valueLabel)
   tft.setCursor(6, 205);
   tft.print("Press=OK  K0=Back");
 
-}   //   displayDrawEnumEditor()
+} //   displayDrawEnumEditor()
 
 //--- Draw text input editor
-void displayDrawTextInput(const char *title, const String &textValue, const String &currentToken)
+void displayDrawTextInput(const char* title, const String& textValue, const String& currentToken)
 {
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
@@ -210,10 +281,50 @@ void displayDrawTextInput(const char *title, const String &textValue, const Stri
   tft.setCursor(6, 205);
   tft.print("Hold=Save  K0=Back");
 
-}   //   displayDrawTextInput()
+} //   displayDrawTextInput()
+
+//--- Draw generic field input screen
+void displayDrawFieldInput(const char* title, const char* fieldName, const String& fieldValue, int cursorIndex, const String& prevToken, const String& currentToken, const String& nextToken)
+{
+  invalidateStatusScreenCache();
+  tft.fillScreen(ST77XX_BLACK);
+  drawHeader(title);
+
+  tft.setTextColor(ST77XX_WHITE);
+  tft.setTextSize(2);
+  tft.setCursor(6, 44);
+  tft.print(fieldName);
+
+  tft.setTextColor(ST77XX_GREEN);
+  tft.setCursor(6, 76);
+  tft.print("[");
+  tft.print(fieldValue);
+  tft.print("]");
+
+  if (cursorIndex >= 0)
+  {
+    int cursorX = 18 + (cursorIndex * 12);
+    tft.setTextColor(ST77XX_YELLOW);
+    tft.setCursor(cursorX, 98);
+    tft.print("^");
+  }
+
+  tft.setTextColor(ST77XX_CYAN);
+  tft.setCursor(6, 130);
+  tft.print(prevToken);
+  tft.print(" < ");
+  tft.print(currentToken);
+  tft.print(" > ");
+  tft.print(nextToken);
+
+  tft.setTextColor(ST77XX_WHITE);
+  tft.setCursor(6, 206);
+  tft.print("Short=Next  Turn=Change");
+
+} //   displayDrawFieldInput()
 
 //--- Draw message screen
-void displayDrawMessage(const char *title, const char *message)
+void displayDrawMessage(const char* title, const char* message)
 {
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
@@ -224,17 +335,17 @@ void displayDrawMessage(const char *title, const char *message)
   tft.setCursor(6, 60);
   tft.print(message);
 
-}   //   displayDrawMessage()
+} //   displayDrawMessage()
 
 //--- Set display backlight state
 void displaySetBacklight(bool enabled)
 {
   digitalWrite(PIN_TFT_BL, enabled ? HIGH : LOW);
 
-}   //   displaySetBacklight()
+} //   displaySetBacklight()
 
 //--- Draw screen header
-static void drawHeader(const char *title)
+static void drawHeader(const char* title)
 {
   tft.fillRect(0, 0, tft.width(), 24, headerBackgroundColor);
   tft.setCursor(6, 4);
@@ -242,10 +353,10 @@ static void drawHeader(const char *title)
   tft.setTextSize(2);
   tft.print(title);
 
-}   //   drawHeader()
+} //   drawHeader()
 
 //--- Draw one status line
-static void drawStatusLine(int lineIndex, const String &lineText)
+static void drawStatusLine(int lineIndex, const String& lineText)
 {
   int y = statusLineTopY + (lineIndex * statusLineHeight);
 
@@ -255,11 +366,30 @@ static void drawStatusLine(int lineIndex, const String &lineText)
   tft.setCursor(6, y);
   tft.print(lineText);
 
-}   //   drawStatusLine()
+} //   drawStatusLine()
 
 //--- Invalidate status screen cache
 static void invalidateStatusScreenCache()
 {
   statusScreenPrepared = false;
 
-}   //   invalidateStatusScreenCache()
+} //   invalidateStatusScreenCache()
+
+//--- Format remaining duration text from milliseconds
+static String formatRemainingMs(uint32_t remainingMs)
+{
+  uint32_t totalSeconds = remainingMs / 1000UL;
+  uint32_t minutes = totalSeconds / 60UL;
+  uint32_t seconds = totalSeconds % 60UL;
+  char buffer[16];
+
+  if (minutes > 999UL)
+  {
+    minutes = 999UL;
+  }
+
+  snprintf(buffer, sizeof(buffer), "%03lu:%02lu", static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+
+  return String(buffer);
+
+} //   formatRemainingMs()

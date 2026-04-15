@@ -1,3 +1,4 @@
+/*** Last Changed: 2026-04-15 - 13:12 ***/
 #ifndef SETTINGS_STORE_H
 #define SETTINGS_STORE_H
 
@@ -8,10 +9,10 @@
 void settingsStoreInit();
 
 //--- Load WiFi settings
-void settingsStoreLoadWifiSettings(WifiSettings &wifiSettings);
+void settingsStoreLoadWifiSettings(WifiSettings& wifiSettings);
 
 //--- Save WiFi settings
-void settingsStoreSaveWifiSettings(const WifiSettings &wifiSettings);
+void settingsStoreSaveWifiSettings(const WifiSettings& wifiSettings);
 
 //--- Erase stored station WiFi credentials
 void settingsStoreEraseWifiCredentials();
@@ -20,6 +21,18 @@ void settingsStoreEraseWifiCredentials();
 String settingsStoreLoadLastProfileName();
 
 //--- Save last profile name
-void settingsStoreSaveLastProfileName(const String &profileName);
+void settingsStoreSaveLastProfileName(const String& profileName);
+
+//--- Load encoder direction reversal state
+bool settingsStoreLoadEncoderDirectionReversed();
+
+//--- Save encoder direction reversal state
+void settingsStoreSaveEncoderDirectionReversed(bool reversed);
+
+//--- Load output polarity default state
+bool settingsStoreLoadOutputPolarityHigh();
+
+//--- Save output polarity default state
+void settingsStoreSaveOutputPolarityHigh(bool activeHigh);
 
 #endif

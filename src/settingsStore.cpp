@@ -1,3 +1,4 @@
+/*** Last Changed: 2026-04-15 - 13:12 ***/
 #include "settingsStore.h"
 #include "appConfig.h"
 
@@ -5,13 +6,13 @@
 #include <esp_log.h>
 
 //--- Logging tag
-static const char *logTag = "settingsStore";
+static const char* logTag = "settingsStore";
 
 //--- Preferences instance
 static Preferences preferences;
 
 //--- Preferences namespace
-static const char *preferencesNamespace = "univtimer";
+static const char* preferencesNamespace = "univtimer";
 
 //--- Initialize settings storage
 void settingsStoreInit()
@@ -20,10 +21,10 @@ void settingsStoreInit()
 
   ESP_LOGI(logTag, "Settings storage initialized");
 
-}   //   settingsStoreInit()
+} //   settingsStoreInit()
 
 //--- Load WiFi settings
-void settingsStoreLoadWifiSettings(WifiSettings &wifiSettings)
+void settingsStoreLoadWifiSettings(WifiSettings& wifiSettings)
 {
   wifiSettings.staSsid = preferences.getString("staSsid", "");
   wifiSettings.staPassword = preferences.getString("staPass", "");
@@ -31,10 +32,10 @@ void settingsStoreLoadWifiSettings(WifiSettings &wifiSettings)
   wifiSettings.apPassword = preferences.getString("apPass", DEFAULT_AP_PASSWORD);
   wifiSettings.hostName = preferences.getString("hostName", DEFAULT_WIFI_HOSTNAME);
 
-}   //   settingsStoreLoadWifiSettings()
+} //   settingsStoreLoadWifiSettings()
 
 //--- Save WiFi settings
-void settingsStoreSaveWifiSettings(const WifiSettings &wifiSettings)
+void settingsStoreSaveWifiSettings(const WifiSettings& wifiSettings)
 {
   preferences.putString("staSsid", wifiSettings.staSsid);
   preferences.putString("staPass", wifiSettings.staPassword);
@@ -44,7 +45,7 @@ void settingsStoreSaveWifiSettings(const WifiSettings &wifiSettings)
 
   ESP_LOGI(logTag, "WiFi settings saved");
 
-}   //   settingsStoreSaveWifiSettings()
+} //   settingsStoreSaveWifiSettings()
 
 //--- Erase stored station WiFi credentials
 void settingsStoreEraseWifiCredentials()
@@ -54,20 +55,52 @@ void settingsStoreEraseWifiCredentials()
 
   ESP_LOGI(logTag, "Stored STA WiFi credentials erased");
 
-}   //   settingsStoreEraseWifiCredentials()
+} //   settingsStoreEraseWifiCredentials()
 
 //--- Load last profile name
 String settingsStoreLoadLastProfileName()
 {
   return preferences.getString("lastProf", "");
 
-}   //   settingsStoreLoadLastProfileName()
+} //   settingsStoreLoadLastProfileName()
 
 //--- Save last profile name
-void settingsStoreSaveLastProfileName(const String &profileName)
+void settingsStoreSaveLastProfileName(const String& profileName)
 {
   preferences.putString("lastProf", profileName);
 
   ESP_LOGI(logTag, "Last profile saved: %s", profileName.c_str());
 
-}   //   settingsStoreSaveLastProfileName()
+} //   settingsStoreSaveLastProfileName()
+
+//--- Load encoder direction reversal state
+bool settingsStoreLoadEncoderDirectionReversed()
+{
+  return preferences.getBool("encRev", false);
+
+} //   settingsStoreLoadEncoderDirectionReversed()
+
+//--- Save encoder direction reversal state
+void settingsStoreSaveEncoderDirectionReversed(bool reversed)
+{
+  preferences.putBool("encRev", reversed);
+
+  ESP_LOGI(logTag, "Encoder direction reversed saved: %s", reversed ? "true" : "false");
+
+} //   settingsStoreSaveEncoderDirectionReversed()
+
+//--- Load output polarity default state
+bool settingsStoreLoadOutputPolarityHigh()
+{
+  return preferences.getBool("outHigh", true);
+
+} //   settingsStoreLoadOutputPolarityHigh()
+
+//--- Save output polarity default state
+void settingsStoreSaveOutputPolarityHigh(bool activeHigh)
+{
+  preferences.putBool("outHigh", activeHigh);
+
+  ESP_LOGI(logTag, "Output polarity activeHigh saved: %s", activeHigh ? "true" : "false");
+
+} //   settingsStoreSaveOutputPolarityHigh()

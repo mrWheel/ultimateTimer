@@ -1,3 +1,4 @@
+/*** Last Changed: 2026-04-15 - 13:12 ***/
 #ifndef APP_CONFIG_H
 #define APP_CONFIG_H
 
@@ -76,8 +77,24 @@
 #define ENCODER_LONG_PRESS_MS 900
 #endif
 
+#ifndef ENCODER_SHORT_PRESS_MS
+#define ENCODER_SHORT_PRESS_MS 40
+#endif
+
+#ifndef ENCODER_MEDIUM_PRESS_MS
+#define ENCODER_MEDIUM_PRESS_MS 450
+#endif
+
 #ifndef BUTTON_LONG_PRESS_MS
 #define BUTTON_LONG_PRESS_MS 900
+#endif
+
+#ifndef BUTTON_SHORT_PRESS_MS
+#define BUTTON_SHORT_PRESS_MS 40
+#endif
+
+#ifndef BUTTON_MEDIUM_PRESS_MS
+#define BUTTON_MEDIUM_PRESS_MS 450
 #endif
 
 #ifndef WIFI_CREDENTIAL_RESET_HOLD_MS

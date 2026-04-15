@@ -1,15 +1,17 @@
+/*** Last Changed: 2026-04-15 - 13:12 ***/
 #include "encoderInput.h"
 #include "appConfig.h"
 
 #include <esp_log.h>
 
 //--- Logging tag
-static const char *logTag = "encoderInput";
+static const char* logTag = "encoderInput";
 
 //--- Encoder state
 static int32_t encoderDelta = 0;
 static uint8_t lastState = 0;
 static EncoderEvent pendingEvent = ENCODER_EVENT_NONE;
+static bool directionReversed = false;
 
 //--- Button timing state
 static bool buttonPressed = false;
@@ -31,7 +33,7 @@ void encoderInit()
 
   ESP_LOGI(logTag, "Encoder initialized");
 
-}   //   encoderInit()
+} //   encoderInit()
 
 //--- Update encoder input
 void encoderUpdate()
@@ -54,12 +56,18 @@ void encoderUpdate()
 
     if (encoderDelta >= 4)
     {
-      pendingEvent = ENCODER_EVENT_RIGHT;
+      if (pendingEvent == ENCODER_EVENT_NONE)
+      {
+        pendingEvent = directionReversed ? ENCODER_EVENT_LEFT : ENCODER_EVENT_RIGHT;
+      }
       encoderDelta = 0;
     }
     else if (encoderDelta <= -4)
     {
-      pendingEvent = ENCODER_EVENT_LEFT;
+      if (pendingEvent == ENCODER_EVENT_NONE)
+      {
+        pendingEvent = directionReversed ? ENCODER_EVENT_RIGHT : ENCODER_EVENT_LEFT;
+      }
       encoderDelta = 0;
     }
 
@@ -84,16 +92,31 @@ void encoderUpdate()
   }
   else if (!rawPressed && buttonPressed)
   {
+    uint32_t pressDurationMs = millis() - buttonPressStartMs;
+
     if (!longPressReported)
     {
-      pendingEvent = ENCODER_EVENT_SHORT_PRESS;
+      if (pressDurationMs >= ENCODER_MEDIUM_PRESS_MS)
+      {
+        if (pendingEvent == ENCODER_EVENT_NONE)
+        {
+          pendingEvent = ENCODER_EVENT_MEDIUM_PRESS;
+        }
+      }
+      else if (pressDurationMs >= ENCODER_SHORT_PRESS_MS)
+      {
+        if (pendingEvent == ENCODER_EVENT_NONE)
+        {
+          pendingEvent = ENCODER_EVENT_SHORT_PRESS;
+        }
+      }
     }
 
     buttonPressed = false;
     longPressReported = false;
   }
 
-}   //   encoderUpdate()
+} //   encoderUpdate()
 
 //--- Get next encoder event
 EncoderEvent encoderGetEvent()
@@ -103,14 +126,28 @@ EncoderEvent encoderGetEvent()
 
   return event;
 
-}   //   encoderGetEvent()
+} //   encoderGetEvent()
 
 //--- Clear pending encoder event
 void encoderClearEvent()
 {
   pendingEvent = ENCODER_EVENT_NONE;
 
-}   //   encoderClearEvent()
+} //   encoderClearEvent()
+
+//--- Set encoder direction reversal state
+void encoderSetDirectionReversed(bool reversed)
+{
+  directionReversed = reversed;
+
+} //   encoderSetDirectionReversed()
+
+//--- Get encoder direction reversal state
+bool encoderGetDirectionReversed()
+{
+  return directionReversed;
+
+} //   encoderGetDirectionReversed()
 
 //--- Encode current quadrature state
 static uint8_t readState()
@@ -120,4 +157,4 @@ static uint8_t readState()
 
   return static_cast<uint8_t>((a << 1) | b);
 
-}   //   readState()
+} //   readState()

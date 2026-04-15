@@ -1,5 +1,5 @@
+/*** Last Changed: 2026-04-15 - 13:12 ***/
 #include "uiMenu.h"
-#include "buttonInput.h"
 #include "displayDriver.h"
 #include "encoderInput.h"
 #include "profileManager.h"
@@ -7,257 +7,603 @@
 #include "timerEngine.h"
 #include "WiFiManagerExt.h"
 
+#include <WiFi.h>
 #include <esp_log.h>
-
-//--- Logging tag
-static const char *logTag = "uiMenu";
 
 //--- Main menu item identifiers
 enum MainMenuItem
 {
-  MENU_ITEM_START_STOP = 0,
-  MENU_ITEM_RESET = 1,
-  MENU_ITEM_ON_TIME = 2,
-  MENU_ITEM_ON_UNIT = 3,
-  MENU_ITEM_OFF_TIME = 4,
-  MENU_ITEM_OFF_UNIT = 5,
-  MENU_ITEM_REPEAT_COUNT = 6,
-  MENU_ITEM_TRIGGER_MODE = 7,
-  MENU_ITEM_TRIGGER_EDGE = 8,
-  MENU_ITEM_OUTPUT_POLARITY = 9,
-  MENU_ITEM_LOCK_INPUT = 10,
-  MENU_ITEM_AUTO_SAVE = 11,
-  MENU_ITEM_SAVE_PROFILE = 12,
-  MENU_ITEM_LOAD_PROFILE = 13,
-  MENU_ITEM_DELETE_PROFILE = 14,
-  MENU_ITEM_WIFI_SETUP = 15,
-  MENU_ITEM_WIFI_INFO = 16
+  MENU_ITEM_TIMER_SETTINGS = 0,
+  MENU_ITEM_SAVE_PROFILE = 1,
+  MENU_ITEM_LOAD_PROFILE = 2,
+  MENU_ITEM_NEW_PROFILE = 3,
+  MENU_ITEM_DELETE_PROFILE = 4,
+  MENU_ITEM_SHOW_SYSTEM_SETTINGS = 5,
+  MENU_ITEM_EXIT = 6
 };
 
-//--- Numeric editor targets
-enum NumberEditTarget
+//--- Timer settings menu item identifiers
+enum TimerSettingsItem
 {
-  NUMBER_EDIT_NONE = 0,
-  NUMBER_EDIT_ON_TIME = 1,
-  NUMBER_EDIT_OFF_TIME = 2,
-  NUMBER_EDIT_REPEAT_COUNT = 3
+  TIMER_SETTINGS_ITEM_ON_TIME = 0,
+  TIMER_SETTINGS_ITEM_ON_UNIT = 1,
+  TIMER_SETTINGS_ITEM_OFF_TIME = 2,
+  TIMER_SETTINGS_ITEM_OFF_UNIT = 3,
+  TIMER_SETTINGS_ITEM_REPEAT_COUNT = 4,
+  TIMER_SETTINGS_ITEM_TRIGGER_EDGE = 5,
+  TIMER_SETTINGS_ITEM_EXIT = 6
 };
 
-//--- Enum editor targets
-enum EnumEditTarget
+//--- System settings menu item identifiers
+enum SystemSettingsItem
 {
-  ENUM_EDIT_NONE = 0,
-  ENUM_EDIT_ON_UNIT = 1,
-  ENUM_EDIT_OFF_UNIT = 2,
-  ENUM_EDIT_TRIGGER_MODE = 3,
-  ENUM_EDIT_TRIGGER_EDGE = 4,
-  ENUM_EDIT_OUTPUT_POLARITY = 5,
-  ENUM_EDIT_LOCK_INPUT = 6,
-  ENUM_EDIT_AUTO_SAVE = 7
+  SYSTEM_SETTINGS_ITEM_WIFI_SSID = 0,
+  SYSTEM_SETTINGS_ITEM_IP_ADDRESS = 1,
+  SYSTEM_SETTINGS_ITEM_MAC_ADDRESS = 2,
+  SYSTEM_SETTINGS_ITEM_ENCODER_ORDER = 3,
+  SYSTEM_SETTINGS_ITEM_ERASE_WIFI = 4,
+  SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY = 5,
+  SYSTEM_SETTINGS_ITEM_EXIT = 6
 };
 
 //--- Profile list modes
 enum ProfileListMode
 {
   PROFILE_LIST_LOAD = 0,
-  PROFILE_LIST_DELETE = 1,
-  PROFILE_LIST_WIFI_AP = 2
+  PROFILE_LIST_DELETE = 1
 };
 
-//--- Text input modes
-enum TextInputMode
+//--- Field input targets
+enum FieldInputTarget
 {
-  TEXT_INPUT_MODE_PROFILE_NAME = 0,
-  TEXT_INPUT_MODE_WIFI_PASSWORD = 1
+  FIELD_INPUT_TARGET_NONE = 0,
+  FIELD_INPUT_TARGET_SAVE_PROFILE = 1,
+  FIELD_INPUT_TARGET_NEW_PROFILE = 2,
+  FIELD_INPUT_TARGET_ON_TIME = 3,
+  FIELD_INPUT_TARGET_OFF_TIME = 4,
+  FIELD_INPUT_TARGET_REPEAT_COUNT = 5,
+  FIELD_INPUT_TARGET_ON_UNIT = 6,
+  FIELD_INPUT_TARGET_OFF_UNIT = 7,
+  FIELD_INPUT_TARGET_TRIGGER_EDGE = 8,
+  FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM = 9
 };
 
-//--- Main menu items
+//--- Main menu labels
 static const String mainMenuItems[] =
-{
-  "Start/Stop",
-  "Reset",
-  "On Time",
-  "On Unit",
-  "Off Time",
-  "Off Unit",
-  "Repeat Count",
-  "Trigger Mode",
-  "Trigger Edge",
-  "Output Polarity",
-  "Lock Input Run",
-  "Auto Save Last",
-  "Save Profile",
-  "Load Profile",
-  "Delete Profile",
-  "WiFi Setup",
-  "WiFi Info"
-};
+    {
+        "Timer Settings",
+        "Save Profile",
+        "Load Profile",
+        "New Profile",
+        "Delete Profile",
+        "Show System Settings",
+        "Exit"};
 
-//--- Text input tokens
-static const String textTokens[] =
-{
-  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-  "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-  "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-  "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-  "_", "-", ".", " ", "!", "@", "#", "$", "%", "&", "*", "(", ")", "/", "?", "+", "=", ":", "BACK"
-};
+//--- Timer settings menu labels
+static const String timerSettingsMenuItems[] =
+    {
+        "On Time",
+        "On Time Unit",
+        "Off Time",
+        "Off Time Unit",
+        "Number of Cycles",
+        "Trigger (Rise/Fall)",
+        "Exit"};
 
-//--- Maximum number of WiFi APs shown in local UI
-static const size_t wifiApListMaxCount = 20;
+//--- System settings menu labels
+static const String systemSettingsMenuItems[] =
+    {
+        "WiFi SSID",
+        "IP Address",
+        "MAC Address",
+        "Encoder Order",
+        "Erase WiFi credentials",
+        "PIN_OUTPUT Polarity",
+        "Exit"};
 
-//--- Current screen state
+//--- Numeric field tokens
+static const String numericTokens[] =
+    {
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+
+//--- Alphanumeric field tokens
+static const String alphaNumericTokens[] =
+    {
+        "A", "a", "B", "b", "C", "c", "D", "d", "E", "e", "F", "f", "G", "g", "H", "h", "I", "i", "J", "j", "K", "k", "L", "l", "M", "m",
+        "N", "n", "O", "o", "P", "p", "Q", "q", "R", "r", "S", "s", "T", "t", "U", "u", "V", "v", "W", "w", "X", "x", "Y", "y", "Z", "z",
+        "-", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+
+//--- Time unit field tokens
+static const String timeUnitTokens[] =
+    {
+        "ms", "s", "Min"};
+
+//--- Trigger edge field tokens
+static const String triggerEdgeTokens[] =
+    {
+        "Falling", "Rising"};
+
+//--- Yes/No field tokens
+static const String yesNoTokens[] =
+    {
+        "Y", "N"};
+
+//--- Maximum field input positions
+static const int maxFieldPositions = 12;
+
+//--- Current screen
 static UiScreen currentScreen = UI_SCREEN_STATUS;
 
-//--- Current indexes and scroll positions
-static int menuIndex = 0;
+//--- Menu indexes and visible offsets
+static int mainMenuIndex = 0;
 static int mainMenuFirstVisibleIndex = 0;
+static int timerSettingsIndex = 0;
+static int timerSettingsFirstVisibleIndex = 0;
+static int systemSettingsIndex = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
+static int statusActionIndex = 0;
+
+//--- Profile list state
+static ProfileListMode profileListMode = PROFILE_LIST_LOAD;
+static String profileNames[profileManagerMaxProfiles + 1];
+static size_t profileCount = 0;
 static int profileIndex = 0;
 static int profileFirstVisibleIndex = 0;
-static size_t profileCount = 0;
-static String profileNames[profileManagerMaxProfiles];
 
-//--- Current editors
-static NumberEditTarget numberEditTarget = NUMBER_EDIT_NONE;
-static EnumEditTarget enumEditTarget = ENUM_EDIT_NONE;
-static ProfileListMode profileListMode = PROFILE_LIST_LOAD;
-static String textInputValue = "";
-static int textTokenIndex = 0;
-static TextInputMode textInputMode = TEXT_INPUT_MODE_PROFILE_NAME;
-static String textInputTitle = "Save Profile";
-
-//--- WiFi AP list state
-static String wifiApNames[wifiApListMaxCount];
-static size_t wifiApCount = 0;
-static int wifiApIndex = 0;
-static int wifiApFirstVisibleIndex = 0;
-static WifiSettings wifiEditSettings;
+//--- Field input state
+static String fieldInputTitle = "Field Input";
+static String fieldInputName = "Field";
+static const String* fieldInputTokenList = nullptr;
+static int fieldInputTokenCount = 0;
+static int fieldInputPositionCount = 0;
+static int fieldInputCursorPosition = 0;
+static int fieldInputTokenIndexes[maxFieldPositions];
+static FieldInputTarget fieldInputTarget = FIELD_INPUT_TARGET_NONE;
+static UiScreen fieldInputReturnScreen = UI_SCREEN_MAIN_MENU;
 
 //--- Transient message
 static String transientMessage = "";
 static uint32_t transientMessageUntilMs = 0;
 
-//--- Status screen refresh interval
+//--- Status refresh timing
 static const uint32_t statusRefreshIntervalMs = 100;
 static uint32_t lastStatusRefreshMs = 0;
-
-//--- Refresh profile list
-static void refreshProfileList();
-
-//--- Refresh scanned WiFi AP list
-static void refreshWifiApList();
 
 //--- Draw current screen
 static void drawCurrentScreen();
 
-//--- Handle status screen event
-static void handleStatusScreen(EncoderEvent encoderEvent, ButtonEvent buttonEvent);
-
-//--- Handle main menu event
-static void handleMainMenu(EncoderEvent encoderEvent, ButtonEvent buttonEvent);
-
-//--- Handle number editor event
-static void handleNumberEditor(EncoderEvent encoderEvent, ButtonEvent buttonEvent);
-
-//--- Handle enum editor event
-static void handleEnumEditor(EncoderEvent encoderEvent, ButtonEvent buttonEvent);
-
-//--- Handle text input event
-static void handleTextInput(EncoderEvent encoderEvent, ButtonEvent buttonEvent);
-
-//--- Handle profile list event
-static void handleProfileList(EncoderEvent encoderEvent, ButtonEvent buttonEvent);
+//--- Open status screen
+static void openStatusScreen();
 
 //--- Open main menu
 static void openMainMenu();
 
-//--- Return to status screen
-static void openStatusScreen();
+//--- Open timer settings menu
+static void openTimerSettingsMenu();
+
+//--- Open system settings menu
+static void openSystemSettingsMenu();
+
+//--- Open profile list screen
+static void openProfileList(ProfileListMode mode);
+
+//--- Handle status screen
+static void handleStatusScreen(EncoderEvent encoderEvent);
+
+//--- Handle main menu
+static void handleMainMenu(EncoderEvent encoderEvent);
+
+//--- Handle timer settings menu
+static void handleTimerSettingsMenu(EncoderEvent encoderEvent);
+
+//--- Handle system settings menu
+static void handleSystemSettingsMenu(EncoderEvent encoderEvent);
+
+//--- Handle profile list
+static void handleProfileList(EncoderEvent encoderEvent);
+
+//--- Open generic field input
+static void openFieldInput(const String& title, const String& fieldName, int positionCount, const String tokens[], int tokenCount, FieldInputTarget target, UiScreen returnScreen, const String& initialValue);
+
+//--- Handle generic field input
+static void handleFieldInput(EncoderEvent encoderEvent);
+
+//--- Apply and store field input value
+static void applyFieldInputAndReturn();
+
+//--- Build current field input text
+static String buildFieldInputValue();
+
+//--- Find token index by value
+static int findTokenIndex(const String tokens[], int tokenCount, const String& tokenValue);
+
+//--- Build zero-padded numeric value with fixed width
+static String buildFixedWidthNumber(uint32_t value, int width);
+
+//--- Refresh profile list and append Exit entry
+static void refreshProfileListWithExit();
 
 //--- Apply current settings back into timer
-static void commitSettings(const AppSettings &settings);
+static void commitSettings(const AppSettings& settings);
 
-//--- Initialize UI menu
-void uiMenuInit()
+//--- Log active menu or screen
+static void logActiveScreen(const char* screenName);
+
+//--- Convert encoder event to text
+static const char* encoderEventToLabel(EncoderEvent event);
+
+//--- Convert UI screen to text
+static const char* uiScreenToLabel(UiScreen screen);
+
+//--- Build current field input text
+static String buildFieldInputValue()
 {
-  refreshProfileList();
-  currentScreen = UI_SCREEN_STATUS;
+  String fieldValue = "";
+
+  for (int position = 0; position < fieldInputPositionCount; position++)
+  {
+    fieldValue += fieldInputTokenList[fieldInputTokenIndexes[position]];
+  }
+
+  return fieldValue;
+
+} //   buildFieldInputValue()
+
+//--- Find token index by value
+static int findTokenIndex(const String tokens[], int tokenCount, const String& tokenValue)
+{
+  for (int tokenIndex = 0; tokenIndex < tokenCount; tokenIndex++)
+  {
+    if (tokens[tokenIndex] == tokenValue)
+    {
+      return tokenIndex;
+    }
+  }
+
+  return 0;
+
+} //   findTokenIndex()
+
+//--- Build zero-padded numeric value with fixed width
+static String buildFixedWidthNumber(uint32_t value, int width)
+{
+  char valueBuffer[20];
+  char formatBuffer[10];
+  String paddedValue;
+
+  snprintf(formatBuffer, sizeof(formatBuffer), "%%0%du", width);
+  snprintf(valueBuffer, sizeof(valueBuffer), formatBuffer, static_cast<unsigned long>(value));
+  paddedValue = String(valueBuffer);
+
+  if (static_cast<int>(paddedValue.length()) > width)
+  {
+    paddedValue = paddedValue.substring(paddedValue.length() - width);
+  }
+
+  return paddedValue;
+
+} //   buildFixedWidthNumber()
+
+//--- Open generic field input
+static void openFieldInput(const String& title, const String& fieldName, int positionCount, const String tokens[], int tokenCount, FieldInputTarget target, UiScreen returnScreen, const String& initialValue)
+{
+  fieldInputTitle = title;
+  fieldInputName = fieldName;
+  fieldInputTokenList = tokens;
+  fieldInputTokenCount = tokenCount;
+  fieldInputPositionCount = positionCount;
+  fieldInputCursorPosition = 0;
+  fieldInputTarget = target;
+  fieldInputReturnScreen = returnScreen;
+
+  if (fieldInputPositionCount > maxFieldPositions)
+  {
+    fieldInputPositionCount = maxFieldPositions;
+  }
+
+  for (int position = 0; position < fieldInputPositionCount; position++)
+  {
+    fieldInputTokenIndexes[position] = 0;
+  }
+
+  if (fieldInputPositionCount > 0)
+  {
+    int tokenLength = static_cast<int>(tokens[0].length());
+
+    if (tokenLength <= 0)
+    {
+      tokenLength = 1;
+    }
+
+    for (int position = 0; position < fieldInputPositionCount; position++)
+    {
+      int startIndex = position * tokenLength;
+      String tokenValue;
+
+      if (startIndex >= static_cast<int>(initialValue.length()))
+      {
+        break;
+      }
+
+      tokenValue = initialValue.substring(startIndex, startIndex + tokenLength);
+      fieldInputTokenIndexes[position] = findTokenIndex(tokens, tokenCount, tokenValue);
+    }
+  }
+
+  currentScreen = UI_SCREEN_FIELD_INPUT;
+  logActiveScreen(title.c_str());
   drawCurrentScreen();
 
-  ESP_LOGI(logTag, "UI menu initialized");
+} //   openFieldInput()
 
-}   //   uiMenuInit()
-
-//--- Update UI menu
-void uiMenuUpdate()
+//--- Apply and store field input value
+static void applyFieldInputAndReturn()
 {
-  EncoderEvent encoderEvent = encoderGetEvent();
-  ButtonEvent buttonEvent = buttonGetEvent();
-  uint32_t nowMs = millis();
+  AppSettings settings = timerGetSettings();
+  String fieldValue = buildFieldInputValue();
 
-  if (transientMessageUntilMs != 0 && nowMs > transientMessageUntilMs)
+  switch (fieldInputTarget)
   {
-    transientMessage = "";
-    transientMessageUntilMs = 0;
+  case FIELD_INPUT_TARGET_SAVE_PROFILE:
+    while (fieldValue.endsWith("-"))
+    {
+      fieldValue.remove(fieldValue.length() - 1);
+    }
+
+    if (fieldValue.isEmpty())
+    {
+      uiMenuShowTransientMessage("Empty profile name");
+
+      return;
+    }
+
+    settings.profileName = fieldValue;
+
+    if (profileManagerSaveProfile(settings.profileName, settings))
+    {
+      commitSettings(settings);
+      settingsStoreSaveLastProfileName(settings.profileName);
+      uiMenuShowTransientMessage("Profile saved");
+    }
+    else
+    {
+      uiMenuShowTransientMessage("Save failed");
+    }
+    break;
+
+  case FIELD_INPUT_TARGET_NEW_PROFILE:
+    while (fieldValue.endsWith("-"))
+    {
+      fieldValue.remove(fieldValue.length() - 1);
+    }
+
+    if (fieldValue.isEmpty())
+    {
+      uiMenuShowTransientMessage("Empty profile name");
+
+      return;
+    }
+
+    settings.profileName = fieldValue;
+
+    if (profileManagerSaveProfile(settings.profileName, settings))
+    {
+      commitSettings(settings);
+      settingsStoreSaveLastProfileName(settings.profileName);
+      uiMenuShowTransientMessage("New profile saved");
+    }
+    else
+    {
+      uiMenuShowTransientMessage("Save failed");
+    }
+    break;
+
+  case FIELD_INPUT_TARGET_ON_TIME:
+    settings.onTimeValue = static_cast<uint32_t>(fieldValue.toInt());
+    commitSettings(settings);
+    break;
+
+  case FIELD_INPUT_TARGET_OFF_TIME:
+    settings.offTimeValue = static_cast<uint32_t>(fieldValue.toInt());
+    commitSettings(settings);
+    break;
+
+  case FIELD_INPUT_TARGET_REPEAT_COUNT:
+    settings.repeatCount = static_cast<uint32_t>(fieldValue.toInt());
+    commitSettings(settings);
+    break;
+
+  case FIELD_INPUT_TARGET_ON_UNIT:
+    if (fieldValue == "ms")
+    {
+      settings.onTimeUnit = TIME_UNIT_MS;
+    }
+    else if (fieldValue == "s")
+    {
+      settings.onTimeUnit = TIME_UNIT_SECONDS;
+    }
+    else
+    {
+      settings.onTimeUnit = TIME_UNIT_MINUTES;
+    }
+    commitSettings(settings);
+    break;
+
+  case FIELD_INPUT_TARGET_OFF_UNIT:
+    if (fieldValue == "ms")
+    {
+      settings.offTimeUnit = TIME_UNIT_MS;
+    }
+    else if (fieldValue == "s")
+    {
+      settings.offTimeUnit = TIME_UNIT_SECONDS;
+    }
+    else
+    {
+      settings.offTimeUnit = TIME_UNIT_MINUTES;
+    }
+    commitSettings(settings);
+    break;
+
+  case FIELD_INPUT_TARGET_TRIGGER_EDGE:
+    settings.triggerEdge = (fieldValue == "Rising") ? TRIGGER_EDGE_RISING : TRIGGER_EDGE_FALLING;
+    commitSettings(settings);
+    break;
+
+  case FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM:
+    if (fieldValue == "Y")
+    {
+      settingsStoreEraseWifiCredentials();
+      uiMenuShowTransientMessage("WiFi credentials erased");
+    }
+    else
+    {
+      uiMenuShowTransientMessage("Erase cancelled");
+    }
+    break;
+
+  default:
+    break;
+  }
+
+  currentScreen = fieldInputReturnScreen;
+  drawCurrentScreen();
+
+} //   applyFieldInputAndReturn()
+
+//--- Handle generic field input
+static void handleFieldInput(EncoderEvent encoderEvent)
+{
+  bool redrawRequired = false;
+
+  if (encoderEvent == ENCODER_EVENT_LEFT)
+  {
+    fieldInputTokenIndexes[fieldInputCursorPosition]--;
+
+    if (fieldInputTokenIndexes[fieldInputCursorPosition] < 0)
+    {
+      fieldInputTokenIndexes[fieldInputCursorPosition] = fieldInputTokenCount - 1;
+    }
+
+    redrawRequired = true;
+  }
+  else if (encoderEvent == ENCODER_EVENT_RIGHT)
+  {
+    fieldInputTokenIndexes[fieldInputCursorPosition]++;
+
+    if (fieldInputTokenIndexes[fieldInputCursorPosition] >= fieldInputTokenCount)
+    {
+      fieldInputTokenIndexes[fieldInputCursorPosition] = 0;
+    }
+
+    redrawRequired = true;
+  }
+  else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
+  {
+    if (fieldInputCursorPosition >= fieldInputPositionCount - 1)
+    {
+      applyFieldInputAndReturn();
+
+      return;
+    }
+
+    fieldInputCursorPosition++;
+    redrawRequired = true;
+  }
+  else if (encoderEvent == ENCODER_EVENT_MEDIUM_PRESS)
+  {
+    if (fieldInputCursorPosition > 0)
+    {
+      fieldInputCursorPosition--;
+      redrawRequired = true;
+    }
+  }
+
+  if (redrawRequired)
+  {
     drawCurrentScreen();
   }
 
-  switch (currentScreen)
-  {
-    case UI_SCREEN_STATUS:
-      handleStatusScreen(encoderEvent, buttonEvent);
-      break;
+} //   handleFieldInput()
 
-    case UI_SCREEN_MAIN_MENU:
-      handleMainMenu(encoderEvent, buttonEvent);
-      break;
-
-    case UI_SCREEN_EDIT_NUMBER:
-      handleNumberEditor(encoderEvent, buttonEvent);
-      break;
-
-    case UI_SCREEN_EDIT_ENUM:
-      handleEnumEditor(encoderEvent, buttonEvent);
-      break;
-
-    case UI_SCREEN_TEXT_INPUT:
-      handleTextInput(encoderEvent, buttonEvent);
-      break;
-
-    case UI_SCREEN_PROFILE_LIST:
-      handleProfileList(encoderEvent, buttonEvent);
-      break;
-  }
-
-  if (currentScreen == UI_SCREEN_STATUS && transientMessage.isEmpty() && nowMs - lastStatusRefreshMs >= statusRefreshIntervalMs)
-  {
-    drawCurrentScreen();
-    lastStatusRefreshMs = nowMs;
-  }
-
-}   //   uiMenuUpdate()
-
-//--- Request short status message
-void uiMenuShowTransientMessage(const String &message)
+//--- Refresh profile list and append Exit entry
+static void refreshProfileListWithExit()
 {
-  transientMessage = message;
-  transientMessageUntilMs = millis() + 1800UL;
-  displayDrawMessage("Message", message.c_str());
+  size_t loadedProfiles = profileManagerListProfiles(profileNames, profileManagerMaxProfiles);
 
-}   //   uiMenuShowTransientMessage()
-
-//--- Refresh profile list
-static void refreshProfileList()
-{
-  profileCount = profileManagerListProfiles(profileNames, profileManagerMaxProfiles);
+  profileCount = loadedProfiles + 1;
+  profileNames[profileCount - 1] = "Exit";
 
   if (profileIndex >= static_cast<int>(profileCount))
   {
-    profileIndex = max(0, static_cast<int>(profileCount) - 1);
+    profileIndex = static_cast<int>(profileCount) - 1;
   }
 
-}   //   refreshProfileList()
+  if (profileIndex < 0)
+  {
+    profileIndex = 0;
+  }
+
+} //   refreshProfileListWithExit()
+
+//--- Open status screen
+static void openStatusScreen()
+{
+  currentScreen = UI_SCREEN_STATUS;
+  logActiveScreen("Timer Screen");
+  drawCurrentScreen();
+
+} //   openStatusScreen()
+
+//--- Open main menu
+static void openMainMenu()
+{
+  currentScreen = UI_SCREEN_MAIN_MENU;
+  logActiveScreen("Edit Timer Menu");
+  drawCurrentScreen();
+
+} //   openMainMenu()
+
+//--- Open timer settings menu
+static void openTimerSettingsMenu()
+{
+  currentScreen = UI_SCREEN_TIMER_SETTINGS_MENU;
+  logActiveScreen("Timer Settings Menu");
+  drawCurrentScreen();
+
+} //   openTimerSettingsMenu()
+
+//--- Open system settings menu
+static void openSystemSettingsMenu()
+{
+  systemSettingsIndex = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
+  currentScreen = UI_SCREEN_SYSTEM_SETTINGS_MENU;
+  logActiveScreen("Show System Settings Menu");
+  drawCurrentScreen();
+
+} //   openSystemSettingsMenu()
+
+//--- Open profile list screen
+static void openProfileList(ProfileListMode mode)
+{
+  profileListMode = mode;
+  profileIndex = 0;
+  profileFirstVisibleIndex = 0;
+  refreshProfileListWithExit();
+
+  currentScreen = UI_SCREEN_PROFILE_LIST;
+
+  if (mode == PROFILE_LIST_LOAD)
+  {
+    logActiveScreen("Load Profile Menu");
+  }
+  else
+  {
+    logActiveScreen("Delete Profile Menu");
+  }
+
+  drawCurrentScreen();
+
+} //   openProfileList()
 
 //--- Draw current screen
 static void drawCurrentScreen()
@@ -269,100 +615,114 @@ static void drawCurrentScreen()
     return;
   }
 
-  const AppSettings &settings = timerGetSettings();
+  const AppSettings& settings = timerGetSettings();
   RuntimeStatus runtimeStatus = timerGetRuntimeStatus();
 
   switch (currentScreen)
   {
-    case UI_SCREEN_STATUS:
-      displayDrawStatusScreen(settings, runtimeStatus, wifiManagerIsStaConnected());
-      break;
+  case UI_SCREEN_STATUS:
+    displayDrawStatusScreen(settings, runtimeStatus, true, statusActionIndex);
+    break;
 
-    case UI_SCREEN_MAIN_MENU:
-      displayDrawListScreen("Main Menu", mainMenuItems, sizeof(mainMenuItems) / sizeof(mainMenuItems[0]), menuIndex, mainMenuFirstVisibleIndex);
-      break;
+  case UI_SCREEN_MAIN_MENU:
+    displayDrawListScreen("Edit Timer Menu", mainMenuItems, sizeof(mainMenuItems) / sizeof(mainMenuItems[0]), mainMenuIndex, mainMenuFirstVisibleIndex);
+    break;
 
-    case UI_SCREEN_EDIT_NUMBER:
-      if (numberEditTarget == NUMBER_EDIT_ON_TIME)
-      {
-        displayDrawNumberEditor("On Time", settings.onTimeValue, timerGetTimeUnitLabel(settings.onTimeUnit));
-      }
-      else if (numberEditTarget == NUMBER_EDIT_OFF_TIME)
-      {
-        displayDrawNumberEditor("Off Time", settings.offTimeValue, timerGetTimeUnitLabel(settings.offTimeUnit));
-      }
-      else if (numberEditTarget == NUMBER_EDIT_REPEAT_COUNT)
-      {
-        displayDrawNumberEditor("Repeat Count", settings.repeatCount, "cycles");
-      }
-      break;
+  case UI_SCREEN_TIMER_SETTINGS_MENU:
+    displayDrawListScreen("Timer Settings Menu", timerSettingsMenuItems, sizeof(timerSettingsMenuItems) / sizeof(timerSettingsMenuItems[0]), timerSettingsIndex, timerSettingsFirstVisibleIndex);
+    break;
 
-    case UI_SCREEN_EDIT_ENUM:
-      if (enumEditTarget == ENUM_EDIT_ON_UNIT)
-      {
-        displayDrawEnumEditor("On Unit", timerGetTimeUnitLabel(settings.onTimeUnit));
-      }
-      else if (enumEditTarget == ENUM_EDIT_OFF_UNIT)
-      {
-        displayDrawEnumEditor("Off Unit", timerGetTimeUnitLabel(settings.offTimeUnit));
-      }
-      else if (enumEditTarget == ENUM_EDIT_TRIGGER_MODE)
-      {
-        displayDrawEnumEditor("Trigger Mode", timerGetTriggerModeLabel(settings.triggerMode));
-      }
-      else if (enumEditTarget == ENUM_EDIT_TRIGGER_EDGE)
-      {
-        displayDrawEnumEditor("Trigger Edge", timerGetTriggerEdgeLabel(settings.triggerEdge));
-      }
-      else if (enumEditTarget == ENUM_EDIT_OUTPUT_POLARITY)
-      {
-        displayDrawEnumEditor("Output Polarity", settings.outputPolarityHigh ? "Active High" : "Active Low");
-      }
-      else if (enumEditTarget == ENUM_EDIT_LOCK_INPUT)
-      {
-        displayDrawEnumEditor("Lock Input Run", settings.lockInputDuringRun ? "Yes" : "No");
-      }
-      else if (enumEditTarget == ENUM_EDIT_AUTO_SAVE)
-      {
-        displayDrawEnumEditor("Auto Save Last", settings.autoSaveLastProfile ? "Yes" : "No");
-      }
-      break;
+  case UI_SCREEN_SYSTEM_SETTINGS_MENU:
+  {
+    String dynamicSystemSettingsItems[7];
+    String wifiSsid = wifiManagerGetSettings().staSsid;
 
-    case UI_SCREEN_TEXT_INPUT:
-      displayDrawTextInput(textInputTitle.c_str(), textInputValue, textTokens[textTokenIndex]);
-      break;
+    if (wifiSsid.isEmpty())
+    {
+      wifiSsid = "<none>";
+    }
 
-    case UI_SCREEN_PROFILE_LIST:
-      if (profileListMode == PROFILE_LIST_LOAD)
-      {
-        displayDrawListScreen("Load Profile", profileNames, profileCount, profileIndex, profileFirstVisibleIndex);
-      }
-      else if (profileListMode == PROFILE_LIST_DELETE)
-      {
-        displayDrawListScreen("Delete Profile", profileNames, profileCount, profileIndex, profileFirstVisibleIndex);
-      }
-      else
-      {
-        displayDrawListScreen("Select WiFi AP", wifiApNames, wifiApCount, wifiApIndex, wifiApFirstVisibleIndex);
-      }
-      break;
+    dynamicSystemSettingsItems[0] = String("SSID: ") + wifiSsid;
+    dynamicSystemSettingsItems[1] = String("IP: ") + wifiManagerGetAddressString();
+    dynamicSystemSettingsItems[2] = String("MAC: ") + WiFi.macAddress();
+    dynamicSystemSettingsItems[3] = String("Encoder Order: ") + String(encoderGetDirectionReversed() ? "B-A" : "A-B");
+    dynamicSystemSettingsItems[4] = systemSettingsMenuItems[4];
+    dynamicSystemSettingsItems[5] = String("PIN_OUTPUT: ") + String(settings.outputPolarityHigh ? "Active High" : "Active Low");
+    dynamicSystemSettingsItems[6] = systemSettingsMenuItems[6];
+
+    displayDrawListScreen("Show System Settings", dynamicSystemSettingsItems, 7, systemSettingsIndex, 0);
+    break;
   }
 
-}   //   drawCurrentScreen()
+  case UI_SCREEN_PROFILE_LIST:
+    if (profileListMode == PROFILE_LIST_LOAD)
+    {
+      displayDrawListScreen("Load Profile Menu", profileNames, profileCount, profileIndex, profileFirstVisibleIndex);
+    }
+    else
+    {
+      displayDrawListScreen("Delete Profile Menu", profileNames, profileCount, profileIndex, profileFirstVisibleIndex);
+    }
+    break;
 
-//--- Handle status screen event
-static void handleStatusScreen(EncoderEvent encoderEvent, ButtonEvent buttonEvent)
+  case UI_SCREEN_FIELD_INPUT:
+  {
+    String fieldValue = buildFieldInputValue();
+    int currentTokenIndex = fieldInputTokenIndexes[fieldInputCursorPosition];
+    int prevTokenIndex = currentTokenIndex - 1;
+    int nextTokenIndex = currentTokenIndex + 1;
+
+    if (prevTokenIndex < 0)
+    {
+      prevTokenIndex = fieldInputTokenCount - 1;
+    }
+
+    if (nextTokenIndex >= fieldInputTokenCount)
+    {
+      nextTokenIndex = 0;
+    }
+
+    displayDrawFieldInput(fieldInputTitle.c_str(), fieldInputName.c_str(), fieldValue, fieldInputCursorPosition, fieldInputTokenList[prevTokenIndex], fieldInputTokenList[currentTokenIndex], fieldInputTokenList[nextTokenIndex]);
+    break;
+  }
+  }
+
+} //   drawCurrentScreen()
+
+//--- Handle status screen
+static void handleStatusScreen(EncoderEvent encoderEvent)
 {
-  if (encoderEvent == ENCODER_EVENT_SHORT_PRESS || buttonEvent == BUTTON_EVENT_SHORT_PRESS)
-  {
-    openMainMenu();
+  bool redrawRequired = false;
 
-    return;
+  if (encoderEvent == ENCODER_EVENT_LEFT)
+  {
+    statusActionIndex--;
+
+    if (statusActionIndex < 0)
+    {
+      statusActionIndex = 2;
+    }
+
+    redrawRequired = true;
   }
-
-  if (encoderEvent == ENCODER_EVENT_LONG_PRESS)
+  else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
-    if (timerGetRuntimeStatus().state == TIMER_STATE_RUNNING)
+    statusActionIndex++;
+
+    if (statusActionIndex > 2)
+    {
+      statusActionIndex = 0;
+    }
+
+    redrawRequired = true;
+  }
+  else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
+  {
+    if (statusActionIndex == 0)
+    {
+      timerStart();
+    }
+    else if (statusActionIndex == 1)
     {
       timerStop();
     }
@@ -376,153 +736,87 @@ static void handleStatusScreen(EncoderEvent encoderEvent, ButtonEvent buttonEven
     return;
   }
 
-}   //   handleStatusScreen()
+  if (encoderEvent == ENCODER_EVENT_LONG_PRESS)
+  {
+    mainMenuIndex = 0;
+    mainMenuFirstVisibleIndex = 0;
+    openMainMenu();
 
-//--- Handle main menu event
-static void handleMainMenu(EncoderEvent encoderEvent, ButtonEvent buttonEvent)
+    return;
+  }
+
+  if (redrawRequired)
+  {
+    drawCurrentScreen();
+  }
+
+} //   handleStatusScreen()
+
+//--- Handle main menu
+static void handleMainMenu(EncoderEvent encoderEvent)
 {
   const int itemCount = sizeof(mainMenuItems) / sizeof(mainMenuItems[0]);
+  bool redrawRequired = false;
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
-    menuIndex--;
+    mainMenuIndex--;
 
-    if (menuIndex < 0)
+    if (mainMenuIndex < 0)
     {
-      menuIndex = itemCount - 1;
+      mainMenuIndex = itemCount - 1;
     }
+
+    redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
-    menuIndex++;
+    mainMenuIndex++;
 
-    if (menuIndex >= itemCount)
+    if (mainMenuIndex >= itemCount)
     {
-      menuIndex = 0;
+      mainMenuIndex = 0;
     }
-  }
-  else if (buttonEvent == BUTTON_EVENT_SHORT_PRESS)
-  {
-    openStatusScreen();
 
-    return;
+    redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
     AppSettings settings = timerGetSettings();
 
-    switch (menuIndex)
+    switch (mainMenuIndex)
     {
-      case MENU_ITEM_START_STOP:
-        if (timerGetRuntimeStatus().state == TIMER_STATE_RUNNING)
-        {
-          timerStop();
-        }
-        else
-        {
-          timerStart();
-        }
-        openStatusScreen();
-        return;
+    case MENU_ITEM_TIMER_SETTINGS:
+      openTimerSettingsMenu();
+      return;
 
-      case MENU_ITEM_RESET:
-        timerReset();
-        openStatusScreen();
-        return;
+    case MENU_ITEM_SAVE_PROFILE:
+      openFieldInput("Save Profile Menu", "Profile", 8, alphaNumericTokens, sizeof(alphaNumericTokens) / sizeof(alphaNumericTokens[0]), FIELD_INPUT_TARGET_SAVE_PROFILE, UI_SCREEN_MAIN_MENU, settings.profileName);
+      return;
 
-      case MENU_ITEM_ON_TIME:
-        numberEditTarget = NUMBER_EDIT_ON_TIME;
-        currentScreen = UI_SCREEN_EDIT_NUMBER;
-        break;
+    case MENU_ITEM_LOAD_PROFILE:
+      openProfileList(PROFILE_LIST_LOAD);
+      return;
 
-      case MENU_ITEM_ON_UNIT:
-        enumEditTarget = ENUM_EDIT_ON_UNIT;
-        currentScreen = UI_SCREEN_EDIT_ENUM;
-        break;
+    case MENU_ITEM_NEW_PROFILE:
+      openFieldInput("New Profile Menu", "Profile", 8, alphaNumericTokens, sizeof(alphaNumericTokens) / sizeof(alphaNumericTokens[0]), FIELD_INPUT_TARGET_NEW_PROFILE, UI_SCREEN_MAIN_MENU, "--------");
+      return;
 
-      case MENU_ITEM_OFF_TIME:
-        numberEditTarget = NUMBER_EDIT_OFF_TIME;
-        currentScreen = UI_SCREEN_EDIT_NUMBER;
-        break;
+    case MENU_ITEM_DELETE_PROFILE:
+      openProfileList(PROFILE_LIST_DELETE);
+      return;
 
-      case MENU_ITEM_OFF_UNIT:
-        enumEditTarget = ENUM_EDIT_OFF_UNIT;
-        currentScreen = UI_SCREEN_EDIT_ENUM;
-        break;
+    case MENU_ITEM_SHOW_SYSTEM_SETTINGS:
+      openSystemSettingsMenu();
+      return;
 
-      case MENU_ITEM_REPEAT_COUNT:
-        numberEditTarget = NUMBER_EDIT_REPEAT_COUNT;
-        currentScreen = UI_SCREEN_EDIT_NUMBER;
-        break;
-
-      case MENU_ITEM_TRIGGER_MODE:
-        enumEditTarget = ENUM_EDIT_TRIGGER_MODE;
-        currentScreen = UI_SCREEN_EDIT_ENUM;
-        break;
-
-      case MENU_ITEM_TRIGGER_EDGE:
-        enumEditTarget = ENUM_EDIT_TRIGGER_EDGE;
-        currentScreen = UI_SCREEN_EDIT_ENUM;
-        break;
-
-      case MENU_ITEM_OUTPUT_POLARITY:
-        enumEditTarget = ENUM_EDIT_OUTPUT_POLARITY;
-        currentScreen = UI_SCREEN_EDIT_ENUM;
-        break;
-
-      case MENU_ITEM_LOCK_INPUT:
-        enumEditTarget = ENUM_EDIT_LOCK_INPUT;
-        currentScreen = UI_SCREEN_EDIT_ENUM;
-        break;
-
-      case MENU_ITEM_AUTO_SAVE:
-        enumEditTarget = ENUM_EDIT_AUTO_SAVE;
-        currentScreen = UI_SCREEN_EDIT_ENUM;
-        break;
-
-      case MENU_ITEM_SAVE_PROFILE:
-        textInputValue = settings.profileName;
-        textTokenIndex = 0;
-        textInputMode = TEXT_INPUT_MODE_PROFILE_NAME;
-        textInputTitle = "Save Profile";
-        currentScreen = UI_SCREEN_TEXT_INPUT;
-        break;
-
-      case MENU_ITEM_LOAD_PROFILE:
-        refreshProfileList();
-        profileListMode = PROFILE_LIST_LOAD;
-        currentScreen = UI_SCREEN_PROFILE_LIST;
-        break;
-
-      case MENU_ITEM_DELETE_PROFILE:
-        refreshProfileList();
-        profileListMode = PROFILE_LIST_DELETE;
-        currentScreen = UI_SCREEN_PROFILE_LIST;
-        break;
-
-      case MENU_ITEM_WIFI_SETUP:
-        refreshWifiApList();
-
-        if (wifiApCount == 0)
-        {
-          uiMenuShowTransientMessage("No WiFi AP found");
-
-          return;
-        }
-
-        wifiApIndex = 0;
-        wifiApFirstVisibleIndex = 0;
-        profileListMode = PROFILE_LIST_WIFI_AP;
-        currentScreen = UI_SCREEN_PROFILE_LIST;
-        break;
-
-      case MENU_ITEM_WIFI_INFO:
-        uiMenuShowTransientMessage(wifiManagerGetAddressString());
-        return;
+    case MENU_ITEM_EXIT:
+      openStatusScreen();
+      return;
     }
   }
 
-  mainMenuFirstVisibleIndex = menuIndex - 3;
+  mainMenuFirstVisibleIndex = mainMenuIndex - 3;
 
   if (mainMenuFirstVisibleIndex < 0)
   {
@@ -534,306 +828,177 @@ static void handleMainMenu(EncoderEvent encoderEvent, ButtonEvent buttonEvent)
     mainMenuFirstVisibleIndex = max(0, itemCount - 9);
   }
 
-  drawCurrentScreen();
-
-}   //   handleMainMenu()
-
-//--- Handle number editor event
-static void handleNumberEditor(EncoderEvent encoderEvent, ButtonEvent buttonEvent)
-{
-  AppSettings settings = timerGetSettings();
-  uint32_t *valuePtr = nullptr;
-
-  if (numberEditTarget == NUMBER_EDIT_ON_TIME)
+  if (redrawRequired)
   {
-    valuePtr = &settings.onTimeValue;
-  }
-  else if (numberEditTarget == NUMBER_EDIT_OFF_TIME)
-  {
-    valuePtr = &settings.offTimeValue;
-  }
-  else if (numberEditTarget == NUMBER_EDIT_REPEAT_COUNT)
-  {
-    valuePtr = &settings.repeatCount;
-  }
-
-  if (valuePtr == nullptr)
-  {
-    openMainMenu();
-
-    return;
-  }
-
-  if (encoderEvent == ENCODER_EVENT_LEFT)
-  {
-    if (*valuePtr > 0)
-    {
-      (*valuePtr)--;
-    }
-  }
-  else if (encoderEvent == ENCODER_EVENT_RIGHT)
-  {
-    (*valuePtr)++;
-  }
-  else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
-  {
-    commitSettings(settings);
-    openMainMenu();
-
-    return;
-  }
-  else if (buttonEvent == BUTTON_EVENT_SHORT_PRESS)
-  {
-    openMainMenu();
-
-    return;
-  }
-
-  timerSetSettings(settings);
-  drawCurrentScreen();
-
-}   //   handleNumberEditor()
-
-//--- Handle enum editor event
-static void handleEnumEditor(EncoderEvent encoderEvent, ButtonEvent buttonEvent)
-{
-  AppSettings settings = timerGetSettings();
-
-  if (encoderEvent == ENCODER_EVENT_LEFT || encoderEvent == ENCODER_EVENT_RIGHT)
-  {
-    bool stepForward = encoderEvent == ENCODER_EVENT_RIGHT;
-
-    switch (enumEditTarget)
-    {
-      case ENUM_EDIT_ON_UNIT:
-        settings.onTimeUnit = static_cast<TimeUnit>((static_cast<int>(settings.onTimeUnit) + (stepForward ? 1 : 2)) % 3);
-        break;
-
-      case ENUM_EDIT_OFF_UNIT:
-        settings.offTimeUnit = static_cast<TimeUnit>((static_cast<int>(settings.offTimeUnit) + (stepForward ? 1 : 2)) % 3);
-        break;
-
-      case ENUM_EDIT_TRIGGER_MODE:
-        settings.triggerMode = static_cast<TriggerMode>((static_cast<int>(settings.triggerMode) + 1) % 2);
-        break;
-
-      case ENUM_EDIT_TRIGGER_EDGE:
-        settings.triggerEdge = static_cast<TriggerEdge>((static_cast<int>(settings.triggerEdge) + 1) % 2);
-        break;
-
-      case ENUM_EDIT_OUTPUT_POLARITY:
-        settings.outputPolarityHigh = !settings.outputPolarityHigh;
-        break;
-
-      case ENUM_EDIT_LOCK_INPUT:
-        settings.lockInputDuringRun = !settings.lockInputDuringRun;
-        break;
-
-      case ENUM_EDIT_AUTO_SAVE:
-        settings.autoSaveLastProfile = !settings.autoSaveLastProfile;
-        break;
-
-      default:
-        break;
-    }
-
-    timerSetSettings(settings);
     drawCurrentScreen();
-
-    return;
   }
 
-  if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
-  {
-    commitSettings(settings);
-    openMainMenu();
+} //   handleMainMenu()
 
-    return;
-  }
-
-  if (buttonEvent == BUTTON_EVENT_SHORT_PRESS)
-  {
-    openMainMenu();
-
-    return;
-  }
-
-}   //   handleEnumEditor()
-
-//--- Handle text input event
-static void handleTextInput(EncoderEvent encoderEvent, ButtonEvent buttonEvent)
+//--- Handle timer settings menu
+static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
 {
-  const int tokenCount = sizeof(textTokens) / sizeof(textTokens[0]);
+  const int itemCount = sizeof(timerSettingsMenuItems) / sizeof(timerSettingsMenuItems[0]);
+  bool redrawRequired = false;
+  AppSettings settings = timerGetSettings();
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
-    textTokenIndex--;
+    timerSettingsIndex--;
 
-    if (textTokenIndex < 0)
+    if (timerSettingsIndex < 0)
     {
-      textTokenIndex = tokenCount - 1;
+      timerSettingsIndex = itemCount - 1;
     }
+
+    redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
-    textTokenIndex++;
+    timerSettingsIndex++;
 
-    if (textTokenIndex >= tokenCount)
+    if (timerSettingsIndex >= itemCount)
     {
-      textTokenIndex = 0;
+      timerSettingsIndex = 0;
     }
+
+    redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
-    if (textTokens[textTokenIndex] == "BACK")
+    switch (timerSettingsIndex)
     {
-      if (!textInputValue.isEmpty())
-      {
-        textInputValue.remove(textInputValue.length() - 1);
-      }
-    }
-    else
-    {
-      textInputValue += textTokens[textTokenIndex];
-    }
-  }
-  else if (encoderEvent == ENCODER_EVENT_LONG_PRESS)
-  {
-    if (textInputMode == TEXT_INPUT_MODE_PROFILE_NAME)
-    {
-      AppSettings settings = timerGetSettings();
-      textInputValue.trim();
-
-      if (textInputValue.isEmpty())
-      {
-        uiMenuShowTransientMessage("Empty profile name");
-
-        return;
-      }
-
-      settings.profileName = textInputValue;
-
-      if (profileManagerSaveProfile(settings.profileName, settings))
-      {
-        commitSettings(settings);
-        settingsStoreSaveLastProfileName(settings.profileName);
-        refreshProfileList();
-        uiMenuShowTransientMessage("Profile saved");
-      }
-      else
-      {
-        uiMenuShowTransientMessage("Save failed");
-      }
-    }
-    else
-    {
-      wifiEditSettings.staPassword = textInputValue;
-      wifiManagerSaveAndApplySettings(wifiEditSettings);
-      uiMenuShowTransientMessage("WiFi saved");
-    }
-
-    currentScreen = UI_SCREEN_MAIN_MENU;
-
-    return;
-  }
-  else if (buttonEvent == BUTTON_EVENT_SHORT_PRESS)
-  {
-    openMainMenu();
-
-    return;
-  }
-
-  drawCurrentScreen();
-
-}   //   handleTextInput()
-
-//--- Handle profile list event
-static void handleProfileList(EncoderEvent encoderEvent, ButtonEvent buttonEvent)
-{
-  if (profileListMode == PROFILE_LIST_WIFI_AP)
-  {
-    if (wifiApCount == 0)
-    {
-      if (buttonEvent == BUTTON_EVENT_SHORT_PRESS || encoderEvent == ENCODER_EVENT_SHORT_PRESS)
-      {
-        openMainMenu();
-
-        return;
-      }
-
-      displayDrawMessage("WiFi Setup", "No AP found");
-
+    case TIMER_SETTINGS_ITEM_ON_TIME:
+      openFieldInput("Timer Settings Menu", "On Time", 3, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_ON_TIME, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.onTimeValue, 3));
       return;
-    }
 
-    if (encoderEvent == ENCODER_EVENT_LEFT)
-    {
-      wifiApIndex--;
+    case TIMER_SETTINGS_ITEM_ON_UNIT:
+      openFieldInput("Timer Settings Menu", "On Unit", 1, timeUnitTokens, sizeof(timeUnitTokens) / sizeof(timeUnitTokens[0]), FIELD_INPUT_TARGET_ON_UNIT, UI_SCREEN_TIMER_SETTINGS_MENU, String(timerGetTimeUnitLabel(settings.onTimeUnit)));
+      return;
 
-      if (wifiApIndex < 0)
-      {
-        wifiApIndex = wifiApCount - 1;
-      }
-    }
-    else if (encoderEvent == ENCODER_EVENT_RIGHT)
-    {
-      wifiApIndex++;
+    case TIMER_SETTINGS_ITEM_OFF_TIME:
+      openFieldInput("Timer Settings Menu", "Off Time", 3, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_OFF_TIME, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.offTimeValue, 3));
+      return;
 
-      if (wifiApIndex >= static_cast<int>(wifiApCount))
-      {
-        wifiApIndex = 0;
-      }
-    }
-    else if (buttonEvent == BUTTON_EVENT_SHORT_PRESS)
-    {
+    case TIMER_SETTINGS_ITEM_OFF_UNIT:
+      openFieldInput("Timer Settings Menu", "Off Unit", 1, timeUnitTokens, sizeof(timeUnitTokens) / sizeof(timeUnitTokens[0]), FIELD_INPUT_TARGET_OFF_UNIT, UI_SCREEN_TIMER_SETTINGS_MENU, String(timerGetTimeUnitLabel(settings.offTimeUnit)));
+      return;
+
+    case TIMER_SETTINGS_ITEM_REPEAT_COUNT:
+      openFieldInput("Timer Settings Menu", "Cycles", 3, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_REPEAT_COUNT, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.repeatCount, 3));
+      return;
+
+    case TIMER_SETTINGS_ITEM_TRIGGER_EDGE:
+      openFieldInput("Timer Settings Menu", "Trigger", 1, triggerEdgeTokens, sizeof(triggerEdgeTokens) / sizeof(triggerEdgeTokens[0]), FIELD_INPUT_TARGET_TRIGGER_EDGE, UI_SCREEN_TIMER_SETTINGS_MENU, String(timerGetTriggerEdgeLabel(settings.triggerEdge)));
+      return;
+
+    case TIMER_SETTINGS_ITEM_EXIT:
       openMainMenu();
-
       return;
     }
-    else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
+  }
+
+  timerSettingsFirstVisibleIndex = timerSettingsIndex - 3;
+
+  if (timerSettingsFirstVisibleIndex < 0)
+  {
+    timerSettingsFirstVisibleIndex = 0;
+  }
+
+  if (timerSettingsFirstVisibleIndex > itemCount - 9)
+  {
+    timerSettingsFirstVisibleIndex = max(0, itemCount - 9);
+  }
+
+  if (redrawRequired)
+  {
+    drawCurrentScreen();
+  }
+
+} //   handleTimerSettingsMenu()
+
+//--- Handle system settings menu
+static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
+{
+  bool redrawRequired = false;
+  AppSettings settings = timerGetSettings();
+
+  if (encoderEvent == ENCODER_EVENT_LEFT)
+  {
+    if (systemSettingsIndex <= SYSTEM_SETTINGS_ITEM_ENCODER_ORDER)
     {
-      wifiEditSettings = wifiManagerGetSettings();
-      wifiEditSettings.staSsid = wifiApNames[wifiApIndex];
-      textInputValue = wifiEditSettings.staPassword;
-      textTokenIndex = 0;
-      textInputMode = TEXT_INPUT_MODE_WIFI_PASSWORD;
-      textInputTitle = "WiFi Password";
-      currentScreen = UI_SCREEN_TEXT_INPUT;
+      systemSettingsIndex = SYSTEM_SETTINGS_ITEM_EXIT;
+    }
+    else
+    {
+      systemSettingsIndex--;
+    }
+
+    redrawRequired = true;
+  }
+  else if (encoderEvent == ENCODER_EVENT_RIGHT)
+  {
+    if (systemSettingsIndex >= SYSTEM_SETTINGS_ITEM_EXIT)
+    {
+      systemSettingsIndex = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
+    }
+    else
+    {
+      systemSettingsIndex++;
+    }
+
+    redrawRequired = true;
+  }
+  else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
+  {
+    if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_ENCODER_ORDER)
+    {
+      bool reversed = !encoderGetDirectionReversed();
+
+      encoderSetDirectionReversed(reversed);
+      settingsStoreSaveEncoderDirectionReversed(reversed);
       drawCurrentScreen();
 
       return;
     }
 
-    wifiApFirstVisibleIndex = wifiApIndex - 3;
-
-    if (wifiApFirstVisibleIndex < 0)
+    if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_ERASE_WIFI)
     {
-      wifiApFirstVisibleIndex = 0;
+      openFieldInput("Erase WiFi", "Are you sure (Y/N)", 1, yesNoTokens, sizeof(yesNoTokens) / sizeof(yesNoTokens[0]), FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "N");
+
+      return;
     }
 
-    if (wifiApFirstVisibleIndex > static_cast<int>(wifiApCount) - 9)
+    if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY)
     {
-      wifiApFirstVisibleIndex = max(0, static_cast<int>(wifiApCount) - 9);
+      settings.outputPolarityHigh = !settings.outputPolarityHigh;
+      settingsStoreSaveOutputPolarityHigh(settings.outputPolarityHigh);
+      commitSettings(settings);
+      drawCurrentScreen();
+
+      return;
     }
 
-    drawCurrentScreen();
-
-    return;
-  }
-
-  if (profileCount == 0)
-  {
-    if (buttonEvent == BUTTON_EVENT_SHORT_PRESS || encoderEvent == ENCODER_EVENT_SHORT_PRESS)
+    if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_EXIT)
     {
       openMainMenu();
 
       return;
     }
-
-    displayDrawMessage("Profiles", "No profiles available");
-
-    return;
   }
+
+  if (redrawRequired)
+  {
+    drawCurrentScreen();
+  }
+
+} //   handleSystemSettingsMenu()
+
+//--- Handle profile list
+static void handleProfileList(EncoderEvent encoderEvent)
+{
+  int itemCount = static_cast<int>(profileCount);
+  bool redrawRequired = false;
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
@@ -841,28 +1006,33 @@ static void handleProfileList(EncoderEvent encoderEvent, ButtonEvent buttonEvent
 
     if (profileIndex < 0)
     {
-      profileIndex = profileCount - 1;
+      profileIndex = itemCount - 1;
     }
+
+    redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
     profileIndex++;
 
-    if (profileIndex >= static_cast<int>(profileCount))
+    if (profileIndex >= itemCount)
     {
       profileIndex = 0;
     }
-  }
-  else if (buttonEvent == BUTTON_EVENT_SHORT_PRESS)
-  {
-    openMainMenu();
 
-    return;
+    redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
     AppSettings settings = timerGetSettings();
     String selectedProfile = profileNames[profileIndex];
+
+    if (profileIndex == itemCount - 1)
+    {
+      openMainMenu();
+
+      return;
+    }
 
     if (profileListMode == PROFILE_LIST_LOAD)
     {
@@ -881,7 +1051,6 @@ static void handleProfileList(EncoderEvent encoderEvent, ButtonEvent buttonEvent
     {
       if (profileManagerDeleteProfile(selectedProfile))
       {
-        refreshProfileList();
         uiMenuShowTransientMessage("Profile deleted");
       }
       else
@@ -890,7 +1059,8 @@ static void handleProfileList(EncoderEvent encoderEvent, ButtonEvent buttonEvent
       }
     }
 
-    currentScreen = UI_SCREEN_MAIN_MENU;
+    refreshProfileListWithExit();
+    drawCurrentScreen();
 
     return;
   }
@@ -902,33 +1072,20 @@ static void handleProfileList(EncoderEvent encoderEvent, ButtonEvent buttonEvent
     profileFirstVisibleIndex = 0;
   }
 
-  if (profileFirstVisibleIndex > static_cast<int>(profileCount) - 9)
+  if (profileFirstVisibleIndex > itemCount - 9)
   {
-    profileFirstVisibleIndex = max(0, static_cast<int>(profileCount) - 9);
+    profileFirstVisibleIndex = max(0, itemCount - 9);
   }
 
-  drawCurrentScreen();
+  if (redrawRequired)
+  {
+    drawCurrentScreen();
+  }
 
-}   //   handleProfileList()
-
-//--- Open main menu
-static void openMainMenu()
-{
-  currentScreen = UI_SCREEN_MAIN_MENU;
-  drawCurrentScreen();
-
-}   //   openMainMenu()
-
-//--- Return to status screen
-static void openStatusScreen()
-{
-  currentScreen = UI_SCREEN_STATUS;
-  drawCurrentScreen();
-
-}   //   openStatusScreen()
+} //   handleProfileList()
 
 //--- Apply current settings back into timer
-static void commitSettings(const AppSettings &settings)
+static void commitSettings(const AppSettings& settings)
 {
   timerSetSettings(settings);
 
@@ -938,16 +1095,145 @@ static void commitSettings(const AppSettings &settings)
     settingsStoreSaveLastProfileName(settings.profileName);
   }
 
-}   //   commitSettings()
+} //   commitSettings()
 
-//--- Refresh scanned WiFi AP list
-static void refreshWifiApList()
+//--- Log active menu or screen
+static void logActiveScreen(const char* screenName)
 {
-  wifiApCount = wifiManagerScanNetworks(wifiApNames, wifiApListMaxCount);
+  ESP_LOGI("uiMenu", "Active menu: %s", screenName);
 
-  if (wifiApIndex >= static_cast<int>(wifiApCount))
+} //   logActiveScreen()
+
+//--- Convert encoder event to text
+static const char* encoderEventToLabel(EncoderEvent event)
+{
+  switch (event)
   {
-    wifiApIndex = max(0, static_cast<int>(wifiApCount) - 1);
+  case ENCODER_EVENT_LEFT:
+    return "Rotate Left";
+
+  case ENCODER_EVENT_RIGHT:
+    return "Rotate Right";
+
+  case ENCODER_EVENT_SHORT_PRESS:
+    return "Short Press";
+
+  case ENCODER_EVENT_MEDIUM_PRESS:
+    return "Medium Press";
+
+  case ENCODER_EVENT_LONG_PRESS:
+    return "Long Press";
+
+  case ENCODER_EVENT_NONE:
+  default:
+    return "None";
   }
 
-}   //   refreshWifiApList()
+} //   encoderEventToLabel()
+
+//--- Convert UI screen to text
+static const char* uiScreenToLabel(UiScreen screen)
+{
+  switch (screen)
+  {
+  case UI_SCREEN_STATUS:
+    return "Timer Screen";
+
+  case UI_SCREEN_MAIN_MENU:
+    return "Edit Timer Menu";
+
+  case UI_SCREEN_TIMER_SETTINGS_MENU:
+    return "Timer Settings Menu";
+
+  case UI_SCREEN_SYSTEM_SETTINGS_MENU:
+    return "Show System Settings";
+
+  case UI_SCREEN_PROFILE_LIST:
+    return (profileListMode == PROFILE_LIST_LOAD) ? "Load Profile Menu" : "Delete Profile Menu";
+
+  case UI_SCREEN_FIELD_INPUT:
+    return fieldInputTitle.c_str();
+
+  default:
+    return "Unknown";
+  }
+
+} //   uiScreenToLabel()
+
+//--- Initialize UI menu
+void uiMenuInit()
+{
+  currentScreen = UI_SCREEN_STATUS;
+  logActiveScreen("Timer Screen");
+  drawCurrentScreen();
+
+  ESP_LOGI("uiMenu", "UI menu initialized");
+
+} //   uiMenuInit()
+
+//--- Update UI menu
+void uiMenuUpdate()
+{
+  EncoderEvent encoderEvent = encoderGetEvent();
+  uint32_t nowMs = millis();
+
+  if (encoderEvent != ENCODER_EVENT_NONE)
+  {
+    const char* eventLabel = encoderEventToLabel(encoderEvent);
+    const char* screenLabel = uiScreenToLabel(currentScreen);
+
+    (void)eventLabel;
+    (void)screenLabel;
+    ESP_LOGI("uiMenu", "Input event: %s in %s", eventLabel, screenLabel);
+  }
+
+  if (transientMessageUntilMs != 0 && nowMs > transientMessageUntilMs)
+  {
+    transientMessage = "";
+    transientMessageUntilMs = 0;
+    drawCurrentScreen();
+  }
+
+  switch (currentScreen)
+  {
+  case UI_SCREEN_STATUS:
+    handleStatusScreen(encoderEvent);
+    break;
+
+  case UI_SCREEN_MAIN_MENU:
+    handleMainMenu(encoderEvent);
+    break;
+
+  case UI_SCREEN_TIMER_SETTINGS_MENU:
+    handleTimerSettingsMenu(encoderEvent);
+    break;
+
+  case UI_SCREEN_SYSTEM_SETTINGS_MENU:
+    handleSystemSettingsMenu(encoderEvent);
+    break;
+
+  case UI_SCREEN_PROFILE_LIST:
+    handleProfileList(encoderEvent);
+    break;
+
+  case UI_SCREEN_FIELD_INPUT:
+    handleFieldInput(encoderEvent);
+    break;
+  }
+
+  if (currentScreen == UI_SCREEN_STATUS && transientMessage.isEmpty() && nowMs - lastStatusRefreshMs >= statusRefreshIntervalMs)
+  {
+    drawCurrentScreen();
+    lastStatusRefreshMs = nowMs;
+  }
+
+} //   uiMenuUpdate()
+
+//--- Request short status message
+void uiMenuShowTransientMessage(const String& message)
+{
+  transientMessage = message;
+  transientMessageUntilMs = millis() + 1800UL;
+  displayDrawMessage("Message", message.c_str());
+
+} //   uiMenuShowTransientMessage()

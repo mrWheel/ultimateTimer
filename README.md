@@ -19,6 +19,29 @@ Read `.codingRules.md`
 - TFT status updates while running with partial line redraw (no full-screen flicker)
 - Build-time configuration through `build_flags` in `platformio.ini`
 
+## Local TFT controls
+- Initial status screen shows only: `State`, `On time`, `Off time`, and `Output`.
+- `Output` line includes a live countdown timer (`mm:ss.t`) to the next ON/OFF switch while running.
+- Open the local menu with a **long press on the rotary encoder**.
+- Select menu options with a **short press on the rotary encoder**.
+
+### Main menu options
+- `Select profile`
+- `Edit Instellingen huidige gegevens`
+- `Save Profile`
+- `Show instellingen`
+- `New profile`
+- `Exit` (return to status screen)
+
+### Press duration build flags
+The press durations are configurable in `platformio.ini` via `build_flags`:
+- `ENCODER_SHORT_PRESS_MS`
+- `ENCODER_MEDIUM_PRESS_MS`
+- `ENCODER_LONG_PRESS_MS`
+- `BUTTON_SHORT_PRESS_MS`
+- `BUTTON_MEDIUM_PRESS_MS`
+- `BUTTON_LONG_PRESS_MS`
+
 ## Notes
 - Profile files are stored as `/<profileName>.json`
 - The fallback access point is open (no password)
@@ -33,8 +56,8 @@ Read `.codingRules.md`
 - `Save Settings` persists settings/profile as configured.
 
 ## TFT display behavior
+- All TFT text is rendered with the built-in monospaced font.
 - Status header uses a dark gray background.
-- Last status line shows active profile name.
 - Status screen redraws only changed lines for smooth runtime updates.
 
 ## TFT wiring/configuration hints

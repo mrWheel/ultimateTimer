@@ -1,10 +1,11 @@
+/*** Last Changed: 2026-04-15 - 13:12 ***/
 #include "buttonInput.h"
 #include "appConfig.h"
 
 #include <esp_log.h>
 
 //--- Logging tag
-static const char *logTag = "buttonInput";
+static const char* logTag = "buttonInput";
 
 //--- Button state
 static ButtonEvent pendingEvent = BUTTON_EVENT_NONE;
@@ -19,7 +20,7 @@ void buttonInit()
 
   ESP_LOGI(logTag, "Auxiliary button initialized");
 
-}   //   buttonInit()
+} //   buttonInit()
 
 //--- Update auxiliary button input
 void buttonUpdate()
@@ -42,16 +43,25 @@ void buttonUpdate()
   }
   else if (!rawPressed && buttonPressed)
   {
+    uint32_t pressDurationMs = millis() - buttonPressStartMs;
+
     if (!longPressReported)
     {
-      pendingEvent = BUTTON_EVENT_SHORT_PRESS;
+      if (pressDurationMs >= BUTTON_MEDIUM_PRESS_MS)
+      {
+        pendingEvent = BUTTON_EVENT_MEDIUM_PRESS;
+      }
+      else if (pressDurationMs >= BUTTON_SHORT_PRESS_MS)
+      {
+        pendingEvent = BUTTON_EVENT_SHORT_PRESS;
+      }
     }
 
     buttonPressed = false;
     longPressReported = false;
   }
 
-}   //   buttonUpdate()
+} //   buttonUpdate()
 
 //--- Get next auxiliary button event
 ButtonEvent buttonGetEvent()
@@ -61,11 +71,11 @@ ButtonEvent buttonGetEvent()
 
   return event;
 
-}   //   buttonGetEvent()
+} //   buttonGetEvent()
 
 //--- Clear pending auxiliary button event
 void buttonClearEvent()
 {
   pendingEvent = BUTTON_EVENT_NONE;
 
-}   //   buttonClearEvent()
+} //   buttonClearEvent()

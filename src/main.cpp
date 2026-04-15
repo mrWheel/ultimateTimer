@@ -1,3 +1,4 @@
+/*** Last Changed: 2026-04-15 - 13:12 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -15,10 +16,10 @@
 #include <WiFi.h>
 #include <esp_log.h>
 
-const char* PROG_VERSION = "0.4.0";
+const char* PROG_VERSION = "v0.4.1";
 
 //--- Logging tag
-static const char *logTag = "main";
+static const char* logTag = "main";
 
 //--- Active application settings
 static AppSettings activeSettings;
@@ -60,14 +61,17 @@ static void loadStartupSettings()
     }
   }
 
+  activeSettings.outputPolarityHigh = settingsStoreLoadOutputPolarityHigh();
+  encoderSetDirectionReversed(settingsStoreLoadEncoderDirectionReversed());
+
   timerSetSettings(activeSettings);
 
-}   //   loadStartupSettings()
+} //   loadStartupSettings()
 
 //--- Update external trigger and reset inputs
 static void updateExternalInputs()
 {
-  const AppSettings &settings = timerGetSettings();
+  const AppSettings& settings = timerGetSettings();
 
   if (ioTriggerActivated(settings.triggerEdge))
   {
@@ -79,7 +83,7 @@ static void updateExternalInputs()
     timerHandleExternalReset();
   }
 
-}   //   updateExternalInputs()
+} //   updateExternalInputs()
 
 //--- Update all service modules
 static void updateServices()
@@ -94,7 +98,7 @@ static void updateServices()
   uiMenuUpdate();
   handleWifiCredentialResetHold();
 
-}   //   updateServices()
+} //   updateServices()
 
 //--- Handle GPIO00 hold action for clearing WiFi credentials
 static bool handleWifiCredentialResetHold()
@@ -153,7 +157,7 @@ static bool handleWifiCredentialResetHold()
 
   return true;
 
-}   //   handleWifiCredentialResetHold()
+} //   handleWifiCredentialResetHold()
 
 //--- Arduino setup
 void setup()
@@ -177,11 +181,11 @@ void setup()
   ESP_LOGI(logTag, "Setup complete");
   ESP_LOGI(logTag, "Open web UI at: http://%s", wifiManagerGetAddressString().c_str());
 
-}   //   setup()
+} //   setup()
 
 //--- Arduino loop
 void loop()
 {
   updateServices();
 
-}   //   loop()
+} //   loop()
