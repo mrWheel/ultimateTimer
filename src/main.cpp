@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 14:23 ***/
+/*** Last Changed: 2026-04-15 - 14:33 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -18,7 +18,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-const char* PROG_VERSION = "v0.4.3";
+const char* PROG_VERSION = "v0.5.0";
 
 //--- Logging tag
 static const char* logTag = "main";

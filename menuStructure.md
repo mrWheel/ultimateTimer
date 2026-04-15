@@ -5,7 +5,8 @@ Menu hierarchy:
 ```
 [Start]
 |
-[Connecting to WiFi] (of start WiFiManager)
+[Trying to connect to]
+[<SSID>] (centered)
 |
 V
 [Timer Screen]
@@ -51,10 +52,10 @@ V
 - Exit (last item) -> return to [Edit Timer Menu]
 
 [Show System Settings Menu]
-- WiFi SSID (RO)
-- IP Address (RO)
+- WiFi SSID (RO, only if WiFi enabled)
+- IP Address (RO, only if WiFi enabled)
 - MAC Address (RO)
-- WiFi Disabled (RO)
+- WiFi Disabled: Yes (RO, only if WiFi disabled)
 - Encoder Order (A-B / B-A)
 - Erase WiFi credentials (Are you sure (Y/N))
 - Start WiFi Manager (clears WiFi Disabled indicator and restarts)

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 14:23 ***/
+/*** Last Changed: 2026-04-15 - 14:33 ***/
 #include "uiMenu.h"
 #include "displayDriver.h"
 #include "encoderInput.h"
@@ -652,6 +652,9 @@ static void drawCurrentScreen()
   case UI_SCREEN_SYSTEM_SETTINGS_MENU:
   {
     String dynamicSystemSettingsItems[10];
+    int visibleItemLogicalIndexes[10];
+    int visibleItemCount = 0;
+    int selectedVisibleIndex = 0;
     int firstVisibleIndex = 0;
     String wifiSsid = wifiManagerGetSettings().staSsid;
     bool wifiDisabled = settingsStoreLoadWifiDisabled();
@@ -661,23 +664,67 @@ static void drawCurrentScreen()
       wifiSsid = "<none>";
     }
 
-    dynamicSystemSettingsItems[0] = String("SSID: ") + wifiSsid;
-    dynamicSystemSettingsItems[1] = String("IP: ") + wifiManagerGetAddressString();
-    dynamicSystemSettingsItems[2] = String("MAC: ") + WiFi.macAddress();
-    dynamicSystemSettingsItems[3] = String("WiFi Disabled: ") + String(wifiDisabled ? "Yes" : "No");
-    dynamicSystemSettingsItems[4] = String("Encoder Order: ") + String(encoderGetDirectionReversed() ? "B-A" : "A-B");
-    dynamicSystemSettingsItems[5] = systemSettingsMenuItems[5];
-    dynamicSystemSettingsItems[6] = systemSettingsMenuItems[6];
-    dynamicSystemSettingsItems[7] = String("Output: ") + String(settings.outputPolarityHigh ? "Active High" : "Active Low");
-    dynamicSystemSettingsItems[8] = systemSettingsMenuItems[8];
-    dynamicSystemSettingsItems[9] = systemSettingsMenuItems[9];
-
-    if (systemSettingsIndex > 8)
+    if (!wifiDisabled)
     {
-      firstVisibleIndex = systemSettingsIndex - 8;
+      dynamicSystemSettingsItems[visibleItemCount] = String("SSID: ") + wifiSsid;
+      visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_WIFI_SSID;
+      visibleItemCount++;
+
+      dynamicSystemSettingsItems[visibleItemCount] = String("IP: ") + wifiManagerGetAddressString();
+      visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_IP_ADDRESS;
+      visibleItemCount++;
     }
 
-    displayDrawListScreen("Show System Settings", dynamicSystemSettingsItems, 10, systemSettingsIndex, firstVisibleIndex);
+    dynamicSystemSettingsItems[visibleItemCount] = String("MAC: ") + WiFi.macAddress();
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_MAC_ADDRESS;
+    visibleItemCount++;
+
+    if (wifiDisabled)
+    {
+      dynamicSystemSettingsItems[visibleItemCount] = "WiFi Disabled: Yes";
+      visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_WIFI_DISABLED;
+      visibleItemCount++;
+    }
+
+    dynamicSystemSettingsItems[visibleItemCount] = String("Encoder Order: ") + String(encoderGetDirectionReversed() ? "B-A" : "A-B");
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
+    visibleItemCount++;
+
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[5];
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_ERASE_WIFI;
+    visibleItemCount++;
+
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[6];
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER;
+    visibleItemCount++;
+
+    dynamicSystemSettingsItems[visibleItemCount] = String("Output: ") + String(settings.outputPolarityHigh ? "Active High" : "Active Low");
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY;
+    visibleItemCount++;
+
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[8];
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER;
+    visibleItemCount++;
+
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[9];
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_EXIT;
+    visibleItemCount++;
+
+    for (int itemIndex = 0; itemIndex < visibleItemCount; itemIndex++)
+    {
+      if (visibleItemLogicalIndexes[itemIndex] == systemSettingsIndex)
+      {
+        selectedVisibleIndex = itemIndex;
+        break;
+      }
+    }
+
+    if (selectedVisibleIndex > 8)
+    {
+      firstVisibleIndex = selectedVisibleIndex - 8;
+    }
+
+    displayDrawListScreen("Show System Settings", dynamicSystemSettingsItems, visibleItemCount, selectedVisibleIndex, firstVisibleIndex);
     break;
   }
 
@@ -805,22 +852,18 @@ static void handleMainMenu(EncoderEvent encoderEvent)
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
-    mainMenuIndex--;
-
-    if (mainMenuIndex < 0)
+    if (mainMenuIndex > 0)
     {
-      mainMenuIndex = itemCount - 1;
+      mainMenuIndex--;
     }
 
     redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
-    mainMenuIndex++;
-
-    if (mainMenuIndex >= itemCount)
+    if (mainMenuIndex < itemCount - 1)
     {
-      mainMenuIndex = 0;
+      mainMenuIndex++;
     }
 
     redrawRequired = true;
@@ -889,22 +932,18 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
-    timerSettingsIndex--;
-
-    if (timerSettingsIndex < 0)
+    if (timerSettingsIndex > 0)
     {
-      timerSettingsIndex = itemCount - 1;
+      timerSettingsIndex--;
     }
 
     redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
-    timerSettingsIndex++;
-
-    if (timerSettingsIndex >= itemCount)
+    if (timerSettingsIndex < itemCount - 1)
     {
-      timerSettingsIndex = 0;
+      timerSettingsIndex++;
     }
 
     redrawRequired = true;
@@ -987,11 +1026,7 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
-    if (systemSettingsIndex <= SYSTEM_SETTINGS_ITEM_ENCODER_ORDER)
-    {
-      systemSettingsIndex = SYSTEM_SETTINGS_ITEM_EXIT;
-    }
-    else
+    if (systemSettingsIndex > SYSTEM_SETTINGS_ITEM_ENCODER_ORDER)
     {
       systemSettingsIndex--;
     }
@@ -1000,11 +1035,7 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
   }
   else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
-    if (systemSettingsIndex >= SYSTEM_SETTINGS_ITEM_EXIT)
-    {
-      systemSettingsIndex = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
-    }
-    else
+    if (systemSettingsIndex < SYSTEM_SETTINGS_ITEM_EXIT)
     {
       systemSettingsIndex++;
     }
@@ -1083,22 +1114,18 @@ static void handleProfileList(EncoderEvent encoderEvent)
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
-    profileIndex--;
-
-    if (profileIndex < 0)
+    if (profileIndex > 0)
     {
-      profileIndex = itemCount - 1;
+      profileIndex--;
     }
 
     redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
-    profileIndex++;
-
-    if (profileIndex >= itemCount)
+    if (profileIndex < itemCount - 1)
     {
-      profileIndex = 0;
+      profileIndex++;
     }
 
     redrawRequired = true;
