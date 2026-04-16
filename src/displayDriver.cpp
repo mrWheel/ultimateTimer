@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-16 - 14:32 ***/
+/*** Last Changed: 2026-04-16 - 14:54 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "timerEngine.h"
@@ -112,8 +112,16 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     statusScreenPrepared = true;
   }
 
+  String stateValue = timerGetStateLabel(runtimeStatus.state);
+  String profileValue = settings.profileName;
   String nextStatusLines[statusLineCount];
-  nextStatusLines[0] = timerGetStateLabel(runtimeStatus.state);
+
+  if (profileValue.isEmpty())
+  {
+    profileValue = "-";
+  }
+
+  nextStatusLines[0] = stateValue + String("|") + profileValue;
   nextStatusLines[1] = String(settings.onTimeValue) + " " + String(timerGetTimeUnitLabel(settings.onTimeUnit));
   nextStatusLines[2] = String(settings.offTimeValue) + " " + String(timerGetTimeUnitLabel(settings.offTimeUnit));
 
@@ -138,26 +146,29 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
 
   nextStatusLines[3] = outputValue;
 
-  if (runtimeStatus.totalCycles == 0)
-  {
-    nextStatusLines[4] = "Inf.";
-  }
-  else
-  {
-    uint32_t displayCycle = runtimeStatus.currentCycle;
+  uint32_t displayCycle = runtimeStatus.currentCycle;
 
-    if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
+  if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
+  {
+    if (runtimeStatus.totalCycles == 0 || displayCycle < runtimeStatus.totalCycles)
     {
-      if (displayCycle < runtimeStatus.totalCycles)
-      {
-        displayCycle++;
-      }
+      displayCycle++;
     }
-    else if (runtimeStatus.state == TIMER_STATE_FINISHED)
+  }
+  else if (runtimeStatus.state == TIMER_STATE_FINISHED)
+  {
+    if (runtimeStatus.totalCycles > 0)
     {
       displayCycle = runtimeStatus.totalCycles;
     }
+  }
 
+  if (runtimeStatus.totalCycles == 0)
+  {
+    nextStatusLines[4] = String(displayCycle) + " / Inv.";
+  }
+  else
+  {
     nextStatusLines[4] = String(displayCycle) + "/" + String(runtimeStatus.totalCycles);
   }
 
@@ -173,8 +184,29 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     switch (lineIndex)
     {
     case 0:
-      drawStatusTile(col1X, tileStartY, fullW, tileH, "STATE", nextStatusLines[0]);
+    {
+      int16_t textX1;
+      int16_t textY1;
+      uint16_t textWidth;
+      uint16_t textHeight;
+      int profileX;
+
+      drawStatusTile(col1X, tileStartY, fullW, tileH, "STATE", stateValue);
+
+      tft.setTextSize(2);
+      tft.getTextBounds(profileValue, 0, 0, &textX1, &textY1, &textWidth, &textHeight);
+      profileX = col1X + fullW - static_cast<int>(textWidth) - 6;
+
+      if (profileX < col1X + 100)
+      {
+        profileX = col1X + 100;
+      }
+
+      tft.setTextColor(ST77XX_BLACK, tileFillColor);
+      tft.setCursor(profileX, tileStartY + 14);
+      tft.print(profileValue);
       break;
+    }
 
     case 1:
       drawStatusTile(col1X, tileStartY + tileH + tileGap, col1W, tileH, "ON TIME", nextStatusLines[1]);
@@ -331,52 +363,103 @@ void displayDrawTextInput(const char* title, const String& textValue, const Stri
 //--- Draw generic field input screen
 void displayDrawFieldInput(const char* title, const char* fieldName, const String& fieldValue, int cursorIndex, const String& prevToken, const String& currentToken, const String& nextToken)
 {
-  static const uint16_t fieldCursorColor = ST77XX_WHITE;
+  //--- Per colorSettings.md: PANEL_COLOR() for fills/borders, ST77XX_BLACK for readable text.
   static const uint16_t tokenCurrentColor = PANEL_COLOR(0xF800);
-  static const uint16_t tokenNeighborColor = PANEL_COLOR(0x8410);
+  static const uint16_t tokenNeighborColor = PANEL_COLOR(0xC618);
+
+  const int tileX = 3;
+  const int tileW = 314;
+
+  //--- Tile 1: field name + value, cursor arrows (higher and roomier)
+  const int tile1Y = 30;
+  const int tile1H = 74;
+
+  //--- Tile 2: token selector fixed near bottom
+  const int tile2H = 36;
+  const int tile2Y = 164;
+
+  String valueText = String("[") + fieldValue + String("]");
+  String tokenText = prevToken + String(" < ") + currentToken + String(" > ") + nextToken;
+  int16_t textX1;
+  int16_t textY1;
+  uint16_t textW;
+  uint16_t textH;
+  int valueX;
+  int tokenX;
+  int cursorBaseX;
 
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
   drawHeader(title);
 
-  tft.setTextColor(ST77XX_WHITE);
-  tft.setTextSize(2);
-  tft.setCursor(6, 44);
+  //--- Tile 1: value input
+  tft.fillRoundRect(tileX, tile1Y, tileW, tile1H, 5, tileFillColor);
+  tft.drawRoundRect(tileX, tile1Y, tileW, tile1H, 5, tileBorderColor);
+
+  tft.setTextSize(1);
+  tft.setTextColor(tileLabelColor, tileFillColor);
+  tft.setCursor(tileX + 4, tile1Y + 3);
   tft.print(fieldName);
+
+  tft.setTextSize(2);
+  tft.getTextBounds(valueText, 0, 0, &textX1, &textY1, &textW, &textH);
+  valueX = tileX + ((tileW - static_cast<int>(textW)) / 2);
+
+  if (valueX < tileX + 4)
+  {
+    valueX = tileX + 4;
+  }
+
+  cursorBaseX = valueX + 12;
 
   if (cursorIndex >= 0)
   {
-    int cursorX = 18 + (cursorIndex * 12);
-    tft.setTextColor(fieldCursorColor);
-    tft.setCursor(cursorX, 62);
+    int cursorX = cursorBaseX + (cursorIndex * 12);
+    tft.setTextColor(ST77XX_BLACK, tileFillColor);
+    tft.setCursor(cursorX, tile1Y + 18);
     tft.print("v");
   }
 
-  tft.setTextColor(ST77XX_GREEN);
-  tft.setCursor(6, 80);
-  tft.print("[");
-  tft.print(fieldValue);
-  tft.print("]");
+  tft.setTextColor(ST77XX_BLACK, tileFillColor);
+  tft.setCursor(valueX, tile1Y + 35);
+  tft.print(valueText);
 
   if (cursorIndex >= 0)
   {
-    int cursorX = 18 + (cursorIndex * 12);
-    tft.setTextColor(fieldCursorColor);
-    tft.setCursor(cursorX, 98);
+    int cursorX = cursorBaseX + (cursorIndex * 12);
+    tft.setTextColor(ST77XX_BLACK, tileFillColor);
+    tft.setCursor(cursorX, tile1Y + 54);
     tft.print("^");
   }
 
-  tft.setCursor(6, 124);
-  tft.setTextColor(tokenNeighborColor);
-  tft.print(prevToken);
-  tft.print(" < ");
-  tft.setTextColor(tokenCurrentColor);
-  tft.print(currentToken);
-  tft.setTextColor(tokenNeighborColor);
-  tft.print(" > ");
-  tft.print(nextToken);
+  //--- Tile 2: token selector
+  tft.fillRoundRect(tileX, tile2Y, tileW, tile2H, 5, tileFillColor);
+  tft.drawRoundRect(tileX, tile2Y, tileW, tile2H, 5, tileBorderColor);
 
-  tft.setTextColor(ST77XX_WHITE);
+  tft.setTextSize(1);
+  tft.setTextColor(tileLabelColor, tileFillColor);
+  tft.setCursor(tileX + 4, tile2Y + 3);
+  tft.print("SELECT");
+
+  tft.setTextSize(2);
+  tft.getTextBounds(tokenText, 0, 0, &textX1, &textY1, &textW, &textH);
+  tokenX = tileX + ((tileW - static_cast<int>(textW)) / 2);
+
+  if (tokenX < tileX + 4)
+  {
+    tokenX = tileX + 4;
+  }
+
+  tft.setCursor(tokenX, tile2Y + 14);
+  tft.setTextColor(tokenNeighborColor, tileFillColor);
+  tft.print(prevToken + String(" < "));
+  tft.setTextColor(tokenCurrentColor, tileFillColor);
+  tft.print(currentToken);
+  tft.setTextColor(tokenNeighborColor, tileFillColor);
+  tft.print(String(" > ") + nextToken);
+
+  tft.setTextColor(ST77XX_BLACK);
+  tft.setTextSize(2);
   tft.setCursor(6, 206);
   tft.print("Short=Next  Turn=Change");
 
@@ -542,7 +625,7 @@ static void drawStatusActionButtons(int statusActionIndex)
           "Stop",
           "Reset"};
 
-  const int buttonY = 186;
+  const int buttonY = 194;
   const int buttonHeight = 30;
   const int buttonWidth = 92;
   const int buttonSpacing = 10;
