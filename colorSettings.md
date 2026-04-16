@@ -1,0 +1,82 @@
+# Color Settings — ultimateTimer Display
+
+## Hardware background
+
+This project uses an ST7789-based 2.4-inch SPI TFT panel.
+This specific panel has **hardware color inversion active (INVON)**.
+Every pixel value you write is bit-complemented by the panel before it is shown.
+
+## The PANEL_COLOR macro
+
+```cpp
+#define PANEL_COLOR(colorValue) static_cast<uint16_t>((colorValue) ^ 0xFFFFU)
+```
+
+Use this macro whenever you want a **colored fill or colored text** to appear in the color
+you specify.
+
+- Pass the **desired visual color** (RGB565 value you want to SEE on screen).
+- The macro pre-inverts it.
+- The panel inverts it back, so the visual result matches what you passed in.
+
+**Example:**
+```cpp
+// Header background that actually looks blue on screen.
+static const uint16_t headerBackgroundColor = PANEL_COLOR(0x001F);  // 0x001F = blue (RGB565)
+```
+
+## Text colors — NEVER use PANEL_COLOR for text
+
+Because the panel inverts all values, the two Adafruit constants behave counter-intuitively:
+
+| Constant | Written value | Panel inverts to | Appears on screen as |
+|---|---|---|---|
+| `ST77XX_BLACK` (0x0000) | 0x0000 | 0xFFFF | **WHITE** (use for legible text) |
+| `ST77XX_WHITE` (0xFFFF) | 0xFFFF | 0x0000 | **BLACK** (invisible on dark backgrounds) |
+
+**Rule:** Always use `ST77XX_BLACK` for text that must be readable.
+Never use `ST77XX_WHITE` for text — it renders black and disappears on dark backgrounds.
+
+## Screen background
+
+`tft.fillScreen(ST77XX_BLACK)` produces a **black screen**.
+All UI elements are drawn on top of this black background.
+
+## Proven color constants (do not change without hardware test)
+
+```cpp
+// Header and selected item fill — visually blue
+static const uint16_t selectionFillColor    = PANEL_COLOR(0x001F);
+
+// Selected item border — visually light blue/teal
+static const uint16_t selectionBorderColor  = PANEL_COLOR(0x7DFF);
+
+// Selected item text — visually white (high-contrast on blue)
+static const uint16_t selectionTextColor    = ST77XX_BLACK;
+
+// Idle (unselected) button fill — visually light gray
+static const uint16_t idleButtonFillColor   = PANEL_COLOR(0xD69A);
+
+// Idle button border — visually lighter gray
+static const uint16_t idleButtonBorderColor = PANEL_COLOR(0xBDF7);
+
+// All button text — visually white on both blue and gray backgrounds
+static const uint16_t selectedButtonTextColor = ST77XX_BLACK;
+static const uint16_t idleButtonTextColor     = ST77XX_BLACK;
+```
+
+## How to add a new colored UI element
+
+1. Pick the **desired RGB565 color** (use any RGB565 color picker tool).
+2. Wrap it with `PANEL_COLOR(your_value)` for fills, borders, and colored text.
+3. Use `ST77XX_BLACK` for text that must appear white/light on a colored background.
+4. Never use `ST77XX_WHITE` for text — it will be invisible on dark backgrounds.
+5. Test with the `TEST_COLOR_PATERN` build flag if in doubt.
+
+## Common mistakes
+
+| Mistake | Symptom | Fix |
+|---|---|---|
+| `tileValueColor = ST77XX_WHITE` | Text invisible on dark tile | Change to `ST77XX_BLACK` |
+| Fill color `PANEL_COLOR(0x2104)` (near-black) | Tile invisible on black background | Use `selectionFillColor` or a clearly different hue |
+| Using raw 0xRRGG for fills without `PANEL_COLOR` | Color looks wrong/inverted | Wrap with `PANEL_COLOR()` |

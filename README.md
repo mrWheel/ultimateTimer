@@ -8,6 +8,9 @@ Read `.codingRules.md`
 ## Comply to Menu, and Event rules
 read `menuStructure.md`
 
+## Comply to Color Settings Display
+read `colorSettings.md`
+
 ## Implemented structure
 - Local TFT menu
 - Rotary encoder editing

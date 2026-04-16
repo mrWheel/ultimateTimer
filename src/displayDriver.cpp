@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-16 - 14:10 ***/
+/*** Last Changed: 2026-04-16 - 14:32 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "timerEngine.h"
@@ -33,17 +33,23 @@ static const uint16_t idleButtonBorderColor = PANEL_COLOR(0xBDF7);
 static const uint16_t selectedButtonTextColor = ST77XX_BLACK;
 static const uint16_t idleButtonTextColor = ST77XX_BLACK;
 
-//--- Status line layout
-static const int statusLineHeight = 22;
-static const int statusLineTopY = 30;
+//--- Status tile colors
+//--- tileFillColor: same blue as header/selection (proven on this panel).
+//--- tileValueColor: ST77XX_BLACK renders as WHITE on this inverted panel.
+static const uint16_t tileFillColor = PANEL_COLOR(0x001F);
+static const uint16_t tileBorderColor = PANEL_COLOR(0x7DFF);
+static const uint16_t tileLabelColor = PANEL_COLOR(0xBDF7);
+static const uint16_t tileValueColor = ST77XX_BLACK;
+
+//--- Status screen tile count (4 data tiles + 1 action row)
 static const int statusLineCount = 6;
 
 //--- Status screen cache
 static bool statusScreenPrepared = false;
 static String cachedStatusLines[statusLineCount];
 
-//--- Draw one status line
-static void drawStatusLine(int lineIndex, const String& lineText);
+//--- Draw a status tile
+static void drawStatusTile(int x, int y, int w, int h, const char* label, const String& value);
 
 //--- Draw status action buttons
 static void drawStatusActionButtons(int statusActionIndex);
@@ -84,6 +90,15 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
 {
   (void)wifiConnected;
 
+  const int tileGap = 3;
+  const int tileH = 36;
+  const int tileStartY = 27;
+  const int col1X = 3;
+  const int col1W = 155;
+  const int col2X = 161;
+  const int col2W = 156;
+  const int fullW = 314;
+
   if (!statusScreenPrepared)
   {
     tft.fillScreen(ST77XX_BLACK);
@@ -98,9 +113,9 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
   }
 
   String nextStatusLines[statusLineCount];
-  nextStatusLines[0] = String("State: ") + String(timerGetStateLabel(runtimeStatus.state));
-  nextStatusLines[1] = String("On time: ") + String(settings.onTimeValue) + String(" ") + String(timerGetTimeUnitLabel(settings.onTimeUnit));
-  nextStatusLines[2] = String("Off time: ") + String(settings.offTimeValue) + String(" ") + String(timerGetTimeUnitLabel(settings.offTimeUnit));
+  nextStatusLines[0] = timerGetStateLabel(runtimeStatus.state);
+  nextStatusLines[1] = String(settings.onTimeValue) + " " + String(timerGetTimeUnitLabel(settings.onTimeUnit));
+  nextStatusLines[2] = String(settings.offTimeValue) + " " + String(timerGetTimeUnitLabel(settings.offTimeUnit));
 
   uint32_t remainingMs = 0;
 
@@ -109,22 +124,23 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     remainingMs = runtimeStatus.currentPhaseDurationMs - runtimeStatus.currentPhaseElapsedMs;
   }
 
-  String outputLine = String("Output: ") + String(runtimeStatus.outputActive ? "ON " : "OFF ");
+  String outputValue = runtimeStatus.outputActive ? "ON" : "OFF";
 
   if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
   {
-    outputLine += formatRemainingMs(remainingMs);
+    outputValue += "  ";
+    outputValue += formatRemainingMs(remainingMs);
   }
   else
   {
-    outputLine += String("---:--");
+    outputValue += "  ---:--";
   }
 
-  nextStatusLines[3] = outputLine;
+  nextStatusLines[3] = outputValue;
 
   if (runtimeStatus.totalCycles == 0)
   {
-    nextStatusLines[4] = "Cycles: Inv.";
+    nextStatusLines[4] = "Inf.";
   }
   else
   {
@@ -142,26 +158,46 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
       displayCycle = runtimeStatus.totalCycles;
     }
 
-    nextStatusLines[4] = String("Cycles: ") + String(displayCycle) + String("/") + String(runtimeStatus.totalCycles);
+    nextStatusLines[4] = String(displayCycle) + "/" + String(runtimeStatus.totalCycles);
   }
 
-  nextStatusLines[5] = String("ACTION:") + String(statusActionIndex);
+  nextStatusLines[5] = String("A:") + String(statusActionIndex);
 
   for (int lineIndex = 0; lineIndex < statusLineCount; lineIndex++)
   {
-    if (cachedStatusLines[lineIndex] != nextStatusLines[lineIndex])
+    if (cachedStatusLines[lineIndex] == nextStatusLines[lineIndex])
     {
-      if (lineIndex == statusLineCount - 1)
-      {
-        drawStatusActionButtons(statusActionIndex);
-      }
-      else
-      {
-        drawStatusLine(lineIndex, nextStatusLines[lineIndex]);
-      }
-
-      cachedStatusLines[lineIndex] = nextStatusLines[lineIndex];
+      continue;
     }
+
+    switch (lineIndex)
+    {
+    case 0:
+      drawStatusTile(col1X, tileStartY, fullW, tileH, "STATE", nextStatusLines[0]);
+      break;
+
+    case 1:
+      drawStatusTile(col1X, tileStartY + tileH + tileGap, col1W, tileH, "ON TIME", nextStatusLines[1]);
+      break;
+
+    case 2:
+      drawStatusTile(col2X, tileStartY + tileH + tileGap, col2W, tileH, "OFF TIME", nextStatusLines[2]);
+      break;
+
+    case 3:
+      drawStatusTile(col1X, tileStartY + 2 * (tileH + tileGap), fullW, tileH, "OUTPUT", nextStatusLines[3]);
+      break;
+
+    case 4:
+      drawStatusTile(col1X, tileStartY + 3 * (tileH + tileGap), fullW, tileH, "CYCLES", nextStatusLines[4]);
+      break;
+
+    case 5:
+      drawStatusActionButtons(statusActionIndex);
+      break;
+    }
+
+    cachedStatusLines[lineIndex] = nextStatusLines[lineIndex];
   }
 
 } //   displayDrawStatusScreen()
@@ -479,18 +515,23 @@ static void drawCenteredLine(const String& lineText, int y, uint16_t textColor, 
 
 } //   drawCenteredLine()
 
-//--- Draw one status line
-static void drawStatusLine(int lineIndex, const String& lineText)
+//--- Draw a status tile
+static void drawStatusTile(int x, int y, int w, int h, const char* label, const String& value)
 {
-  int y = statusLineTopY + (lineIndex * statusLineHeight);
+  tft.fillRoundRect(x, y, w, h, 5, tileFillColor);
+  tft.drawRoundRect(x, y, w, h, 5, tileBorderColor);
 
-  tft.fillRect(0, y, tft.width(), statusLineHeight, ST77XX_BLACK);
-  tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+  tft.setTextSize(1);
+  tft.setTextColor(tileLabelColor, tileFillColor);
+  tft.setCursor(x + 4, y + 3);
+  tft.print(label);
+
   tft.setTextSize(2);
-  tft.setCursor(6, y);
-  tft.print(lineText);
+  tft.setTextColor(tileValueColor, tileFillColor);
+  tft.setCursor(x + 4, y + 14);
+  tft.print(value);
 
-} //   drawStatusLine()
+} //   drawStatusTile()
 
 //--- Draw status action buttons
 static void drawStatusActionButtons(int statusActionIndex)
@@ -501,8 +542,8 @@ static void drawStatusActionButtons(int statusActionIndex)
           "Stop",
           "Reset"};
 
-  const int buttonY = 188;
-  const int buttonHeight = 38;
+  const int buttonY = 186;
+  const int buttonHeight = 30;
   const int buttonWidth = 92;
   const int buttonSpacing = 10;
   const int firstButtonX = 11;
@@ -533,7 +574,7 @@ static void drawStatusActionButtons(int statusActionIndex)
 
     tft.getTextBounds(labels[buttonIndex], 0, 0, &textX1, &textY1, &textWidth, &textHeight);
     textX = buttonX + ((buttonWidth - static_cast<int>(textWidth)) / 2);
-    textY = buttonY + ((buttonHeight - static_cast<int>(textHeight)) / 2) + 5;
+    textY = buttonY + ((buttonHeight - static_cast<int>(textHeight)) / 2);
 
     tft.setTextColor(textColor, fillColor);
     tft.setCursor(textX, textY);
