@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 16:11 ***/
+/*** Last Changed: 2026-04-16 - 14:10 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "timerEngine.h"
@@ -295,6 +295,10 @@ void displayDrawTextInput(const char* title, const String& textValue, const Stri
 //--- Draw generic field input screen
 void displayDrawFieldInput(const char* title, const char* fieldName, const String& fieldValue, int cursorIndex, const String& prevToken, const String& currentToken, const String& nextToken)
 {
+  static const uint16_t fieldCursorColor = ST77XX_WHITE;
+  static const uint16_t tokenCurrentColor = PANEL_COLOR(0xF800);
+  static const uint16_t tokenNeighborColor = PANEL_COLOR(0x8410);
+
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
   drawHeader(title);
@@ -304,8 +308,16 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
   tft.setCursor(6, 44);
   tft.print(fieldName);
 
+  if (cursorIndex >= 0)
+  {
+    int cursorX = 18 + (cursorIndex * 12);
+    tft.setTextColor(fieldCursorColor);
+    tft.setCursor(cursorX, 62);
+    tft.print("v");
+  }
+
   tft.setTextColor(ST77XX_GREEN);
-  tft.setCursor(6, 76);
+  tft.setCursor(6, 80);
   tft.print("[");
   tft.print(fieldValue);
   tft.print("]");
@@ -313,16 +325,18 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
   if (cursorIndex >= 0)
   {
     int cursorX = 18 + (cursorIndex * 12);
-    tft.setTextColor(selectionAccentColor);
+    tft.setTextColor(fieldCursorColor);
     tft.setCursor(cursorX, 98);
     tft.print("^");
   }
 
-  tft.setTextColor(selectionAccentColor);
-  tft.setCursor(6, 130);
+  tft.setCursor(6, 124);
+  tft.setTextColor(tokenNeighborColor);
   tft.print(prevToken);
   tft.print(" < ");
+  tft.setTextColor(tokenCurrentColor);
   tft.print(currentToken);
+  tft.setTextColor(tokenNeighborColor);
   tft.print(" > ");
   tft.print(nextToken);
 
