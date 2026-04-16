@@ -18,7 +18,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-const char* PROG_VERSION = "v1.0.0";
+const char* PROG_VERSION = "v1.0.1";
 
 //--- Logging tag
 static const char* logTag = "main";

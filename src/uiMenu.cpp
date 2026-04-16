@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 16:11 ***/
+/*** Last Changed: 2026-04-16 - 14:06 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "displayDriver.h"
@@ -539,15 +539,17 @@ static void handleFieldInput(EncoderEvent encoderEvent)
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
-    if (fieldInputCursorPosition >= fieldInputPositionCount - 1)
+    if (fieldInputCursorPosition < fieldInputPositionCount - 1)
     {
-      applyFieldInputAndReturn();
-
-      return;
+      fieldInputCursorPosition++;
+      redrawRequired = true;
     }
+  }
+  else if (encoderEvent == ENCODER_EVENT_MEDIUM_PRESS || encoderEvent == ENCODER_EVENT_LONG_PRESS)
+  {
+    applyFieldInputAndReturn();
 
-    fieldInputCursorPosition++;
-    redrawRequired = true;
+    return;
   }
 
   if (redrawRequired)
@@ -986,7 +988,7 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
       return;
 
     case TIMER_SETTINGS_ITEM_EXIT:
-      openMainMenu();
+      openStatusScreen();
       return;
     }
   }
@@ -1337,10 +1339,51 @@ void uiMenuUpdate()
 
   if (currentScreen == UI_SCREEN_FIELD_INPUT && buttonEvent != BUTTON_EVENT_NONE)
   {
-    if (fieldInputCursorPosition > 0)
+    if (buttonEvent == BUTTON_EVENT_SHORT_PRESS)
     {
+      if (fieldInputCursorPosition == 0)
+      {
+        currentScreen = fieldInputReturnScreen;
+        drawCurrentScreen();
+
+        return;
+      }
+
       fieldInputCursorPosition--;
       drawCurrentScreen();
+    }
+    else if (buttonEvent == BUTTON_EVENT_MEDIUM_PRESS || buttonEvent == BUTTON_EVENT_LONG_PRESS)
+    {
+      applyFieldInputAndReturn();
+
+      return;
+    }
+
+    return;
+  }
+
+  if (buttonEvent == BUTTON_EVENT_MEDIUM_PRESS)
+  {
+    if (currentScreen == UI_SCREEN_MAIN_MENU)
+    {
+      openStatusScreen();
+
+      return;
+    }
+
+    if (currentScreen == UI_SCREEN_TIMER_SETTINGS_MENU)
+    {
+      openStatusScreen();
+
+      return;
+    }
+
+    if (currentScreen == UI_SCREEN_SYSTEM_SETTINGS_MENU ||
+        currentScreen == UI_SCREEN_PROFILE_LIST)
+    {
+      openMainMenu();
+
+      return;
     }
   }
 

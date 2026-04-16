@@ -1,27 +1,29 @@
-Selection rule:
+# Menu, Field Input and Eventhandling
+
+## Selection rule:
 - Selection of every menu item is always done with a SHORT press on the Rotary Encoder.
 - Menu navigation is clamped: top item stays top, bottom item stays bottom (no wrap-around).
 
-Build flag test mode:
+## Build flag test mode:
 - If `TEST_COLOR_PATERN` is defined, normal menu flow is bypassed and only a color pattern test screen is shown.
 
-Menu hierarchy:
+## Menu hierarchy:
 ```
 [Start]
-|
+  |
 [Trying to connect to]
 [<SSID>] (centered)
-|
-V
+  |
+  V
 [Timer Screen]
 - Start (SHORT press when selected)
 - Stop (SHORT press when selected)
 - Reset (SHORT press when selected)
 - Action row is shown near the bottom of the screen.
-|
+  |
 "Encoder Long Press"
-|
-V
+  |
+  V
 [Edit Timer Menu]
 - Timer Settings -> [Timer Settings Menu]
 - Save Profile -> [Save Profile Menu]
@@ -38,7 +40,8 @@ V
 - Off Time Unit
 - Number of Cycles
 - Trigger (Rise/Fall)
-- Exit -> return to [Edit Timer Menu]
+- Exit -> return to [Timer Screen]
+- PIN_KEY0 MEDIUM press -> return to [Timer Screen]
 
 [Save Profile Menu]
 - Profile field input (alphanumeric, fixed positions)
@@ -76,25 +79,47 @@ V
 - [Cancel WiFi Manager]
 - Cancel WiFi Manager -> sets WiFi Disabled/Ignore flag and returns to [Timer Screen] without restart
 ```
-======= Field Input =======
+# ======= Event Handling =======
+These `build_flags` triggers events.
+```
+ ENCODER_SHORT_PRESS_MS=50
+ ENCODER_MEDIUM_PRESS_MS=1500
+ ENCODER_LONG_PRESS_MS=3000
+ BUTTON_SHORT_PRESS_MS=50
+ BUTTON_MEDIUM_PRESS_MS=1500
+ BUTTON_LONG_PRESS_MS=3000
+```
+## Event Handling should be as follows:
+Every press shorter than `XX_SHORT_PRESS_MS` is considered switch-bouncing or noice!
 
-Field input behavior:
+Presses between `XX_SHORT_PRESS_MS` and `XX_MEDIUM_PRESS_MS` triggers the `XX_SHORT_EVENT`
+
+Presses between `XX_MEDIUM_PRESS_MS` and `XX_LONG_PRESS_MS` triggers the `XX_MEDIUM_EVENT`
+
+Presses equal or longer than `XX_LONG_PRESS_MS` triggers the `XX_LONG_EVENT` and triggers imediatly after the time has passed. It does not wait for the button release!
+
+A `BUTTON_MEDIUM_EVENT` has in all menu's the same effect as selecting `Exit` in the menu's.
+
+# ======= Field Input =======
+
+## Field Input behavior:
 - Start at the left-most position.
 - Rotating the encoder changes the token at the current cursor position.
-- SHORT press confirms the current position and moves to the next position.
-- SHORT press at the last position finalizes input and automatically returns to the previous menu.
-- PIN_KEY0 moves 1 position to the left (duration does not matter)
+- SHORT press moves the cursor to the next position. At the last position, SHORT press does nothing (cursor stays).
+- ENCODER MEDIUM or LONG press at any position saves the field value and returns to the previous menu.
+- PIN_KEY0 SHORT press moves the cursor 1 position to the left. At the first (left-most) position, exits without saving.
+- PIN_KEY0 MEDIUM or LONG press saves the field value and exits.
 
-Generic field input parameters:
+## Generic field input parameters:
 - fieldName
 - positionCount
 - tokenList
 
-Token lists:
+### Token lists:
 - Numeric: 1,2,3,4,5,6,7,8,9,0
 - Alphanumeric: A,a,B,b,C,c,...,Y,y,Z,z,-,1,2,3,4,5,6,7,8,9,0
 - Special: ms, s, Min
 
-Status output countdown:
+## Status output countdown:
 - Format is MMM:SS while running/paused.
 - Idle placeholder is ---:--.
