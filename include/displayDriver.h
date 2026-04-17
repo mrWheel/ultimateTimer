@@ -1,8 +1,9 @@
-/*** Last Changed: 2026-04-17 - 10:13 ***/
+/*** Last Changed: 2026-04-17 - 10:25 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
 #include <Arduino.h>
+#include <string>
 #include "timerTypes.h"
 #include "colorSettings.h"
 
@@ -22,19 +23,19 @@ void displayDrawNumberEditor(const char* label, uint32_t value, const char* unit
 void displayDrawEnumEditor(const char* label, const char* valueLabel);
 
 //--- Draw text input editor
-void displayDrawTextInput(const char* title, const String& textValue, const String& currentToken);
+void displayDrawTextInput(const char* title, const std::string& textValue, const std::string& currentToken);
 
 //--- Draw generic field input screen
-void displayDrawFieldInput(const char* title, const char* fieldName, const String& fieldValue, int cursorIndex, const String& prevToken, const String& currentToken, const String& nextToken);
+void displayDrawFieldInput(const char* title, const char* fieldName, const std::string& fieldValue, int cursorIndex, const std::string& prevToken, const std::string& currentToken, const std::string& nextToken);
 
 //--- Draw message screen
 void displayDrawMessage(const char* title, const char* message);
 
 //--- Draw centered WiFi portal info screen
-void displayDrawWifiPortalScreen(const String& line1, const String& line2, const String& line3, const String& line4);
+void displayDrawWifiPortalScreen(const std::string& line1, const std::string& line2, const std::string& line3, const std::string& line4);
 
 //--- Draw centered startup connection screen
-void displayDrawStartupConnectionScreen(const String& line1, const String& line2);
+void displayDrawStartupConnectionScreen(const std::string& line1, const std::string& line2);
 
 //--- Draw color palette test pattern
 void displayDrawTestColorPattern();

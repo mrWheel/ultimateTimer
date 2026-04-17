@@ -1,8 +1,9 @@
-/*** Last Changed: 2026-04-17 - 10:13 ***/
+/*** Last Changed: 2026-04-17 - 10:25 ***/
 #ifndef UI_MENU_H
 #define UI_MENU_H
 
 #include <Arduino.h>
+#include <string>
 
 //--- Initialize UI menu
 void uiMenuInit();
@@ -11,6 +12,6 @@ void uiMenuInit();
 void uiMenuUpdate();
 
 //--- Request short status message
-void uiMenuShowTransientMessage(const String& message);
+void uiMenuShowTransientMessage(const std::string& message);
 
 #endif

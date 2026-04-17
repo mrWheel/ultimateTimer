@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 09:47 ***/
+/*** Last Changed: 2026-04-17 - 10:25 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -15,11 +15,13 @@
 #include "appConfig.h"
 
 #include <WiFi.h>
+#include <cstdio>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <string>
 
-const char* PROG_VERSION = "v1.0.8";
+const char* PROG_VERSION = "v1.0.9";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -200,9 +202,11 @@ static bool handleWifiCredentialResetHold()
   {
     uint32_t remainingMs = (elapsedMs < WIFI_CREDENTIAL_RESET_HOLD_MS) ? (WIFI_CREDENTIAL_RESET_HOLD_MS - elapsedMs) : 0;
     uint32_t remainingSeconds = (remainingMs + 999UL) / 1000UL;
-    String message = String("Hold ") + String(remainingSeconds) + String("s to erase WiFi");
+    char messageBuffer[48];
 
-    displayDrawMessage("WiFi Reset", message.c_str());
+    snprintf(messageBuffer, sizeof(messageBuffer), "Hold %lus to erase WiFi", static_cast<unsigned long>(remainingSeconds));
+
+    displayDrawMessage("WiFi Reset", messageBuffer);
     wifiResetLastUiUpdateMs = millis();
   }
 
@@ -230,12 +234,12 @@ static bool handleWifiCredentialResetHold()
 static void showStartupWifiConnectionMessage()
 {
   WifiSettings wifiSettings;
-  String ssid;
+  std::string ssid;
 
   settingsStoreLoadWifiSettings(wifiSettings);
-  ssid = wifiSettings.staSsid;
+  ssid = wifiSettings.staSsid.c_str();
 
-  if (ssid.isEmpty())
+  if (ssid.empty())
   {
     ssid = "<SSID>";
   }

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 10:13 ***/
+/*** Last Changed: 2026-04-17 - 10:25 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "displayDriver.h"
@@ -9,7 +9,9 @@
 #include "WiFiManagerExt.h"
 
 #include <WiFi.h>
+#include <cstdlib>
 #include <esp_log.h>
+#include <string>
 
 //--- Main menu item identifiers
 enum MainMenuItem
@@ -110,29 +112,29 @@ static const String systemSettingsMenuItems[] =
         "Exit"};
 
 //--- Numeric field tokens
-static const String numericTokens[] =
+static const char* numericTokens[] =
     {
         "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
 
 //--- Alphanumeric field tokens
-static const String alphaNumericTokens[] =
+static const char* alphaNumericTokens[] =
     {
         "A", "a", "B", "b", "C", "c", "D", "d", "E", "e", "F", "f", "G", "g", "H", "h", "I", "i", "J", "j", "K", "k", "L", "l", "M", "m",
         "N", "n", "O", "o", "P", "p", "Q", "q", "R", "r", "S", "s", "T", "t", "U", "u", "V", "v", "W", "w", "X", "x", "Y", "y", "Z", "z",
         "-", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
 
 //--- Time unit field tokens
-static const String timeUnitTokens[] =
+static const char* timeUnitTokens[] =
     {
         "ms", "s", "Min"};
 
 //--- Trigger edge field tokens
-static const String triggerEdgeTokens[] =
+static const char* triggerEdgeTokens[] =
     {
         "Falling", "Rising"};
 
 //--- Yes/No field tokens
-static const String yesNoTokens[] =
+static const char* yesNoTokens[] =
     {
         "Y", "N"};
 
@@ -160,9 +162,9 @@ static int profileFirstVisibleIndex = 0;
 static String pendingDeleteProfileName = "";
 
 //--- Field input state
-static String fieldInputTitle = "Field Input";
-static String fieldInputName = "Field";
-static const String* fieldInputTokenList = nullptr;
+static std::string fieldInputTitle = "Field Input";
+static std::string fieldInputName = "Field";
+static const char** fieldInputTokenList = nullptr;
 static int fieldInputTokenCount = 0;
 static int fieldInputPositionCount = 0;
 static int fieldInputCursorPosition = 0;
@@ -171,8 +173,8 @@ static FieldInputTarget fieldInputTarget = FIELD_INPUT_TARGET_NONE;
 static UiScreen fieldInputReturnScreen = UI_SCREEN_MAIN_MENU;
 
 //--- Transient message
-static String transientTitle = "Message";
-static String transientMessage = "";
+static std::string transientTitle = "Message";
+static std::string transientMessage = "";
 static uint32_t transientMessageUntilMs = 0;
 
 //--- Status refresh timing
@@ -216,7 +218,7 @@ static void handleWifiPortalScreen(EncoderEvent encoderEvent);
 static void handleProfileList(EncoderEvent encoderEvent);
 
 //--- Open generic field input
-static void openFieldInput(const String& title, const String& fieldName, int positionCount, const String tokens[], int tokenCount, FieldInputTarget target, UiScreen returnScreen, const String& initialValue);
+static void openFieldInput(const std::string& title, const std::string& fieldName, int positionCount, const char* tokens[], int tokenCount, FieldInputTarget target, UiScreen returnScreen, const std::string& initialValue);
 
 //--- Handle generic field input
 static void handleFieldInput(EncoderEvent encoderEvent);
@@ -225,13 +227,13 @@ static void handleFieldInput(EncoderEvent encoderEvent);
 static void applyFieldInputAndReturn();
 
 //--- Build current field input text
-static String buildFieldInputValue();
+static std::string buildFieldInputValue();
 
 //--- Find token index by value
-static int findTokenIndex(const String tokens[], int tokenCount, const String& tokenValue);
+static int findTokenIndex(const char* tokens[], int tokenCount, const std::string& tokenValue);
 
 //--- Build zero-padded numeric value with fixed width
-static String buildFixedWidthNumber(uint32_t value, int width);
+static std::string buildFixedWidthNumber(uint32_t value, int width);
 
 //--- Refresh profile list and append Exit entry
 static void refreshProfileListWithExit();
@@ -243,7 +245,7 @@ static void commitSettings(const AppSettings& settings);
 static void logActiveScreen(const char* screenName);
 
 //--- Build readable AP SSID lines for portal info screen
-static void buildPortalApLines(const String& apSsid, String& line1, String& line2);
+static void buildPortalApLines(const std::string& apSsid, std::string& line1, std::string& line2);
 
 //--- Get first visible system settings item
 static int getFirstVisibleSystemSettingsItem();
@@ -255,9 +257,9 @@ static const char* encoderEventToLabel(EncoderEvent event);
 static const char* uiScreenToLabel(UiScreen screen);
 
 //--- Build current field input text
-static String buildFieldInputValue()
+static std::string buildFieldInputValue()
 {
-  String fieldValue = "";
+  std::string fieldValue = "";
 
   for (int position = 0; position < fieldInputPositionCount; position++)
   {
@@ -269,11 +271,11 @@ static String buildFieldInputValue()
 } //   buildFieldInputValue()
 
 //--- Find token index by value
-static int findTokenIndex(const String tokens[], int tokenCount, const String& tokenValue)
+static int findTokenIndex(const char* tokens[], int tokenCount, const std::string& tokenValue)
 {
   for (int tokenIndex = 0; tokenIndex < tokenCount; tokenIndex++)
   {
-    if (tokens[tokenIndex] == tokenValue)
+    if (tokenValue == tokens[tokenIndex])
     {
       return tokenIndex;
     }
@@ -284,19 +286,19 @@ static int findTokenIndex(const String tokens[], int tokenCount, const String& t
 } //   findTokenIndex()
 
 //--- Build zero-padded numeric value with fixed width
-static String buildFixedWidthNumber(uint32_t value, int width)
+static std::string buildFixedWidthNumber(uint32_t value, int width)
 {
   char valueBuffer[20];
   char formatBuffer[10];
-  String paddedValue;
+  std::string paddedValue;
 
   snprintf(formatBuffer, sizeof(formatBuffer), "%%0%du", width);
   snprintf(valueBuffer, sizeof(valueBuffer), formatBuffer, static_cast<unsigned long>(value));
-  paddedValue = String(valueBuffer);
+  paddedValue = valueBuffer;
 
   if (static_cast<int>(paddedValue.length()) > width)
   {
-    paddedValue = paddedValue.substring(paddedValue.length() - width);
+    paddedValue = paddedValue.substr(paddedValue.length() - width);
   }
 
   return paddedValue;
@@ -304,7 +306,7 @@ static String buildFixedWidthNumber(uint32_t value, int width)
 } //   buildFixedWidthNumber()
 
 //--- Open generic field input
-static void openFieldInput(const String& title, const String& fieldName, int positionCount, const String tokens[], int tokenCount, FieldInputTarget target, UiScreen returnScreen, const String& initialValue)
+static void openFieldInput(const std::string& title, const std::string& fieldName, int positionCount, const char* tokens[], int tokenCount, FieldInputTarget target, UiScreen returnScreen, const std::string& initialValue)
 {
   fieldInputTitle = title;
   fieldInputName = fieldName;
@@ -327,7 +329,7 @@ static void openFieldInput(const String& title, const String& fieldName, int pos
 
   if (fieldInputPositionCount > 0)
   {
-    int tokenLength = static_cast<int>(tokens[0].length());
+    int tokenLength = static_cast<int>(strlen(tokens[0]));
 
     if (tokenLength <= 0)
     {
@@ -337,14 +339,14 @@ static void openFieldInput(const String& title, const String& fieldName, int pos
     for (int position = 0; position < fieldInputPositionCount; position++)
     {
       int startIndex = position * tokenLength;
-      String tokenValue;
+      std::string tokenValue;
 
       if (startIndex >= static_cast<int>(initialValue.length()))
       {
         break;
       }
 
-      tokenValue = initialValue.substring(startIndex, startIndex + tokenLength);
+      tokenValue = initialValue.substr(startIndex, tokenLength);
       fieldInputTokenIndexes[position] = findTokenIndex(tokens, tokenCount, tokenValue);
     }
   }
@@ -359,24 +361,24 @@ static void openFieldInput(const String& title, const String& fieldName, int pos
 static void applyFieldInputAndReturn()
 {
   AppSettings settings = timerGetSettings();
-  String fieldValue = buildFieldInputValue();
+  std::string fieldValue = buildFieldInputValue();
 
   switch (fieldInputTarget)
   {
   case FIELD_INPUT_TARGET_SAVE_PROFILE:
-    while (fieldValue.endsWith("-"))
+    while (!fieldValue.empty() && fieldValue.back() == '-')
     {
-      fieldValue.remove(fieldValue.length() - 1);
+      fieldValue.pop_back();
     }
 
-    if (fieldValue.isEmpty())
+    if (fieldValue.empty())
     {
       uiMenuShowTransientMessage("Empty profile name");
 
       return;
     }
 
-    settings.profileName = fieldValue;
+    settings.profileName = fieldValue.c_str();
 
     if (profileManagerSaveProfile(settings.profileName, settings))
     {
@@ -391,19 +393,19 @@ static void applyFieldInputAndReturn()
     break;
 
   case FIELD_INPUT_TARGET_NEW_PROFILE:
-    while (fieldValue.endsWith("-"))
+    while (!fieldValue.empty() && fieldValue.back() == '-')
     {
-      fieldValue.remove(fieldValue.length() - 1);
+      fieldValue.pop_back();
     }
 
-    if (fieldValue.isEmpty())
+    if (fieldValue.empty())
     {
       uiMenuShowTransientMessage("Empty profile name");
 
       return;
     }
 
-    settings.profileName = fieldValue;
+    settings.profileName = fieldValue.c_str();
 
     if (profileManagerSaveProfile(settings.profileName, settings))
     {
@@ -418,17 +420,17 @@ static void applyFieldInputAndReturn()
     break;
 
   case FIELD_INPUT_TARGET_ON_TIME:
-    settings.onTimeValue = static_cast<uint32_t>(fieldValue.toInt());
+    settings.onTimeValue = static_cast<uint32_t>(strtoul(fieldValue.c_str(), nullptr, 10));
     commitSettings(settings);
     break;
 
   case FIELD_INPUT_TARGET_OFF_TIME:
-    settings.offTimeValue = static_cast<uint32_t>(fieldValue.toInt());
+    settings.offTimeValue = static_cast<uint32_t>(strtoul(fieldValue.c_str(), nullptr, 10));
     commitSettings(settings);
     break;
 
   case FIELD_INPUT_TARGET_REPEAT_COUNT:
-    settings.repeatCount = static_cast<uint32_t>(fieldValue.toInt());
+    settings.repeatCount = static_cast<uint32_t>(strtoul(fieldValue.c_str(), nullptr, 10));
     commitSettings(settings);
     break;
 
@@ -649,7 +651,7 @@ static void openProfileList(ProfileListMode mode)
 //--- Draw current screen
 static void drawCurrentScreen()
 {
-  if (!transientMessage.isEmpty())
+  if (!transientMessage.empty())
   {
     displayDrawMessage(transientTitle.c_str(), transientMessage.c_str());
 
@@ -765,7 +767,7 @@ static void drawCurrentScreen()
 
   case UI_SCREEN_FIELD_INPUT:
   {
-    String fieldValue = buildFieldInputValue();
+    std::string fieldValue = buildFieldInputValue();
     int currentTokenIndex = fieldInputTokenIndexes[fieldInputCursorPosition];
     int prevTokenIndex = currentTokenIndex - 1;
     int nextTokenIndex = currentTokenIndex + 1;
@@ -786,14 +788,14 @@ static void drawCurrentScreen()
 
   case UI_SCREEN_WIFI_MANAGER_PORTAL:
   {
-    String line1;
-    String line2;
-    String line3;
+    std::string line1;
+    std::string line2;
+    std::string line3;
 
-    buildPortalApLines(wifiManagerGetPortalApSsid(), line1, line2);
+    buildPortalApLines(wifiManagerGetPortalApSsid().c_str(), line1, line2);
     line3 = line2;
 
-    if (line3.isEmpty())
+    if (line3.empty())
     {
       line3 = " ";
     }
@@ -897,7 +899,7 @@ static void handleMainMenu(EncoderEvent encoderEvent)
       return;
 
     case MENU_ITEM_SAVE_PROFILE:
-      openFieldInput("Save Profile Menu", "Profile", 8, alphaNumericTokens, sizeof(alphaNumericTokens) / sizeof(alphaNumericTokens[0]), FIELD_INPUT_TARGET_SAVE_PROFILE, UI_SCREEN_MAIN_MENU, settings.profileName);
+      openFieldInput("Save Profile Menu", "Profile", 8, alphaNumericTokens, sizeof(alphaNumericTokens) / sizeof(alphaNumericTokens[0]), FIELD_INPUT_TARGET_SAVE_PROFILE, UI_SCREEN_MAIN_MENU, settings.profileName.c_str());
       return;
 
     case MENU_ITEM_LOAD_PROFILE:
@@ -977,7 +979,7 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
       return;
 
     case TIMER_SETTINGS_ITEM_ON_UNIT:
-      openFieldInput("Timer Settings Menu", "On Unit", 1, timeUnitTokens, sizeof(timeUnitTokens) / sizeof(timeUnitTokens[0]), FIELD_INPUT_TARGET_ON_UNIT, UI_SCREEN_TIMER_SETTINGS_MENU, String(timerGetTimeUnitLabel(settings.onTimeUnit)));
+      openFieldInput("Timer Settings Menu", "On Unit", 1, timeUnitTokens, sizeof(timeUnitTokens) / sizeof(timeUnitTokens[0]), FIELD_INPUT_TARGET_ON_UNIT, UI_SCREEN_TIMER_SETTINGS_MENU, timerGetTimeUnitLabel(settings.onTimeUnit));
       return;
 
     case TIMER_SETTINGS_ITEM_OFF_TIME:
@@ -985,7 +987,7 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
       return;
 
     case TIMER_SETTINGS_ITEM_OFF_UNIT:
-      openFieldInput("Timer Settings Menu", "Off Unit", 1, timeUnitTokens, sizeof(timeUnitTokens) / sizeof(timeUnitTokens[0]), FIELD_INPUT_TARGET_OFF_UNIT, UI_SCREEN_TIMER_SETTINGS_MENU, String(timerGetTimeUnitLabel(settings.offTimeUnit)));
+      openFieldInput("Timer Settings Menu", "Off Unit", 1, timeUnitTokens, sizeof(timeUnitTokens) / sizeof(timeUnitTokens[0]), FIELD_INPUT_TARGET_OFF_UNIT, UI_SCREEN_TIMER_SETTINGS_MENU, timerGetTimeUnitLabel(settings.offTimeUnit));
       return;
 
     case TIMER_SETTINGS_ITEM_REPEAT_COUNT:
@@ -993,7 +995,7 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
       return;
 
     case TIMER_SETTINGS_ITEM_TRIGGER_EDGE:
-      openFieldInput("Timer Settings Menu", "Trigger", 1, triggerEdgeTokens, sizeof(triggerEdgeTokens) / sizeof(triggerEdgeTokens[0]), FIELD_INPUT_TARGET_TRIGGER_EDGE, UI_SCREEN_TIMER_SETTINGS_MENU, String(timerGetTriggerEdgeLabel(settings.triggerEdge)));
+      openFieldInput("Timer Settings Menu", "Trigger", 1, triggerEdgeTokens, sizeof(triggerEdgeTokens) / sizeof(triggerEdgeTokens[0]), FIELD_INPUT_TARGET_TRIGGER_EDGE, UI_SCREEN_TIMER_SETTINGS_MENU, timerGetTriggerEdgeLabel(settings.triggerEdge));
       return;
 
     case TIMER_SETTINGS_ITEM_EXIT:
@@ -1230,7 +1232,7 @@ static void logActiveScreen(const char* screenName)
 } //   logActiveScreen()
 
 //--- Build readable AP SSID lines for portal info screen
-static void buildPortalApLines(const String& apSsid, String& line1, String& line2)
+static void buildPortalApLines(const std::string& apSsid, std::string& line1, std::string& line2)
 {
   const int maxLineLength = 22;
 
@@ -1246,7 +1248,7 @@ static void buildPortalApLines(const String& apSsid, String& line1, String& line
 
   for (int index = maxLineLength; index >= 8; index--)
   {
-    if (apSsid.charAt(index - 1) == '-')
+    if (apSsid[static_cast<size_t>(index - 1)] == '-')
     {
       splitAt = index;
       break;
@@ -1258,12 +1260,12 @@ static void buildPortalApLines(const String& apSsid, String& line1, String& line
     splitAt = maxLineLength;
   }
 
-  line1 = apSsid.substring(0, splitAt);
-  line2 = apSsid.substring(splitAt);
+  line1 = apSsid.substr(0, static_cast<size_t>(splitAt));
+  line2 = apSsid.substr(static_cast<size_t>(splitAt));
 
   if (static_cast<int>(line2.length()) > maxLineLength)
   {
-    line2 = line2.substring(0, maxLineLength - 3) + "...";
+    line2 = line2.substr(0, static_cast<size_t>(maxLineLength - 3)) + "...";
   }
 
 } //   buildPortalApLines()
@@ -1471,7 +1473,7 @@ void uiMenuUpdate()
     break;
   }
 
-  if (currentScreen == UI_SCREEN_STATUS && transientMessage.isEmpty() && nowMs - lastStatusRefreshMs >= statusRefreshIntervalMs)
+  if (currentScreen == UI_SCREEN_STATUS && transientMessage.empty() && nowMs - lastStatusRefreshMs >= statusRefreshIntervalMs)
   {
     drawCurrentScreen();
     lastStatusRefreshMs = nowMs;
@@ -1480,7 +1482,7 @@ void uiMenuUpdate()
 } //   uiMenuUpdate()
 
 //--- Request short status message
-void uiMenuShowTransientMessage(const String& message)
+void uiMenuShowTransientMessage(const std::string& message)
 {
   transientTitle = "Message";
   transientMessage = message;

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 10:13 ***/
+/*** Last Changed: 2026-04-17 - 10:25 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -7,7 +7,9 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
 #include <SPI.h>
+#include <array>
 #include <esp_log.h>
+#include <string>
 #include <string.h>
 
 //--- TFT instance
@@ -28,16 +30,16 @@ static const uint32_t minimumCountdownDisplayMs = 2000UL;
 
 //--- Status screen cache
 static bool statusScreenPrepared = false;
-static String cachedStatusLines[statusLineCount];
+static std::array<std::string, statusLineCount> cachedStatusLines;
 
 //--- Draw a status tile
-static void drawStatusTile(int x, int y, int w, int h, const char* label, const String& value);
+static void drawStatusTile(int x, int y, int w, int h, const char* label, const std::string& value);
 
 //--- Draw status action buttons
 static void drawStatusActionButtons(int statusActionIndex);
 
 //--- Format remaining duration text from milliseconds
-static String formatRemainingMs(uint32_t remainingMs);
+static std::string formatRemainingMs(uint32_t remainingMs);
 
 //--- Invalidate status screen cache
 static void invalidateStatusScreenCache();
@@ -46,7 +48,7 @@ static void invalidateStatusScreenCache();
 static void drawHeader(const char* title);
 
 //--- Draw centered single line text
-static void drawCenteredLine(const String& lineText, int y, uint16_t textColor, uint16_t backgroundColor);
+static void drawCenteredLine(const std::string& lineText, int y, uint16_t textColor, uint16_t backgroundColor);
 
 //--- Blend two RGB565 colors by 8-bit factor
 static uint16_t blendRgb565(uint16_t darkColor, uint16_t lightColor, uint8_t blendFactor);
@@ -127,18 +129,21 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     statusScreenPrepared = true;
   }
 
-  String stateValue = timerGetStateLabel(runtimeStatus.state);
-  String profileValue = settings.profileName;
-  String nextStatusLines[statusLineCount];
+  char buffer[32];
+  std::string stateValue = timerGetStateLabel(runtimeStatus.state);
+  std::string profileValue = settings.profileName.c_str();
+  std::array<std::string, statusLineCount> nextStatusLines;
 
-  if (profileValue.isEmpty())
+  if (profileValue.empty())
   {
     profileValue = "-";
   }
 
-  nextStatusLines[0] = stateValue + String("|") + profileValue;
-  nextStatusLines[1] = String(settings.onTimeValue) + " " + String(timerGetTimeUnitLabel(settings.onTimeUnit));
-  nextStatusLines[2] = String(settings.offTimeValue) + " " + String(timerGetTimeUnitLabel(settings.offTimeUnit));
+  nextStatusLines[0] = stateValue + "|" + profileValue;
+  snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.onTimeValue), timerGetTimeUnitLabel(settings.onTimeUnit));
+  nextStatusLines[1] = buffer;
+  snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.offTimeValue), timerGetTimeUnitLabel(settings.offTimeUnit));
+  nextStatusLines[2] = buffer;
 
   uint32_t remainingMs = 0;
 
@@ -147,7 +152,7 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     remainingMs = runtimeStatus.currentPhaseDurationMs - runtimeStatus.currentPhaseElapsedMs;
   }
 
-  String outputValue = runtimeStatus.outputActive ? "ON" : "OFF";
+  std::string outputValue = runtimeStatus.outputActive ? "ON" : "OFF";
 
   if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
   {
@@ -183,14 +188,17 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
 
   if (runtimeStatus.totalCycles == 0)
   {
-    nextStatusLines[4] = String(displayCycle) + " / Inv.";
+    snprintf(buffer, sizeof(buffer), "%lu / Inv.", static_cast<unsigned long>(displayCycle));
+    nextStatusLines[4] = buffer;
   }
   else
   {
-    nextStatusLines[4] = String(displayCycle) + "/" + String(runtimeStatus.totalCycles);
+    snprintf(buffer, sizeof(buffer), "%lu/%lu", static_cast<unsigned long>(displayCycle), static_cast<unsigned long>(runtimeStatus.totalCycles));
+    nextStatusLines[4] = buffer;
   }
 
-  nextStatusLines[5] = String("A:") + String(statusActionIndex);
+  snprintf(buffer, sizeof(buffer), "A:%d", statusActionIndex);
+  nextStatusLines[5] = buffer;
 
   for (int lineIndex = 0; lineIndex < statusLineCount; lineIndex++)
   {
@@ -212,7 +220,7 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
       drawStatusTile(col1X, tileStartY, fullW, tileH, "STATE", stateValue);
 
       tft.setTextSize(2);
-      tft.getTextBounds(profileValue, 0, 0, &textX1, &textY1, &textWidth, &textHeight);
+      tft.getTextBounds(profileValue.c_str(), 0, 0, &textX1, &textY1, &textWidth, &textHeight);
       profileX = col1X + fullW - static_cast<int>(textWidth) - 6;
 
       if (profileX < col1X + 100)
@@ -222,7 +230,7 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
 
       tft.setTextColor(getUiSelectedTextColor(), getUiSelectedFillColor());
       tft.setCursor(profileX, tileStartY + 14);
-      tft.print(profileValue);
+      tft.print(profileValue.c_str());
       break;
     }
 
@@ -350,7 +358,7 @@ void displayDrawEnumEditor(const char* label, const char* valueLabel)
 } //   displayDrawEnumEditor()
 
 //--- Draw text input editor
-void displayDrawTextInput(const char* title, const String& textValue, const String& currentToken)
+void displayDrawTextInput(const char* title, const std::string& textValue, const std::string& currentToken)
 {
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
@@ -364,13 +372,13 @@ void displayDrawTextInput(const char* title, const String& textValue, const Stri
 
   tft.setTextColor(ST77XX_GREEN);
   tft.setCursor(6, 75);
-  tft.print(textValue);
+  tft.print(textValue.c_str());
 
   tft.setTextColor(getUiAccentColor());
   tft.setTextSize(3);
   tft.setCursor(6, 140);
   tft.print("[");
-  tft.print(currentToken);
+  tft.print(currentToken.c_str());
   tft.print("]");
 
   tft.setTextColor(ST77XX_WHITE);
@@ -381,7 +389,7 @@ void displayDrawTextInput(const char* title, const String& textValue, const Stri
 } //   displayDrawTextInput()
 
 //--- Draw generic field input screen
-void displayDrawFieldInput(const char* title, const char* fieldName, const String& fieldValue, int cursorIndex, const String& prevToken, const String& currentToken, const String& nextToken)
+void displayDrawFieldInput(const char* title, const char* fieldName, const std::string& fieldValue, int cursorIndex, const std::string& prevToken, const std::string& currentToken, const std::string& nextToken)
 {
   //--- Per colorSettings.md: PANEL_COLOR() for fills/borders, ST77XX_BLACK for readable text.
   uint16_t tokenCurrentColor = PANEL_COLOR(0x07E0);
@@ -402,9 +410,9 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
   const int tile2H = 44;
   const int tile2Y = 156;
 
-  String valueText = String("[") + fieldValue + String("]");
-  String leftTokenText = prevToken + String(" < ");
-  String rightTokenText = String(" > ") + nextToken;
+  std::string valueText = "[" + fieldValue + "]";
+  std::string leftTokenText = prevToken + " < ";
+  std::string rightTokenText = " > " + nextToken;
   int16_t textX1;
   int16_t textY1;
   uint16_t textW;
@@ -432,7 +440,7 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
   tft.print(fieldName);
 
   tft.setTextSize(2);
-  tft.getTextBounds(valueText, 0, 0, &textX1, &textY1, &textW, &textH);
+  tft.getTextBounds(valueText.c_str(), 0, 0, &textX1, &textY1, &textW, &textH);
   valueX = tileX + ((tileW - static_cast<int>(textW)) / 2);
 
   if (valueX < tileX + 4)
@@ -452,7 +460,7 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
 
   tft.setTextColor(tileValueColor, tileFillColor);
   tft.setCursor(valueX, tile1Y + 41);
-  tft.print(valueText);
+  tft.print(valueText.c_str());
 
   if (cursorIndex >= 0)
   {
@@ -472,9 +480,9 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
   tft.print("SELECT");
 
   tft.setTextSize(2);
-  tft.getTextBounds(leftTokenText, 0, 0, &textX1, &textY1, &leftTokenW, &textH);
-  tft.getTextBounds(currentToken, 0, 0, &textX1, &textY1, &currentTokenW, &textH);
-  tft.getTextBounds(rightTokenText, 0, 0, &textX1, &textY1, &rightTokenW, &textH);
+  tft.getTextBounds(leftTokenText.c_str(), 0, 0, &textX1, &textY1, &leftTokenW, &textH);
+  tft.getTextBounds(currentToken.c_str(), 0, 0, &textX1, &textY1, &currentTokenW, &textH);
+  tft.getTextBounds(rightTokenText.c_str(), 0, 0, &textX1, &textY1, &rightTokenW, &textH);
 
   textW = leftTokenW + currentTokenW + rightTokenW;
   tokenX = tileX + ((tileW - static_cast<int>(textW)) / 2);
@@ -487,19 +495,19 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
   currentTokenY = tile2Y + 24;
   tft.setCursor(tokenX, currentTokenY);
   tft.setTextColor(tokenNeighborColor, tileFillColor);
-  tft.print(leftTokenText);
+  tft.print(leftTokenText.c_str());
   currentTokenX = tokenX + static_cast<int>(leftTokenW);
 
   tft.setTextColor(tokenCurrentColor, tileFillColor);
   tft.setCursor(currentTokenX, currentTokenY);
-  tft.print(currentToken);
+  tft.print(currentToken.c_str());
   //--- Pseudo-bold effect for current token on bitmap font.
   tft.setCursor(currentTokenX + 1, currentTokenY);
-  tft.print(currentToken);
+  tft.print(currentToken.c_str());
 
   tft.setTextColor(tokenNeighborColor, tileFillColor);
   tft.setCursor(currentTokenX + static_cast<int>(currentTokenW), currentTokenY);
-  tft.print(rightTokenText);
+  tft.print(rightTokenText.c_str());
 
   tft.setTextColor(ST77XX_BLACK);
   tft.setTextSize(2);
@@ -523,7 +531,7 @@ void displayDrawMessage(const char* title, const char* message)
 } //   displayDrawMessage()
 
 //--- Draw centered WiFi portal info screen
-void displayDrawWifiPortalScreen(const String& line1, const String& line2, const String& line3, const String& line4)
+void displayDrawWifiPortalScreen(const std::string& line1, const std::string& line2, const std::string& line3, const std::string& line4)
 {
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
@@ -539,7 +547,7 @@ void displayDrawWifiPortalScreen(const String& line1, const String& line2, const
 } //   displayDrawWifiPortalScreen()
 
 //--- Draw centered startup connection screen
-void displayDrawStartupConnectionScreen(const String& line1, const String& line2)
+void displayDrawStartupConnectionScreen(const std::string& line1, const std::string& line2)
 {
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
@@ -699,7 +707,7 @@ static void drawHeader(const char* title)
 } //   drawHeader()
 
 //--- Draw centered single line text
-static void drawCenteredLine(const String& lineText, int y, uint16_t textColor, uint16_t backgroundColor)
+static void drawCenteredLine(const std::string& lineText, int y, uint16_t textColor, uint16_t backgroundColor)
 {
   int16_t x1;
   int16_t y1;
@@ -707,7 +715,7 @@ static void drawCenteredLine(const String& lineText, int y, uint16_t textColor, 
   uint16_t height;
   int cursorX;
 
-  tft.getTextBounds(lineText, 0, 0, &x1, &y1, &width, &height);
+  tft.getTextBounds(lineText.c_str(), 0, 0, &x1, &y1, &width, &height);
   cursorX = (tft.width() - static_cast<int>(width)) / 2;
 
   if (cursorX < 0)
@@ -717,12 +725,12 @@ static void drawCenteredLine(const String& lineText, int y, uint16_t textColor, 
 
   tft.setTextColor(textColor, backgroundColor);
   tft.setCursor(cursorX, y);
-  tft.print(lineText);
+  tft.print(lineText.c_str());
 
 } //   drawCenteredLine()
 
 //--- Draw a status tile
-static void drawStatusTile(int x, int y, int w, int h, const char* label, const String& value)
+static void drawStatusTile(int x, int y, int w, int h, const char* label, const std::string& value)
 {
   uint16_t tileFillColor = getUiSelectedFillColor();
   uint16_t tileBorderColor = getUiSelectedBorderColor();
@@ -740,7 +748,7 @@ static void drawStatusTile(int x, int y, int w, int h, const char* label, const 
   tft.setTextSize(2);
   tft.setTextColor(tileValueColor, tileFillColor);
   tft.setCursor(x + 4, y + 14);
-  tft.print(value);
+  tft.print(value.c_str());
 
 } //   drawStatusTile()
 
@@ -802,7 +810,7 @@ static void invalidateStatusScreenCache()
 } //   invalidateStatusScreenCache()
 
 //--- Format remaining duration text from milliseconds
-static String formatRemainingMs(uint32_t remainingMs)
+static std::string formatRemainingMs(uint32_t remainingMs)
 {
   uint32_t totalSeconds = remainingMs / 1000UL;
   uint32_t minutes = totalSeconds / 60UL;
@@ -816,7 +824,7 @@ static String formatRemainingMs(uint32_t remainingMs)
 
   snprintf(buffer, sizeof(buffer), "%03lu:%02lu", static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
 
-  return String(buffer);
+  return std::string(buffer);
 
 } //   formatRemainingMs()
 
