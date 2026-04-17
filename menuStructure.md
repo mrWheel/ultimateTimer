@@ -62,15 +62,16 @@
 - Exit (last item) -> return to [Edit Timer Menu]
 
 [Show System Settings Menu]
-- WiFi SSID (RO, only if WiFi enabled)
-- IP Address (RO, only if WiFi enabled)
-- MAC Address (RO)
-- WiFi Disabled: Yes (RO, only if WiFi disabled)
-- Encoder Order (A-B / B-A)
-- Erase WiFi credentials (Are you sure (Y/N))
-- Start WiFi Manager (clears WiFi Disabled indicator and restarts)
-- Output Polarity (Active High / Active Low)
-- Restart ultimateTimer
+- WiFi SSID (RO display only, cursor skips this item, only shown if WiFi enabled)
+- IP Address (RO display only, cursor skips this item, only shown if WiFi enabled)
+- MAC Address (RO display only, cursor skips this item)
+- WiFi Disabled: Yes (RO display only, cursor skips this item, only shown if WiFi disabled)
+- Encoder Order (A-B / B-A) — SHORT press toggles directly in the list
+- Erase WiFi credentials — opens button screen [No] [Yes]
+- Start WiFi Manager — opens button screen [No] [Yes]; Yes clears WiFi Disabled flag and restarts
+- Output Polarity — opens button screen [High] [Low]
+- Theme Color — opens button screen (2 rows): [Red][Green][Blue] / [Indigo][Violet][Yellow]
+- Restart ultimateTimer — opens button screen [No] [Yes]
 - Exit -> return to [Edit Timer Menu]
 
 [WiFi Manager Started]
@@ -119,6 +120,22 @@ A `BUTTON_MEDIUM_EVENT` has in all menu's the same effect as selecting `Exit` in
 - Numeric: 1,2,3,4,5,6,7,8,9,0
 - Alphanumeric: A,a,B,b,C,c,...,Y,y,Z,z,-,1,2,3,4,5,6,7,8,9,0
 - Special: ms, s, Min
+
+## Button-mode field input:
+When `positionCount == 1` and `tokenCount` is 2–6, the field input renders as a button grid instead of a token scroll.
+- 2–4 options: single row of buttons.
+- 5–6 options: two rows of 3 buttons each.
+- **Selected button (current value):** LIGHT fill (`getUiInactiveFillColor()`) — visually "lit up", with a double inner border.
+- **Unselected buttons:** DARK fill (`getUiSelectedFillColor()`) — visually "off/dimmed".
+- Text colors follow the fill: selected uses `getUiInactiveTextColor()`, unselected uses `getUiSelectedTextColor()`.
+- This is the **opposite** of list-row selection (which uses dark=selected). See colorSettings.md "Two button contexts" for explanation.
+- Encoder LEFT/RIGHT cycles the selection. Encoder/button MEDIUM or LONG press saves and returns.
+- Button SHORT press at cursor position 0 cancels and returns without saving.
+
+### Button token sets used in System Settings:
+- Confirm actions: `[No] [Yes]` (confirmNoYesTokens)
+- Output polarity: `[High] [Low]` (outputPolarityTokens)
+- Theme color: `[Red][Green][Blue]` / `[Indigo][Violet][Yellow]` (themeColorTokens, 6 items → 2 rows)
 
 ## Status output countdown:
 - Format is MMM:SS while running/paused.

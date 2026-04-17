@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 11:02 ***/
+/*** Last Changed: 2026-04-17 - 14:28 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
@@ -9,6 +9,8 @@
 
 //--- Initialize display
 void displayInit();
+void displaySetThemeColorIndex(int index);
+int displayGetThemeColorIndex();
 
 //--- Update status screen
 void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& runtimeStatus, bool wifiConnected, int statusActionIndex);

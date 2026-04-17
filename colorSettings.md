@@ -81,6 +81,44 @@ static const uint16_t idleButtonTextColor     = ST77XX_BLACK;
 | Fill color `PANEL_COLOR(0x2104)` (near-black) | Tile invisible on black background | Use `selectionFillColor` or a clearly different hue |
 | Using raw 0xRRGG for fills without `PANEL_COLOR` | Color looks wrong/inverted | Wrap with `PANEL_COLOR()` |
 
+## Two button contexts — CRITICAL distinction
+
+There are two distinct button contexts in this project with **opposite** fill conventions:
+
+### 1. Navigation action buttons (Timer Screen: Start / Stop / Reset)
+- These are action triggers arranged as a navigation strip.
+- **Active / focused:** `getUiSelectedFillColor()` = `PANEL_COLOR(getDarkColor())` → dark shade visible on screen.
+- **Inactive:** `getUiInactiveFillColor()` = `PANEL_COLOR(getLightColor())` → light shade.
+- Active also gets a **double inner border** (`ST77XX_BLACK` → appears WHITE on inverted panel).
+
+### 2. Choice / toggle buttons (Field Input: Yes/No, High/Low, color picker, etc.)
+- These represent mutually exclusive options (like a hardware selector switch).
+- **Selected option (current value):** `getUiInactiveFillColor()` = **LIGHT shade** — appears "lit up" / glowing.
+- **Unselected options:** `getUiSelectedFillColor()` = **DARK shade** — appears dimmed / off.
+- Selected also gets a **double inner border** (`tileBorderColor`) to reinforce the selection.
+- Text colors are swapped accordingly: selected uses `getUiInactiveTextColor()`, unselected uses `getUiSelectedTextColor()`.
+
+> **Why the inversion?** A physical selector switch lights up the active position. The bright/light shade visually reads as "this is the current choice". The dark shade reads as "this option is off / not chosen". If you use dark=active for choice buttons they look identically dull against each other — the light shade creates the needed "glow" distinction.
+
+> **ST77XX note:** `ST77XX_BLACK` (0x0000) drawn without PANEL_COLOR → panel inverts → appears **WHITE**. Use it for visible inner borders on any fill.
+> `ST77XX_WHITE` (0xFFFF) drawn without PANEL_COLOR → panel inverts → appears **BLACK**. Do NOT use for borders on dark fills — it is invisible.
+
+## Button rendering — code reference
+
+```cpp
+// Choice buttons (Field Input) — light=selected, dark=inactive
+uint16_t selectedFillColor   = getUiInactiveFillColor();   // LIGHT → appears "lit/active"
+uint16_t selectedTextColor   = getUiInactiveTextColor();
+uint16_t unselectedFillColor = getUiSelectedFillColor();   // DARK → appears "dimmed"
+uint16_t unselectedTextColor = getUiSelectedTextColor();
+// + double inner border on selected button for clarity
+
+// Navigation buttons (Timer Screen) — dark=active, light=inactive
+uint16_t fillActive   = getUiSelectedFillColor();           // DARK
+uint16_t fillInactive = getUiInactiveFillColor();           // LIGHT
+// + double inner border (ST77XX_BLACK → white) on active button
+```
+
 ## Color profile rules (active project convention)
 
 Color profiles are defined in `include/colorSettings.h` and use this format:
@@ -106,9 +144,8 @@ Current configured profiles:
 
 - If asked: `text must be red`, use the **first** (dark) variant of `Red`.
 - If asked: `tile must be yellow`, use the **second** (light/background) variant of `Yellow`.
-- For selectable buttons/fields:
-  - first value = **selected/active** color
-  - second value = **not selected/inactive** color
+- For **navigation** action buttons: dark shade = focused/active, light shade = idle.
+- For **choice** toggle buttons: light shade = current selection ("lit"), dark shade = not chosen ("off").
 
 ## Visual text mapping for this inverted panel
 

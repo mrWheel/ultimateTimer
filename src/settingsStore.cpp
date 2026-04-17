@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 14:23 ***/
+/*** Last Changed: 2026-04-17 - 14:28 ***/
 #include "settingsStore.h"
 #include "appConfig.h"
 
@@ -120,3 +120,25 @@ void settingsStoreSaveOutputPolarityHigh(bool activeHigh)
   ESP_LOGI(logTag, "Output polarity activeHigh saved: %s", activeHigh ? "true" : "false");
 
 } //   settingsStoreSaveOutputPolarityHigh()
+
+//--- Load theme color index (0-based, default from THEME_COLOR build flag)
+uint8_t settingsStoreLoadThemeColorIndex()
+{
+#ifdef THEME_COLOR
+  const uint8_t defaultIndex = static_cast<uint8_t>(THEME_COLOR - 1);
+#else
+  const uint8_t defaultIndex = 2U;
+#endif
+
+  return preferences.getUChar("themeClr", defaultIndex);
+
+} //   settingsStoreLoadThemeColorIndex()
+
+//--- Save theme color index
+void settingsStoreSaveThemeColorIndex(uint8_t index)
+{
+  preferences.putUChar("themeClr", index);
+
+  ESP_LOGI(logTag, "Theme color index saved: %u", static_cast<unsigned>(index));
+
+} //   settingsStoreSaveThemeColorIndex()

@@ -1,6 +1,7 @@
-/*** Last Changed: 2026-04-17 - 11:02 ***/
+/*** Last Changed: 2026-04-17 - 14:28 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
+#include "colorSettings.h"
 #include "displayDriver.h"
 #include "encoderInput.h"
 #include "profileManager.h"
@@ -48,8 +49,9 @@ enum SystemSettingsItem
   SYSTEM_SETTINGS_ITEM_ERASE_WIFI = 5,
   SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER = 6,
   SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY = 7,
-  SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER = 8,
-  SYSTEM_SETTINGS_ITEM_EXIT = 9
+  SYSTEM_SETTINGS_ITEM_THEME_COLOR = 8,
+  SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER = 9,
+  SYSTEM_SETTINGS_ITEM_EXIT = 10
 };
 
 //--- Profile list modes
@@ -72,7 +74,11 @@ enum FieldInputTarget
   FIELD_INPUT_TARGET_OFF_UNIT = 7,
   FIELD_INPUT_TARGET_TRIGGER_EDGE = 8,
   FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM = 9,
-  FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM = 10
+  FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM = 10,
+  FIELD_INPUT_TARGET_OUTPUT_POLARITY_SELECT = 11,
+  FIELD_INPUT_TARGET_THEME_COLOR_SELECT = 12,
+  FIELD_INPUT_TARGET_RESTART_CONFIRM = 13,
+  FIELD_INPUT_TARGET_WIFI_MANAGER_CONFIRM = 14
 };
 
 //--- Main menu labels
@@ -108,6 +114,7 @@ static const String systemSettingsMenuItems[] =
         "Erase WiFi credentials",
         "Start WiFi Manager",
         "Output Polarity",
+        "Theme Color",
         "Restart ultimateTimer",
         "Exit"};
 
@@ -137,6 +144,21 @@ static const char* triggerEdgeTokens[] =
 static const char* yesNoTokens[] =
     {
         "Y", "N"};
+
+//--- Confirm (No/Yes) button tokens
+static const char* confirmNoYesTokens[] =
+    {
+        "No", "Yes"};
+
+//--- Output polarity button tokens
+static const char* outputPolarityTokens[] =
+    {
+        "High", "Low"};
+
+//--- Theme color button tokens (must match colorProfiles[] order, indices 0-5)
+static const char* themeColorTokens[] =
+    {
+        "Red", "Green", "Blue", "Indigo", "Violet", "Yellow"};
 
 //--- Maximum field input positions
 static const int maxFieldPositions = 12;
@@ -327,7 +349,11 @@ static void openFieldInput(const std::string& title, const std::string& fieldNam
     fieldInputTokenIndexes[position] = 0;
   }
 
-  if (fieldInputPositionCount > 0)
+  if (fieldInputPositionCount == 1)
+  {
+    fieldInputTokenIndexes[0] = findTokenIndex(tokens, tokenCount, initialValue);
+  }
+  else if (fieldInputPositionCount > 0)
   {
     int tokenLength = static_cast<int>(strlen(tokens[0]));
 
@@ -472,7 +498,7 @@ static void applyFieldInputAndReturn()
     break;
 
   case FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM:
-    if (fieldValue == "Y")
+    if (fieldValue == "Yes")
     {
       settingsStoreEraseWifiCredentials();
       settingsStoreSaveWifiDisabled(true);
@@ -504,6 +530,47 @@ static void applyFieldInputAndReturn()
     }
 
     refreshProfileListWithExit();
+    break;
+
+  case FIELD_INPUT_TARGET_OUTPUT_POLARITY_SELECT:
+  {
+    AppSettings polaritySettings = timerGetSettings();
+
+    polaritySettings.outputPolarityHigh = (fieldValue == "High");
+    settingsStoreSaveOutputPolarityHigh(polaritySettings.outputPolarityHigh);
+    commitSettings(polaritySettings);
+    break;
+  }
+
+  case FIELD_INPUT_TARGET_THEME_COLOR_SELECT:
+    for (int profileIndex = 0; profileIndex < colorProfileCount; profileIndex++)
+    {
+      if (fieldValue == colorProfiles[profileIndex].colorName)
+      {
+        displaySetThemeColorIndex(profileIndex);
+        settingsStoreSaveThemeColorIndex(static_cast<uint8_t>(profileIndex));
+        break;
+      }
+    }
+    break;
+
+  case FIELD_INPUT_TARGET_RESTART_CONFIRM:
+    if (fieldValue == "Yes")
+    {
+      displayDrawMessage("System", "Restarting...");
+      delay(250);
+      ESP.restart();
+    }
+    break;
+
+  case FIELD_INPUT_TARGET_WIFI_MANAGER_CONFIRM:
+    if (fieldValue == "Yes")
+    {
+      settingsStoreSaveWifiDisabled(false);
+      displayDrawMessage("WiFi Manager", "Restarting...");
+      delay(250);
+      ESP.restart();
+    }
     break;
 
   default:
@@ -677,8 +744,8 @@ static void drawCurrentScreen()
 
   case UI_SCREEN_SYSTEM_SETTINGS_MENU:
   {
-    String dynamicSystemSettingsItems[10];
-    int visibleItemLogicalIndexes[10];
+    String dynamicSystemSettingsItems[11];
+    int visibleItemLogicalIndexes[11];
     int visibleItemCount = 0;
     int selectedVisibleIndex = 0;
     int firstVisibleIndex = 0;
@@ -728,11 +795,15 @@ static void drawCurrentScreen()
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[8];
-    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER;
+    dynamicSystemSettingsItems[visibleItemCount] = String("Theme: ") + colorProfiles[displayGetThemeColorIndex()].colorName;
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_THEME_COLOR;
     visibleItemCount++;
 
     dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[9];
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER;
+    visibleItemCount++;
+
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[10];
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_EXIT;
     visibleItemCount++;
 
@@ -1080,36 +1151,39 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
 
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_ERASE_WIFI)
     {
-      openFieldInput("Erase WiFi", "Are you sure (Y/N)", 1, yesNoTokens, sizeof(yesNoTokens) / sizeof(yesNoTokens[0]), FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "N");
+      openFieldInput("Erase WiFi", "Erase credentials?", 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "No");
 
       return;
     }
 
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER)
     {
-      settingsStoreSaveWifiDisabled(false);
-      displayDrawMessage("WiFi Manager", "Restarting...");
-      delay(250);
-      ESP.restart();
+      openFieldInput("WiFi Manager", "Start portal?", 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_WIFI_MANAGER_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "No");
 
       return;
     }
 
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER)
     {
-      displayDrawMessage("System", "Restarting...");
-      delay(250);
-      ESP.restart();
+      openFieldInput("Restart", "Restart timer?", 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_RESTART_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "No");
 
       return;
     }
 
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY)
     {
-      settings.outputPolarityHigh = !settings.outputPolarityHigh;
-      settingsStoreSaveOutputPolarityHigh(settings.outputPolarityHigh);
-      commitSettings(settings);
-      drawCurrentScreen();
+      const char* currentPolarity = settings.outputPolarityHigh ? "High" : "Low";
+
+      openFieldInput("Output Polarity", "Output active", 1, outputPolarityTokens, sizeof(outputPolarityTokens) / sizeof(outputPolarityTokens[0]), FIELD_INPUT_TARGET_OUTPUT_POLARITY_SELECT, UI_SCREEN_SYSTEM_SETTINGS_MENU, currentPolarity);
+
+      return;
+    }
+
+    if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_THEME_COLOR)
+    {
+      const char* currentColorName = colorProfiles[displayGetThemeColorIndex()].colorName;
+
+      openFieldInput("Theme Color", "Select color", 1, themeColorTokens, sizeof(themeColorTokens) / sizeof(themeColorTokens[0]), FIELD_INPUT_TARGET_THEME_COLOR_SELECT, UI_SCREEN_SYSTEM_SETTINGS_MENU, currentColorName);
 
       return;
     }
@@ -1271,15 +1345,10 @@ static void buildPortalApLines(const std::string& apSsid, std::string& line1, st
 
 } //   buildPortalApLines()
 
-//--- Get first visible system settings item
+//--- Get first selectable system settings item (RO display items 0-3 are skipped)
 static int getFirstVisibleSystemSettingsItem()
 {
-  if (!settingsStoreLoadWifiDisabled())
-  {
-    return SYSTEM_SETTINGS_ITEM_WIFI_SSID;
-  }
-
-  return SYSTEM_SETTINGS_ITEM_MAC_ADDRESS;
+  return SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
 
 } //   getFirstVisibleSystemSettingsItem()
 

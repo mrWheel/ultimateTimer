@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 11:02 ***/
+/*** Last Changed: 2026-04-17 - 14:28 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -21,7 +21,7 @@
 #include <freertos/task.h>
 #include <string>
 
-const char* PROG_VERSION = "v1.0.10";
+const char* PROG_VERSION = "v1.0.11";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -115,6 +115,7 @@ static void loadStartupSettings()
 
   activeSettings.outputPolarityHigh = settingsStoreLoadOutputPolarityHigh();
   encoderSetDirectionReversed(settingsStoreLoadEncoderDirectionReversed());
+  displaySetThemeColorIndex(settingsStoreLoadThemeColorIndex());
 
   timerSetSettings(activeSettings);
 

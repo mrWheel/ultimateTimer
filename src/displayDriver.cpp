@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 11:02 ***/
+/*** Last Changed: 2026-04-17 - 14:28 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -19,8 +19,8 @@ static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
 //--- Based on hardware test pattern results, this panel maps colors inverted.
 #define PANEL_COLOR(colorValue) static_cast<uint16_t>((colorValue) ^ 0xFFFFU)
 
-//--- Active UI profile name
-static const char* activeUiColorName = "Blue";
+//--- Active UI color index (0-based index into colorProfiles[])
+static int activeUiColorIndex = 2;
 
 //--- Status screen tile count (4 data tiles + 1 action row)
 static const int statusLineCount = 6;
@@ -55,9 +55,6 @@ static uint16_t blendRgb565(uint16_t darkColor, uint16_t lightColor, uint8_t ble
 
 //--- Resolve visual text color to panel text value
 static uint16_t mapVisualTextColorToPanelColor(VisualTextColor visualTextColor);
-
-//--- Find color profile by name
-static const ColorProfile* findColorProfileByName(const char* colorName);
 
 //--- Get active UI color profile
 static const ColorProfile& getActiveUiColorProfile();
@@ -101,6 +98,23 @@ void displayInit()
   ESP_LOGI("displayDriver", "Display initialized");
 
 } //   displayInit()
+
+//--- Set active UI theme color index
+void displaySetThemeColorIndex(int index)
+{
+  if (index >= 0 && index < colorProfileCount)
+  {
+    activeUiColorIndex = index;
+  }
+
+} //   displaySetThemeColorIndex()
+
+//--- Get active UI theme color index
+int displayGetThemeColorIndex()
+{
+  return activeUiColorIndex;
+
+} //   displayGetThemeColorIndex()
 
 //--- Update status screen
 void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& runtimeStatus, bool wifiConnected, int statusActionIndex)
@@ -393,7 +407,7 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
                            const char* tokenOptions[], int tokenOptionCount, int selectedOptionIndex)
 {
   //--- Per colorSettings.md: PANEL_COLOR() for fills/borders, ST77XX_BLACK for readable text.
-  uint16_t tokenCurrentColor = PANEL_COLOR(0x07E0);
+  uint16_t tokenCurrentColor = ST77XX_BLACK;
   uint16_t tokenNeighborColor = getUiInactiveFillColor();
   uint16_t tileFillColor = getUiSelectedFillColor();
   uint16_t tileBorderColor = getUiSelectedBorderColor();
@@ -402,15 +416,16 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
 
   const int tileX = 3;
   const int tileW = 314;
-  bool useButtonOptions = (cursorIndex == 0) && (tokenOptions != nullptr) && (tokenOptionCount >= 2) && (tokenOptionCount <= 4);
+  bool useButtonOptions = (cursorIndex == 0) && (tokenOptions != nullptr) && (tokenOptionCount >= 2) && (tokenOptionCount <= 6);
+  bool useTwoRowButtons = useButtonOptions && (tokenOptionCount > 4);
 
   //--- Tile 1: field name + value, cursor arrows (higher and roomier)
   const int tile1Y = 30;
   const int tile1H = 84;
 
   //--- Tile 2: token selector fixed near bottom
-  const int tile2H = useButtonOptions ? 70 : 44;
-  const int tile2Y = useButtonOptions ? 130 : 156;
+  const int tile2H = useButtonOptions ? (useTwoRowButtons ? 104 : 70) : 44;
+  const int tile2Y = useButtonOptions ? (useTwoRowButtons ? 116 : 130) : 156;
 
   std::string valueText = "[" + fieldValue + "]";
   std::string leftTokenText = prevToken + " < ";
@@ -484,48 +499,69 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
   if (useButtonOptions)
   {
     const int buttonRowX = tileX + 8;
-    const int buttonRowY = tile2Y + 26;
     const int buttonRowW = tileW - 16;
-    const int buttonH = 32;
+    const int buttonH = 30;
     const int buttonGap = 6;
-    int buttonsWidth = buttonRowW - (buttonGap * (tokenOptionCount - 1));
-    int buttonW = buttonsWidth / tokenOptionCount;
-    uint16_t selectedFillColor = tokenCurrentColor;
-    uint16_t selectedTextColor = ST77XX_BLACK;
-    uint16_t unselectedFillColor = getUiInactiveFillColor();
-    uint16_t unselectedTextColor = getUiInactiveTextColor();
+    int itemsPerRow = useTwoRowButtons ? 3 : tokenOptionCount;
+    int rowCount = useTwoRowButtons ? 2 : 1;
+    int buttonW = (buttonRowW - (buttonGap * (itemsPerRow - 1))) / itemsPerRow;
+    //--- Choice buttons: selected = LIGHT (glowing/lit), unselected = DARK (dimmed)
+    //--- This is intentionally the inverse of list-row selection, which is dark=selected.
+    //--- A lit-up button visually reads as "this is the current choice".
+    uint16_t selectedFillColor = getUiInactiveFillColor();
+    uint16_t selectedTextColor = getUiInactiveTextColor();
+    uint16_t unselectedFillColor = getUiSelectedFillColor();
+    uint16_t unselectedTextColor = getUiSelectedTextColor();
 
     tft.setTextSize(2);
 
-    for (int optionIndex = 0; optionIndex < tokenOptionCount; optionIndex++)
+    for (int row = 0; row < rowCount; row++)
     {
-      int buttonX = buttonRowX + (optionIndex * (buttonW + buttonGap));
-      bool isSelected = (optionIndex == selectedOptionIndex);
-      uint16_t buttonFill = isSelected ? selectedFillColor : unselectedFillColor;
-      uint16_t buttonText = isSelected ? selectedTextColor : unselectedTextColor;
-      const char* optionLabel = tokenOptions[optionIndex];
-      int16_t buttonTextX;
-      int16_t buttonTextY;
-      uint16_t buttonTextW;
-      uint16_t buttonTextH;
-      int labelX;
-      int labelY;
+      int buttonRowY = tile2Y + 26 + (row * (buttonH + buttonGap));
 
-      tft.fillRoundRect(buttonX, buttonRowY, buttonW, buttonH, 5, buttonFill);
-      tft.drawRoundRect(buttonX, buttonRowY, buttonW, buttonH, 5, tileBorderColor);
-
-      tft.getTextBounds(optionLabel, 0, 0, &buttonTextX, &buttonTextY, &buttonTextW, &buttonTextH);
-      labelX = buttonX + ((buttonW - static_cast<int>(buttonTextW)) / 2);
-      labelY = buttonRowY + ((buttonH - static_cast<int>(buttonTextH)) / 2);
-
-      if (labelX < (buttonX + 2))
+      for (int col = 0; col < itemsPerRow; col++)
       {
-        labelX = buttonX + 2;
-      }
+        int optionIndex = row * itemsPerRow + col;
 
-      tft.setTextColor(buttonText, buttonFill);
-      tft.setCursor(labelX, labelY);
-      tft.print(optionLabel);
+        if (optionIndex >= tokenOptionCount)
+        {
+          break;
+        }
+
+        int buttonX = buttonRowX + (col * (buttonW + buttonGap));
+        bool isSelected = (optionIndex == selectedOptionIndex);
+        uint16_t buttonFill = isSelected ? selectedFillColor : unselectedFillColor;
+        uint16_t buttonText = isSelected ? selectedTextColor : unselectedTextColor;
+        const char* optionLabel = tokenOptions[optionIndex];
+        int16_t buttonTextX;
+        int16_t buttonTextY;
+        uint16_t buttonTextW;
+        uint16_t buttonTextH;
+        int labelX;
+        int labelY;
+
+        tft.fillRoundRect(buttonX, buttonRowY, buttonW, buttonH, 5, buttonFill);
+        tft.drawRoundRect(buttonX, buttonRowY, buttonW, buttonH, 5, tileBorderColor);
+
+        if (isSelected)
+        {
+          //--- Extra inner border so the lit button is unambiguous
+          tft.drawRoundRect(buttonX + 1, buttonRowY + 1, buttonW - 2, buttonH - 2, 4, tileBorderColor);
+        }
+
+        tft.getTextBounds(optionLabel, 0, 0, &buttonTextX, &buttonTextY, &buttonTextW, &buttonTextH);
+        labelX = buttonX + ((buttonW - static_cast<int>(buttonTextW)) / 2);
+        labelY = buttonRowY + ((buttonH - static_cast<int>(buttonTextH)) / 2);
+
+        if (labelX < (buttonX + 2))
+        {
+          labelX = buttonX + 2;
+        }
+
+        tft.setTextColor(buttonText, buttonFill);
+        tft.setCursor(labelX, labelY);
+        tft.print(optionLabel);
+      }
     }
   }
   else
@@ -563,7 +599,7 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
 
   tft.setTextColor(ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.setCursor(6, 206);
+  tft.setCursor(6, tile2Y + tile2H + 4);
   if (useButtonOptions)
   {
     tft.print("Turn=Select  Short=Save");
@@ -847,7 +883,8 @@ static void drawStatusActionButtons(int statusActionIndex)
 
     if (isSelected)
     {
-      tft.drawRoundRect(buttonX + 1, buttonY + 1, buttonWidth - 2, buttonHeight - 2, 8, ST77XX_WHITE);
+      //--- Extra inner border: ST77XX_BLACK appears WHITE on this inverted panel
+      tft.drawRoundRect(buttonX + 1, buttonY + 1, buttonWidth - 2, buttonHeight - 2, 8, ST77XX_BLACK);
     }
 
     tft.getTextBounds(labels[buttonIndex], 0, 0, &textX1, &textY1, &textWidth, &textHeight);
@@ -904,29 +941,12 @@ static uint16_t blendRgb565(uint16_t darkColor, uint16_t lightColor, uint8_t ble
 
 } //   blendRgb565()
 
-//--- Find color profile by name
-static const ColorProfile* findColorProfileByName(const char* colorName)
-{
-  for (int index = 0; index < colorProfileCount; index++)
-  {
-    if (strcmp(colorProfiles[index].colorName, colorName) == 0)
-    {
-      return &colorProfiles[index];
-    }
-  }
-
-  return nullptr;
-
-} //   findColorProfileByName()
-
 //--- Get active UI color profile
 static const ColorProfile& getActiveUiColorProfile()
 {
-  const ColorProfile* namedProfile = findColorProfileByName(activeUiColorName);
-
-  if (namedProfile != nullptr)
+  if (activeUiColorIndex >= 0 && activeUiColorIndex < colorProfileCount)
   {
-    return *namedProfile;
+    return colorProfiles[activeUiColorIndex];
   }
 
   return colorProfiles[0];
