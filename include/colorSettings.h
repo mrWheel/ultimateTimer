@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 09:47 ***/
+/*** Last Changed: 2026-04-17 - 10:13 ***/
 #ifndef COLOR_SETTINGS_H
 #define COLOR_SETTINGS_H
 
@@ -30,13 +30,13 @@ struct ColorProfile
 //--- Rule mapping format: ColorName: darkLevel-darkLabelColor, lightLevel-lightLabelColor
 static const ColorProfile colorProfiles[] =
     {
-        {"Rood", 0xF800, 0xFBEF, 1, VISUAL_TEXT_WHITE, 6, VISUAL_TEXT_WHITE, true},
-        {"Groen", 0x07E0, 0x87F0, 1, VISUAL_TEXT_BLACK, 5, VISUAL_TEXT_BLACK, true},
-        {"Blauw", 0x001F, 0x7DFF, 1, VISUAL_TEXT_WHITE, 6, VISUAL_TEXT_WHITE, true},
+        {"Red", 0xF800, 0xFBEF, 1, VISUAL_TEXT_WHITE, 6, VISUAL_TEXT_WHITE, true},
+        {"Green", 0x07E0, 0x87F0, 1, VISUAL_TEXT_BLACK, 5, VISUAL_TEXT_BLACK, true},
+        {"Blue", 0x001F, 0x7DFF, 1, VISUAL_TEXT_WHITE, 6, VISUAL_TEXT_WHITE, true},
         {"Indigo", 0x4810, 0x8A3F, 1, VISUAL_TEXT_WHITE, 6, VISUAL_TEXT_WHITE, true},
         {"Violet", 0x780F, 0xC99F, 1, VISUAL_TEXT_WHITE, 7, VISUAL_TEXT_WHITE, true},
-        {"Geel", 0xFFE0, 0xFFF0, 1, VISUAL_TEXT_BLACK, 5, VISUAL_TEXT_BLACK, true},
-        {"Oranje", 0xFD20, 0xFEC0, 0, VISUAL_TEXT_WHITE, 0, VISUAL_TEXT_WHITE, false}};
+        {"Yellow", 0xFFE0, 0xFFF0, 1, VISUAL_TEXT_BLACK, 5, VISUAL_TEXT_BLACK, true},
+        {"Orange", 0xFD20, 0xFEC0, 0, VISUAL_TEXT_WHITE, 0, VISUAL_TEXT_WHITE, false}};
 
 static const int colorProfileCount = static_cast<int>(sizeof(colorProfiles) / sizeof(colorProfiles[0]));
 

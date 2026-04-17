@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-16 - 14:06 ***/
+/*** Last Changed: 2026-04-17 - 10:13 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "displayDriver.h"
@@ -186,10 +186,10 @@ static void drawCurrentScreen();
 static void openStatusScreen();
 
 //--- Open main menu
-static void openMainMenu();
+static void openMainMenu(bool selectExitItem = false);
 
 //--- Open timer settings menu
-static void openTimerSettingsMenu();
+static void openTimerSettingsMenu(bool selectExitItem = false);
 
 //--- Open system settings menu
 static void openSystemSettingsMenu();
@@ -244,6 +244,9 @@ static void logActiveScreen(const char* screenName);
 
 //--- Build readable AP SSID lines for portal info screen
 static void buildPortalApLines(const String& apSsid, String& line1, String& line2);
+
+//--- Get first visible system settings item
+static int getFirstVisibleSystemSettingsItem();
 
 //--- Convert encoder event to text
 static const char* encoderEventToLabel(EncoderEvent event);
@@ -589,8 +592,10 @@ static void openStatusScreen()
 } //   openStatusScreen()
 
 //--- Open main menu
-static void openMainMenu()
+static void openMainMenu(bool selectExitItem)
 {
+  mainMenuIndex = selectExitItem ? MENU_ITEM_EXIT : 0;
+  mainMenuFirstVisibleIndex = 0;
   currentScreen = UI_SCREEN_MAIN_MENU;
   logActiveScreen("Edit Timer Menu");
   drawCurrentScreen();
@@ -598,8 +603,10 @@ static void openMainMenu()
 } //   openMainMenu()
 
 //--- Open timer settings menu
-static void openTimerSettingsMenu()
+static void openTimerSettingsMenu(bool selectExitItem)
 {
+  timerSettingsIndex = selectExitItem ? TIMER_SETTINGS_ITEM_EXIT : 0;
+  timerSettingsFirstVisibleIndex = 0;
   currentScreen = UI_SCREEN_TIMER_SETTINGS_MENU;
   logActiveScreen("Timer Settings Menu");
   drawCurrentScreen();
@@ -609,7 +616,7 @@ static void openTimerSettingsMenu()
 //--- Open system settings menu
 static void openSystemSettingsMenu()
 {
-  systemSettingsIndex = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
+  systemSettingsIndex = getFirstVisibleSystemSettingsItem();
   currentScreen = UI_SCREEN_SYSTEM_SETTINGS_MENU;
   logActiveScreen("Show System Settings Menu");
   drawCurrentScreen();
@@ -843,7 +850,7 @@ static void handleStatusScreen(EncoderEvent encoderEvent)
   {
     mainMenuIndex = 0;
     mainMenuFirstVisibleIndex = 0;
-    openMainMenu();
+    openMainMenu(false);
 
     return;
   }
@@ -886,7 +893,7 @@ static void handleMainMenu(EncoderEvent encoderEvent)
     switch (mainMenuIndex)
     {
     case MENU_ITEM_TIMER_SETTINGS:
-      openTimerSettingsMenu();
+      openTimerSettingsMenu(false);
       return;
 
     case MENU_ITEM_SAVE_PROFILE:
@@ -940,6 +947,8 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
   const int itemCount = sizeof(timerSettingsMenuItems) / sizeof(timerSettingsMenuItems[0]);
   bool redrawRequired = false;
   AppSettings settings = timerGetSettings();
+  int onTimePositionCount = (settings.onTimeUnit == TIME_UNIT_MS) ? 5 : 3;
+  int offTimePositionCount = (settings.offTimeUnit == TIME_UNIT_MS) ? 5 : 3;
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
@@ -964,7 +973,7 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
     switch (timerSettingsIndex)
     {
     case TIMER_SETTINGS_ITEM_ON_TIME:
-      openFieldInput("Timer Settings Menu", "On Time", 3, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_ON_TIME, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.onTimeValue, 3));
+      openFieldInput("Timer Settings Menu", "On Time", onTimePositionCount, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_ON_TIME, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.onTimeValue, onTimePositionCount));
       return;
 
     case TIMER_SETTINGS_ITEM_ON_UNIT:
@@ -972,7 +981,7 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
       return;
 
     case TIMER_SETTINGS_ITEM_OFF_TIME:
-      openFieldInput("Timer Settings Menu", "Off Time", 3, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_OFF_TIME, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.offTimeValue, 3));
+      openFieldInput("Timer Settings Menu", "Off Time", offTimePositionCount, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_OFF_TIME, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.offTimeValue, offTimePositionCount));
       return;
 
     case TIMER_SETTINGS_ITEM_OFF_UNIT:
@@ -1104,7 +1113,7 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
 
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_EXIT)
     {
-      openMainMenu();
+      openMainMenu(true);
 
       return;
     }
@@ -1148,7 +1157,7 @@ static void handleProfileList(EncoderEvent encoderEvent)
 
     if (profileIndex == itemCount - 1)
     {
-      openMainMenu();
+      openMainMenu(true);
 
       return;
     }
@@ -1258,6 +1267,18 @@ static void buildPortalApLines(const String& apSsid, String& line1, String& line
   }
 
 } //   buildPortalApLines()
+
+//--- Get first visible system settings item
+static int getFirstVisibleSystemSettingsItem()
+{
+  if (!settingsStoreLoadWifiDisabled())
+  {
+    return SYSTEM_SETTINGS_ITEM_WIFI_SSID;
+  }
+
+  return SYSTEM_SETTINGS_ITEM_MAC_ADDRESS;
+
+} //   getFirstVisibleSystemSettingsItem()
 
 //--- Convert encoder event to text
 static const char* encoderEventToLabel(EncoderEvent event)
@@ -1381,7 +1402,7 @@ void uiMenuUpdate()
     if (currentScreen == UI_SCREEN_SYSTEM_SETTINGS_MENU ||
         currentScreen == UI_SCREEN_PROFILE_LIST)
     {
-      openMainMenu();
+      openMainMenu(true);
 
       return;
     }

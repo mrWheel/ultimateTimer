@@ -89,28 +89,28 @@ Color profiles are defined in `include/colorSettings.h` and use this format:
 
 - The first number is the dark/active variant index for that color.
 - The second number is the light/inactive/background variant index for that color.
-- Label color after each number defines the visual text color for that variant (`WIT` or `ZWART`).
-- `Oranje` is currently marked as not used in palette workflows.
+- Label color after each number defines the visual text color for that variant (`WHITE` or `BLACK`).
+- `Orange` is currently marked as not used in palette workflows.
 
 Current configured profiles:
 
-- `Rood: 1-WIT, 6-WIT`
-- `Groen: 1-ZWART, 5-ZWART`
-- `Blauw: 1-WIT, 6-WIT`
-- `Indigo: 1-WIT, 6-WIT`
-- `Violet: 1-WIT, 7-WIT`
-- `Geel: 1-ZWART, 5-ZWART`
-- `Oranje: Niet gebruikt`
+- `Red: 1-WHITE, 6-WHITE`
+- `Green: 1-BLACK, 5-BLACK`
+- `Blue: 1-WHITE, 6-WHITE`
+- `Indigo: 1-WHITE, 6-WHITE`
+- `Violet: 1-WHITE, 7-WHITE`
+- `Yellow: 1-BLACK, 5-BLACK`
+- `Orange: Not used`
 
 ## Request interpretation defaults (from now on)
 
-- If asked: `tekst moet rood`, use the **first** (dark) variant of `Rood`.
-- If asked: `tile moet geel`, use the **second** (light/background) variant of `Geel`.
+- If asked: `text must be red`, use the **first** (dark) variant of `Red`.
+- If asked: `tile must be yellow`, use the **second** (light/background) variant of `Yellow`.
 - For selectable buttons/fields:
-	- first value = **selected/active** color
-	- second value = **not selected/inactive** color
+  - first value = **selected/active** color
+  - second value = **not selected/inactive** color
 
 ## Visual text mapping for this inverted panel
 
-- Visual `WIT` text -> use `ST77XX_BLACK`.
-- Visual `ZWART` text -> use `ST77XX_WHITE`.
+- Visual `WHITE` text -> use `ST77XX_BLACK`.
+- Visual `BLACK` text -> use `ST77XX_WHITE`.

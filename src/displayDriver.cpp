@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 09:47 ***/
+/*** Last Changed: 2026-04-17 - 10:13 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -8,6 +8,7 @@
 #include <Adafruit_ST7789.h>
 #include <SPI.h>
 #include <esp_log.h>
+#include <string.h>
 
 //--- TFT instance
 static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
@@ -16,34 +17,14 @@ static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
 //--- Based on hardware test pattern results, this panel maps colors inverted.
 #define PANEL_COLOR(colorValue) static_cast<uint16_t>((colorValue) ^ 0xFFFFU)
 
-//--- Header colors
-static const uint16_t headerBackgroundColor = PANEL_COLOR(0x001F);
-static const uint16_t headerTextColor = ST77XX_BLACK;
-
-//--- UI accent colors
-//--- Target visual result:
-//--- Selected = blue, Not selected = light gray.
-static const uint16_t selectionFillColor = PANEL_COLOR(0x001F);
-static const uint16_t selectionBorderColor = PANEL_COLOR(0x7DFF);
-static const uint16_t selectionTextColor = ST77XX_BLACK;
-static const uint16_t selectionAccentColor = PANEL_COLOR(0x7DFF);
-static const uint16_t idleButtonFillColor = PANEL_COLOR(0xD69A);
-static const uint16_t idleButtonBorderColor = PANEL_COLOR(0xBDF7);
-
-//--- Keep button text high-contrast regardless of color preset
-static const uint16_t selectedButtonTextColor = ST77XX_BLACK;
-static const uint16_t idleButtonTextColor = ST77XX_BLACK;
-
-//--- Status tile colors
-//--- tileFillColor: same blue as header/selection (proven on this panel).
-//--- tileValueColor: ST77XX_BLACK renders as WHITE on this inverted panel.
-static const uint16_t tileFillColor = PANEL_COLOR(0x001F);
-static const uint16_t tileBorderColor = PANEL_COLOR(0x7DFF);
-static const uint16_t tileLabelColor = PANEL_COLOR(0xBDF7);
-static const uint16_t tileValueColor = ST77XX_BLACK;
+//--- Active UI profile name
+static const char* activeUiColorName = "Blue";
 
 //--- Status screen tile count (4 data tiles + 1 action row)
 static const int statusLineCount = 6;
+
+//--- Minimum phase duration to show countdown in status output
+static const uint32_t minimumCountdownDisplayMs = 2000UL;
 
 //--- Status screen cache
 static bool statusScreenPrepared = false;
@@ -72,6 +53,33 @@ static uint16_t blendRgb565(uint16_t darkColor, uint16_t lightColor, uint8_t ble
 
 //--- Resolve visual text color to panel text value
 static uint16_t mapVisualTextColorToPanelColor(VisualTextColor visualTextColor);
+
+//--- Find color profile by name
+static const ColorProfile* findColorProfileByName(const char* colorName);
+
+//--- Get active UI color profile
+static const ColorProfile& getActiveUiColorProfile();
+
+//--- Get selected fill color for UI elements
+static uint16_t getUiSelectedFillColor();
+
+//--- Get inactive fill color for UI elements
+static uint16_t getUiInactiveFillColor();
+
+//--- Get selected text color for UI elements
+static uint16_t getUiSelectedTextColor();
+
+//--- Get inactive text color for UI elements
+static uint16_t getUiInactiveTextColor();
+
+//--- Get selected border color for UI elements
+static uint16_t getUiSelectedBorderColor();
+
+//--- Get inactive border color for UI elements
+static uint16_t getUiInactiveBorderColor();
+
+//--- Get accent color for UI elements
+static uint16_t getUiAccentColor();
 
 //--- Initialize display
 void displayInit()
@@ -143,8 +151,11 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
 
   if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
   {
-    outputValue += "  ";
-    outputValue += formatRemainingMs(remainingMs);
+    if (runtimeStatus.currentPhaseDurationMs >= minimumCountdownDisplayMs)
+    {
+      outputValue += "  ";
+      outputValue += formatRemainingMs(remainingMs);
+    }
   }
   else
   {
@@ -209,7 +220,7 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
         profileX = col1X + 100;
       }
 
-      tft.setTextColor(ST77XX_BLACK, tileFillColor);
+      tft.setTextColor(getUiSelectedTextColor(), getUiSelectedFillColor());
       tft.setCursor(profileX, tileStartY + 14);
       tft.print(profileValue);
       break;
@@ -265,8 +276,10 @@ void displayDrawListScreen(const char* title, const String items[], size_t itemC
 
     if (itemIndex == selectedIndex)
     {
-      tft.fillRect(0, y, tft.width(), 22, selectionFillColor);
-      tft.setTextColor(selectionTextColor, selectionFillColor);
+      uint16_t selectedFillColor = getUiSelectedFillColor();
+
+      tft.fillRect(0, y, tft.width(), 22, selectedFillColor);
+      tft.setTextColor(getUiSelectedTextColor(), selectedFillColor);
       tft.setCursor(6, y);
       tft.print("> ");
       tft.print(items[itemIndex]);
@@ -300,7 +313,7 @@ void displayDrawNumberEditor(const char* label, uint32_t value, const char* unit
   tft.setCursor(6, 105);
   tft.printf("%lu", static_cast<unsigned long>(value));
 
-  tft.setTextColor(selectionAccentColor);
+  tft.setTextColor(getUiAccentColor());
   tft.setTextSize(2);
   tft.setCursor(6, 170);
   tft.print(unitLabel);
@@ -353,7 +366,7 @@ void displayDrawTextInput(const char* title, const String& textValue, const Stri
   tft.setCursor(6, 75);
   tft.print(textValue);
 
-  tft.setTextColor(selectionAccentColor);
+  tft.setTextColor(getUiAccentColor());
   tft.setTextSize(3);
   tft.setCursor(6, 140);
   tft.print("[");
@@ -371,29 +384,39 @@ void displayDrawTextInput(const char* title, const String& textValue, const Stri
 void displayDrawFieldInput(const char* title, const char* fieldName, const String& fieldValue, int cursorIndex, const String& prevToken, const String& currentToken, const String& nextToken)
 {
   //--- Per colorSettings.md: PANEL_COLOR() for fills/borders, ST77XX_BLACK for readable text.
-  static const uint16_t tokenCurrentColor = PANEL_COLOR(0xF800);
-  static const uint16_t tokenNeighborColor = PANEL_COLOR(0xC618);
+  uint16_t tokenCurrentColor = PANEL_COLOR(0x07E0);
+  uint16_t tokenNeighborColor = getUiInactiveFillColor();
+  uint16_t tileFillColor = getUiSelectedFillColor();
+  uint16_t tileBorderColor = getUiSelectedBorderColor();
+  uint16_t tileLabelColor = getUiAccentColor();
+  uint16_t tileValueColor = getUiSelectedTextColor();
 
   const int tileX = 3;
   const int tileW = 314;
 
   //--- Tile 1: field name + value, cursor arrows (higher and roomier)
   const int tile1Y = 30;
-  const int tile1H = 74;
+  const int tile1H = 84;
 
   //--- Tile 2: token selector fixed near bottom
-  const int tile2H = 36;
-  const int tile2Y = 164;
+  const int tile2H = 44;
+  const int tile2Y = 156;
 
   String valueText = String("[") + fieldValue + String("]");
-  String tokenText = prevToken + String(" < ") + currentToken + String(" > ") + nextToken;
+  String leftTokenText = prevToken + String(" < ");
+  String rightTokenText = String(" > ") + nextToken;
   int16_t textX1;
   int16_t textY1;
   uint16_t textW;
   uint16_t textH;
+  uint16_t leftTokenW;
+  uint16_t currentTokenW;
+  uint16_t rightTokenW;
   int valueX;
   int tokenX;
   int cursorBaseX;
+  int currentTokenX;
+  int currentTokenY;
 
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
@@ -403,9 +426,9 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
   tft.fillRoundRect(tileX, tile1Y, tileW, tile1H, 5, tileFillColor);
   tft.drawRoundRect(tileX, tile1Y, tileW, tile1H, 5, tileBorderColor);
 
-  tft.setTextSize(1);
+  tft.setTextSize(2);
   tft.setTextColor(tileLabelColor, tileFillColor);
-  tft.setCursor(tileX + 4, tile1Y + 3);
+  tft.setCursor(tileX + 6, tile1Y + 5);
   tft.print(fieldName);
 
   tft.setTextSize(2);
@@ -423,19 +446,19 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
   {
     int cursorX = cursorBaseX + (cursorIndex * 12);
     tft.setTextColor(ST77XX_BLACK, tileFillColor);
-    tft.setCursor(cursorX, tile1Y + 18);
+    tft.setCursor(cursorX, tile1Y + 24);
     tft.print("v");
   }
 
-  tft.setTextColor(ST77XX_BLACK, tileFillColor);
-  tft.setCursor(valueX, tile1Y + 35);
+  tft.setTextColor(tileValueColor, tileFillColor);
+  tft.setCursor(valueX, tile1Y + 41);
   tft.print(valueText);
 
   if (cursorIndex >= 0)
   {
     int cursorX = cursorBaseX + (cursorIndex * 12);
     tft.setTextColor(ST77XX_BLACK, tileFillColor);
-    tft.setCursor(cursorX, tile1Y + 54);
+    tft.setCursor(cursorX, tile1Y + 62);
     tft.print("^");
   }
 
@@ -443,13 +466,17 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
   tft.fillRoundRect(tileX, tile2Y, tileW, tile2H, 5, tileFillColor);
   tft.drawRoundRect(tileX, tile2Y, tileW, tile2H, 5, tileBorderColor);
 
-  tft.setTextSize(1);
+  tft.setTextSize(2);
   tft.setTextColor(tileLabelColor, tileFillColor);
-  tft.setCursor(tileX + 4, tile2Y + 3);
+  tft.setCursor(tileX + 6, tile2Y + 5);
   tft.print("SELECT");
 
   tft.setTextSize(2);
-  tft.getTextBounds(tokenText, 0, 0, &textX1, &textY1, &textW, &textH);
+  tft.getTextBounds(leftTokenText, 0, 0, &textX1, &textY1, &leftTokenW, &textH);
+  tft.getTextBounds(currentToken, 0, 0, &textX1, &textY1, &currentTokenW, &textH);
+  tft.getTextBounds(rightTokenText, 0, 0, &textX1, &textY1, &rightTokenW, &textH);
+
+  textW = leftTokenW + currentTokenW + rightTokenW;
   tokenX = tileX + ((tileW - static_cast<int>(textW)) / 2);
 
   if (tokenX < tileX + 4)
@@ -457,13 +484,22 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const Strin
     tokenX = tileX + 4;
   }
 
-  tft.setCursor(tokenX, tile2Y + 14);
+  currentTokenY = tile2Y + 24;
+  tft.setCursor(tokenX, currentTokenY);
   tft.setTextColor(tokenNeighborColor, tileFillColor);
-  tft.print(prevToken + String(" < "));
+  tft.print(leftTokenText);
+  currentTokenX = tokenX + static_cast<int>(leftTokenW);
+
   tft.setTextColor(tokenCurrentColor, tileFillColor);
+  tft.setCursor(currentTokenX, currentTokenY);
   tft.print(currentToken);
+  //--- Pseudo-bold effect for current token on bitmap font.
+  tft.setCursor(currentTokenX + 1, currentTokenY);
+  tft.print(currentToken);
+
   tft.setTextColor(tokenNeighborColor, tileFillColor);
-  tft.print(String(" > ") + nextToken);
+  tft.setCursor(currentTokenX + static_cast<int>(currentTokenW), currentTokenY);
+  tft.print(rightTokenText);
 
   tft.setTextColor(ST77XX_BLACK);
   tft.setTextSize(2);
@@ -498,7 +534,7 @@ void displayDrawWifiPortalScreen(const String& line1, const String& line2, const
   drawCenteredLine(line1, 62, ST77XX_WHITE, ST77XX_BLACK);
   drawCenteredLine(line2, 92, ST77XX_GREEN, ST77XX_BLACK);
   drawCenteredLine(line3, 122, ST77XX_GREEN, ST77XX_BLACK);
-  drawCenteredLine(line4, 186, selectionAccentColor, ST77XX_BLACK);
+  drawCenteredLine(line4, 186, getUiAccentColor(), ST77XX_BLACK);
 
 } //   displayDrawWifiPortalScreen()
 
@@ -649,6 +685,9 @@ void displaySetBacklight(bool enabled)
 //--- Draw screen header
 static void drawHeader(const char* title)
 {
+  uint16_t headerBackgroundColor = getUiSelectedFillColor();
+  uint16_t headerTextColor = getUiSelectedTextColor();
+
   tft.fillRect(0, 0, tft.width(), 24, headerBackgroundColor);
   tft.setCursor(6, 4);
   tft.setTextColor(headerTextColor, headerBackgroundColor);
@@ -685,6 +724,11 @@ static void drawCenteredLine(const String& lineText, int y, uint16_t textColor, 
 //--- Draw a status tile
 static void drawStatusTile(int x, int y, int w, int h, const char* label, const String& value)
 {
+  uint16_t tileFillColor = getUiSelectedFillColor();
+  uint16_t tileBorderColor = getUiSelectedBorderColor();
+  uint16_t tileLabelColor = getUiAccentColor();
+  uint16_t tileValueColor = getUiSelectedTextColor();
+
   tft.fillRoundRect(x, y, w, h, 5, tileFillColor);
   tft.drawRoundRect(x, y, w, h, 5, tileBorderColor);
 
@@ -721,9 +765,9 @@ static void drawStatusActionButtons(int statusActionIndex)
   {
     int buttonX = firstButtonX + (buttonIndex * (buttonWidth + buttonSpacing));
     bool isSelected = (buttonIndex == statusActionIndex);
-    uint16_t fillColor = isSelected ? selectionFillColor : idleButtonFillColor;
-    uint16_t borderColor = isSelected ? selectionBorderColor : idleButtonBorderColor;
-    uint16_t textColor = isSelected ? selectedButtonTextColor : idleButtonTextColor;
+    uint16_t fillColor = isSelected ? getUiSelectedFillColor() : getUiInactiveFillColor();
+    uint16_t borderColor = isSelected ? getUiSelectedBorderColor() : getUiInactiveBorderColor();
+    uint16_t textColor = isSelected ? getUiSelectedTextColor() : getUiInactiveTextColor();
     int16_t textX1;
     int16_t textY1;
     uint16_t textWidth;
@@ -792,6 +836,84 @@ static uint16_t blendRgb565(uint16_t darkColor, uint16_t lightColor, uint8_t ble
   return static_cast<uint16_t>((mixedR << 11) | (mixedG << 5) | mixedB);
 
 } //   blendRgb565()
+
+//--- Find color profile by name
+static const ColorProfile* findColorProfileByName(const char* colorName)
+{
+  for (int index = 0; index < colorProfileCount; index++)
+  {
+    if (strcmp(colorProfiles[index].colorName, colorName) == 0)
+    {
+      return &colorProfiles[index];
+    }
+  }
+
+  return nullptr;
+
+} //   findColorProfileByName()
+
+//--- Get active UI color profile
+static const ColorProfile& getActiveUiColorProfile()
+{
+  const ColorProfile* namedProfile = findColorProfileByName(activeUiColorName);
+
+  if (namedProfile != nullptr)
+  {
+    return *namedProfile;
+  }
+
+  return colorProfiles[0];
+
+} //   getActiveUiColorProfile()
+
+//--- Get selected fill color for UI elements
+static uint16_t getUiSelectedFillColor()
+{
+  return PANEL_COLOR(getActiveUiColorProfile().darkVisualColor);
+
+} //   getUiSelectedFillColor()
+
+//--- Get inactive fill color for UI elements
+static uint16_t getUiInactiveFillColor()
+{
+  return PANEL_COLOR(getActiveUiColorProfile().lightVisualColor);
+
+} //   getUiInactiveFillColor()
+
+//--- Get selected text color for UI elements
+static uint16_t getUiSelectedTextColor()
+{
+  return mapVisualTextColorToPanelColor(getActiveUiColorProfile().darkLabelColor);
+
+} //   getUiSelectedTextColor()
+
+//--- Get inactive text color for UI elements
+static uint16_t getUiInactiveTextColor()
+{
+  return mapVisualTextColorToPanelColor(getActiveUiColorProfile().lightLabelColor);
+
+} //   getUiInactiveTextColor()
+
+//--- Get selected border color for UI elements
+static uint16_t getUiSelectedBorderColor()
+{
+  return getUiInactiveFillColor();
+
+} //   getUiSelectedBorderColor()
+
+//--- Get inactive border color for UI elements
+static uint16_t getUiInactiveBorderColor()
+{
+  return PANEL_COLOR(blendRgb565(getActiveUiColorProfile().lightVisualColor, 0xFFFF, 92));
+
+} //   getUiInactiveBorderColor()
+
+//--- Get accent color for UI elements
+static uint16_t getUiAccentColor()
+{
+  return getUiInactiveFillColor();
+
+} //   getUiAccentColor()
 
 //--- Resolve visual text color to panel text value
 static uint16_t mapVisualTextColorToPanelColor(VisualTextColor visualTextColor)
