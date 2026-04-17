@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 10:25 ***/
+/*** Last Changed: 2026-04-17 - 11:02 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
@@ -26,7 +26,8 @@ void displayDrawEnumEditor(const char* label, const char* valueLabel);
 void displayDrawTextInput(const char* title, const std::string& textValue, const std::string& currentToken);
 
 //--- Draw generic field input screen
-void displayDrawFieldInput(const char* title, const char* fieldName, const std::string& fieldValue, int cursorIndex, const std::string& prevToken, const std::string& currentToken, const std::string& nextToken);
+void displayDrawFieldInput(const char* title, const char* fieldName, const std::string& fieldValue, int cursorIndex, const std::string& prevToken, const std::string& currentToken, const std::string& nextToken,
+                           const char* tokenOptions[], int tokenOptionCount, int selectedOptionIndex);
 
 //--- Draw message screen
 void displayDrawMessage(const char* title, const char* message);

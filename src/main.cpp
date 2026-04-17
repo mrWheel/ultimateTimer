@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 10:25 ***/
+/*** Last Changed: 2026-04-17 - 11:02 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -21,7 +21,7 @@
 #include <freertos/task.h>
 #include <string>
 
-const char* PROG_VERSION = "v1.0.9";
+const char* PROG_VERSION = "v1.0.10";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -80,6 +80,12 @@ static int getUsedTestColorCount();
 
 //--- Map enabled color index to profile index
 static int mapUsedIndexToProfileIndex(int usedIndex);
+
+//--- Blend two RGB565 colors using the same formula as displayDrawTestColorFade
+static uint16_t blendRgb565ForFadeDump(uint16_t darkColor, uint16_t lightColor, uint8_t blendFactor);
+
+//--- Print generated fade shades and lookup shades for all colors
+static void printColorShadeDumpToSerial();
 
 //--- Draw active test color screen
 static void drawTestColorScreen();
@@ -290,6 +296,75 @@ static int mapUsedIndexToProfileIndex(int usedIndex)
 
 } //   mapUsedIndexToProfileIndex()
 
+//--- Blend two RGB565 colors using the same formula as displayDrawTestColorFade
+static uint16_t blendRgb565ForFadeDump(uint16_t darkColor, uint16_t lightColor, uint8_t blendFactor)
+{
+  uint8_t darkR = static_cast<uint8_t>((darkColor >> 11) & 0x1FU);
+  uint8_t darkG = static_cast<uint8_t>((darkColor >> 5) & 0x3FU);
+  uint8_t darkB = static_cast<uint8_t>(darkColor & 0x1FU);
+  uint8_t lightR = static_cast<uint8_t>((lightColor >> 11) & 0x1FU);
+  uint8_t lightG = static_cast<uint8_t>((lightColor >> 5) & 0x3FU);
+  uint8_t lightB = static_cast<uint8_t>(lightColor & 0x1FU);
+  uint16_t mixedR = static_cast<uint16_t>((static_cast<uint16_t>(darkR) * static_cast<uint16_t>(255U - blendFactor) + static_cast<uint16_t>(lightR) * static_cast<uint16_t>(blendFactor)) / 255U);
+  uint16_t mixedG = static_cast<uint16_t>((static_cast<uint16_t>(darkG) * static_cast<uint16_t>(255U - blendFactor) + static_cast<uint16_t>(lightG) * static_cast<uint16_t>(blendFactor)) / 255U);
+  uint16_t mixedB = static_cast<uint16_t>((static_cast<uint16_t>(darkB) * static_cast<uint16_t>(255U - blendFactor) + static_cast<uint16_t>(lightB) * static_cast<uint16_t>(blendFactor)) / 255U);
+
+  return static_cast<uint16_t>((mixedR << 11) | (mixedG << 5) | mixedB);
+
+} //   blendRgb565ForFadeDump()
+
+//--- Print generated fade shades and lookup shades for all colors
+static void printColorShadeDumpToSerial()
+{
+  const int rowCount = 8;
+
+  Serial.println();
+  Serial.println("--- Color shade dump (TEST_COLOR_PATERN) ---");
+
+  for (int profileIndex = 0; profileIndex < colorProfileCount; profileIndex++)
+  {
+    const ColorProfile& profile = colorProfiles[profileIndex];
+    uint16_t darkColorVisual = profile.getDarkColor();
+    uint16_t lightColorVisual = profile.getLightColor();
+
+    Serial.printf("%s generated: {", profile.colorName);
+
+    for (int rowIndex = 0; rowIndex < rowCount; rowIndex++)
+    {
+      uint8_t blendFactor = static_cast<uint8_t>((rowIndex * 255) / (rowCount - 1));
+      uint16_t shadeVisual = blendRgb565ForFadeDump(darkColorVisual, lightColorVisual, blendFactor);
+
+      Serial.printf("0x%04X", static_cast<unsigned int>(shadeVisual));
+
+      if (rowIndex < (rowCount - 1))
+      {
+        Serial.print(", ");
+      }
+    }
+
+    Serial.println("}");
+
+    Serial.printf("%s lookup:    {", profile.colorName);
+
+    for (int shadeIndex = 0; shadeIndex < rowCount; shadeIndex++)
+    {
+      Serial.printf("0x%04X", static_cast<unsigned int>(profile.shades[shadeIndex]));
+
+      if (shadeIndex < (rowCount - 1))
+      {
+        Serial.print(", ");
+      }
+    }
+
+    Serial.printf("}  (darkLevel=%d, lightLevel=%d)", profile.darkLevel, profile.lightLevel);
+    Serial.println();
+  }
+
+  Serial.println("--- End color shade dump ---");
+  Serial.println();
+
+} //   printColorShadeDumpToSerial()
+
 //--- Draw active test color screen
 static void drawTestColorScreen()
 {
@@ -309,7 +384,7 @@ static void drawTestColorScreen()
     return;
   }
 
-  displayDrawTestColorFade(selectedProfile.colorName, selectedProfile.darkVisualColor, selectedProfile.lightVisualColor, selectedProfile.darkLabelColor, selectedProfile.lightLabelColor);
+  displayDrawTestColorFade(selectedProfile.colorName, selectedProfile.getDarkColor(), selectedProfile.getLightColor(), selectedProfile.darkLabelColor, selectedProfile.lightLabelColor);
 
 } //   drawTestColorScreen()
 
@@ -373,6 +448,7 @@ void setup()
 #ifdef TEST_COLOR_PATERN
   encoderInit();
   displayInit();
+  printColorShadeDumpToSerial();
   drawTestColorScreen();
   ESP_LOGI(logTag, "TEST_COLOR_PATERN enabled: interactive color test active");
 

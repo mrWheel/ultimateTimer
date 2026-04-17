@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 10:25 ***/
+/*** Last Changed: 2026-04-17 - 11:02 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "displayDriver.h"
@@ -782,7 +782,8 @@ static void drawCurrentScreen()
       nextTokenIndex = 0;
     }
 
-    displayDrawFieldInput(fieldInputTitle.c_str(), fieldInputName.c_str(), fieldValue, fieldInputCursorPosition, fieldInputTokenList[prevTokenIndex], fieldInputTokenList[currentTokenIndex], fieldInputTokenList[nextTokenIndex]);
+    displayDrawFieldInput(fieldInputTitle.c_str(), fieldInputName.c_str(), fieldValue, fieldInputCursorPosition, fieldInputTokenList[prevTokenIndex], fieldInputTokenList[currentTokenIndex], fieldInputTokenList[nextTokenIndex],
+                          fieldInputTokenList, fieldInputTokenCount, currentTokenIndex);
     break;
   }
 
