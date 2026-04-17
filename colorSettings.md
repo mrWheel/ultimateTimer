@@ -80,3 +80,37 @@ static const uint16_t idleButtonTextColor     = ST77XX_BLACK;
 | `tileValueColor = ST77XX_WHITE` | Text invisible on dark tile | Change to `ST77XX_BLACK` |
 | Fill color `PANEL_COLOR(0x2104)` (near-black) | Tile invisible on black background | Use `selectionFillColor` or a clearly different hue |
 | Using raw 0xRRGG for fills without `PANEL_COLOR` | Color looks wrong/inverted | Wrap with `PANEL_COLOR()` |
+
+## Color profile rules (active project convention)
+
+Color profiles are defined in `include/colorSettings.h` and use this format:
+
+`ColorName: darkLevel-darkLabelColor, lightLevel-lightLabelColor`
+
+- The first number is the dark/active variant index for that color.
+- The second number is the light/inactive/background variant index for that color.
+- Label color after each number defines the visual text color for that variant (`WIT` or `ZWART`).
+- `Oranje` is currently marked as not used in palette workflows.
+
+Current configured profiles:
+
+- `Rood: 1-WIT, 6-WIT`
+- `Groen: 1-ZWART, 5-ZWART`
+- `Blauw: 1-WIT, 6-WIT`
+- `Indigo: 1-WIT, 6-WIT`
+- `Violet: 1-WIT, 7-WIT`
+- `Geel: 1-ZWART, 5-ZWART`
+- `Oranje: Niet gebruikt`
+
+## Request interpretation defaults (from now on)
+
+- If asked: `tekst moet rood`, use the **first** (dark) variant of `Rood`.
+- If asked: `tile moet geel`, use the **second** (light/background) variant of `Geel`.
+- For selectable buttons/fields:
+	- first value = **selected/active** color
+	- second value = **not selected/inactive** color
+
+## Visual text mapping for this inverted panel
+
+- Visual `WIT` text -> use `ST77XX_BLACK`.
+- Visual `ZWART` text -> use `ST77XX_WHITE`.

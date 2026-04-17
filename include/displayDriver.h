@@ -1,9 +1,10 @@
-/*** Last Changed: 2026-04-17 - 09:09 ***/
+/*** Last Changed: 2026-04-17 - 09:47 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
 #include <Arduino.h>
 #include "timerTypes.h"
+#include "colorSettings.h"
 
 //--- Initialize display
 void displayInit();
@@ -37,6 +38,12 @@ void displayDrawStartupConnectionScreen(const String& line1, const String& line2
 
 //--- Draw color palette test pattern
 void displayDrawTestColorPattern();
+
+//--- Draw test palette with dark bars and cursor
+void displayDrawTestColorPalette(int selectedIndex);
+
+//--- Draw color fade test for selected color
+void displayDrawTestColorFade(const char* colorName, uint16_t darkColorVisual, uint16_t lightColorVisual, VisualTextColor darkLabelColor, VisualTextColor lightLabelColor);
 
 //--- Set display backlight state
 void displaySetBacklight(bool enabled);

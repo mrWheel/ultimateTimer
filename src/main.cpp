@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 09:09 ***/
+/*** Last Changed: 2026-04-17 - 09:47 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -8,6 +8,7 @@
 #include "profileManager.h"
 #include "settingsStore.h"
 #include "timerEngine.h"
+#include "colorSettings.h"
 #include "uiMenu.h"
 #include "webUi.h"
 #include "WiFiManagerExt.h"
@@ -18,7 +19,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-const char* PROG_VERSION = "v1.0.6";
+const char* PROG_VERSION = "v1.0.7";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -60,6 +61,30 @@ static bool handleWifiCredentialResetHold();
 
 //--- Show startup WiFi connection message
 static void showStartupWifiConnectionMessage();
+
+#ifdef TEST_COLOR_PATERN
+//--- Test pattern screens
+enum TestColorScreen
+{
+  TEST_COLOR_SCREEN_PALETTE = 0,
+  TEST_COLOR_SCREEN_FADE = 1
+};
+
+static int testColorSelectedIndex = 0;
+static TestColorScreen testColorScreen = TEST_COLOR_SCREEN_PALETTE;
+
+//--- Get number of enabled palette colors
+static int getUsedTestColorCount();
+
+//--- Map enabled color index to profile index
+static int mapUsedIndexToProfileIndex(int usedIndex);
+
+//--- Draw active test color screen
+static void drawTestColorScreen();
+
+//--- Handle interactive test color input
+static void handleTestColorPatternInput();
+#endif
 
 //--- Load initial settings and profiles
 static void loadStartupSettings()
@@ -219,6 +244,122 @@ static void showStartupWifiConnectionMessage()
 
 } //   showStartupWifiConnectionMessage()
 
+#ifdef TEST_COLOR_PATERN
+//--- Get number of enabled palette colors
+static int getUsedTestColorCount()
+{
+  int usedCount = 0;
+
+  for (int index = 0; index < colorProfileCount; index++)
+  {
+    if (colorProfiles[index].usedInPalette)
+    {
+      usedCount++;
+    }
+  }
+
+  return usedCount;
+
+} //   getUsedTestColorCount()
+
+//--- Map enabled color index to profile index
+static int mapUsedIndexToProfileIndex(int usedIndex)
+{
+  int usedCounter = 0;
+
+  for (int profileIndex = 0; profileIndex < colorProfileCount; profileIndex++)
+  {
+    if (!colorProfiles[profileIndex].usedInPalette)
+    {
+      continue;
+    }
+
+    if (usedCounter == usedIndex)
+    {
+      return profileIndex;
+    }
+
+    usedCounter++;
+  }
+
+  return -1;
+
+} //   mapUsedIndexToProfileIndex()
+
+//--- Draw active test color screen
+static void drawTestColorScreen()
+{
+  int profileIndex = mapUsedIndexToProfileIndex(testColorSelectedIndex);
+
+  if (profileIndex < 0)
+  {
+    return;
+  }
+
+  const ColorProfile& selectedProfile = colorProfiles[profileIndex];
+
+  if (testColorScreen == TEST_COLOR_SCREEN_PALETTE)
+  {
+    displayDrawTestColorPalette(testColorSelectedIndex);
+
+    return;
+  }
+
+  displayDrawTestColorFade(selectedProfile.colorName, selectedProfile.darkVisualColor, selectedProfile.lightVisualColor, selectedProfile.darkLabelColor, selectedProfile.lightLabelColor);
+
+} //   drawTestColorScreen()
+
+//--- Handle interactive test color input
+static void handleTestColorPatternInput()
+{
+  EncoderEvent event;
+
+  encoderUpdate();
+  event = encoderGetEvent();
+
+  if (event == ENCODER_EVENT_NONE)
+  {
+    return;
+  }
+
+  if (testColorScreen == TEST_COLOR_SCREEN_PALETTE)
+  {
+    int usedCount = getUsedTestColorCount();
+
+    if (event == ENCODER_EVENT_LEFT)
+    {
+      if (testColorSelectedIndex > 0)
+      {
+        testColorSelectedIndex--;
+        drawTestColorScreen();
+      }
+    }
+    else if (event == ENCODER_EVENT_RIGHT)
+    {
+      if (testColorSelectedIndex < (usedCount - 1))
+      {
+        testColorSelectedIndex++;
+        drawTestColorScreen();
+      }
+    }
+    else if (event == ENCODER_EVENT_SHORT_PRESS)
+    {
+      testColorScreen = TEST_COLOR_SCREEN_FADE;
+      drawTestColorScreen();
+    }
+
+    return;
+  }
+
+  if (event == ENCODER_EVENT_MEDIUM_PRESS)
+  {
+    testColorScreen = TEST_COLOR_SCREEN_PALETTE;
+    drawTestColorScreen();
+  }
+
+} //   handleTestColorPatternInput()
+#endif
+
 //--- Arduino setup
 void setup()
 {
@@ -226,9 +367,10 @@ void setup()
   delay(100);
 
 #ifdef TEST_COLOR_PATERN
+  encoderInit();
   displayInit();
-  displayDrawTestColorPattern();
-  ESP_LOGI(logTag, "TEST_COLOR_PATERN enabled: showing color pattern only");
+  drawTestColorScreen();
+  ESP_LOGI(logTag, "TEST_COLOR_PATERN enabled: interactive color test active");
 
   return;
 #endif
@@ -275,7 +417,8 @@ void setup()
 void loop()
 {
 #ifdef TEST_COLOR_PATERN
-  delay(250);
+  handleTestColorPatternInput();
+  delay(2);
 
   return;
 #endif

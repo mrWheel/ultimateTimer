@@ -1,6 +1,7 @@
-/*** Last Changed: 2026-04-17 - 09:09 ***/
+/*** Last Changed: 2026-04-17 - 09:47 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
+#include "colorSettings.h"
 #include "timerEngine.h"
 
 #include <Adafruit_GFX.h>
@@ -65,6 +66,12 @@ static void drawHeader(const char* title);
 
 //--- Draw centered single line text
 static void drawCenteredLine(const String& lineText, int y, uint16_t textColor, uint16_t backgroundColor);
+
+//--- Blend two RGB565 colors by 8-bit factor
+static uint16_t blendRgb565(uint16_t darkColor, uint16_t lightColor, uint8_t blendFactor);
+
+//--- Resolve visual text color to panel text value
+static uint16_t mapVisualTextColorToPanelColor(VisualTextColor visualTextColor);
 
 //--- Initialize display
 void displayInit()
@@ -511,69 +518,126 @@ void displayDrawStartupConnectionScreen(const String& line1, const String& line2
 //--- Draw color palette test pattern
 void displayDrawTestColorPattern()
 {
-  struct ColorBar
-  {
-    const char* label;
-    uint16_t fillColor;
-  };
+  displayDrawTestColorPalette(0);
 
-  const ColorBar bars[] =
-      {
-          {"Groen", PANEL_COLOR(0x07E0)},
-          {"Groen", PANEL_COLOR(0x87F0)},
-          {"Rood", PANEL_COLOR(0xF800)},
-          {"Rood", PANEL_COLOR(0xFBEF)},
-          {"Blauw", PANEL_COLOR(0x001F)},
-          {"Blauw", PANEL_COLOR(0x7DFF)}};
+} //   displayDrawTestColorPattern()
 
-  const int barCount = 6;
-  const int barX = 0;
+//--- Draw test palette with dark bars and cursor
+void displayDrawTestColorPalette(int selectedIndex)
+{
+  int barCount = 0;
   const int barY0 = 24;
-  const int barW = tft.width();
-  const int barH = (tft.height() - barY0) / barCount;
+  int barH;
+
+  for (int profileIndex = 0; profileIndex < colorProfileCount; profileIndex++)
+  {
+    if (colorProfiles[profileIndex].usedInPalette)
+    {
+      barCount++;
+    }
+  }
+
+  if (barCount <= 0)
+  {
+    return;
+  }
+
+  barH = (tft.height() - barY0) / barCount;
+
+  if (selectedIndex < 0)
+  {
+    selectedIndex = 0;
+  }
+  else if (selectedIndex >= barCount)
+  {
+    selectedIndex = barCount - 1;
+  }
 
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
-  drawHeader("Test Pattern");
+  drawHeader("Dark Palette");
   tft.setTextSize(2);
 
-  for (int index = 0; index < barCount; index++)
-  {
-    int y = barY0 + (index * barH);
-    int drawH = barH;
-    int16_t textX1;
-    int16_t textY1;
-    uint16_t textW;
-    uint16_t textH;
-    int rightX;
+  int drawIndex = 0;
 
-    if (index == (barCount - 1))
+  for (int profileIndex = 0; profileIndex < colorProfileCount; profileIndex++)
+  {
+    if (!colorProfiles[profileIndex].usedInPalette)
+    {
+      continue;
+    }
+
+    int y = barY0 + (drawIndex * barH);
+    int drawH = barH;
+    uint16_t panelColor = PANEL_COLOR(colorProfiles[profileIndex].darkVisualColor);
+    uint16_t labelColor = mapVisualTextColorToPanelColor(colorProfiles[profileIndex].darkLabelColor);
+
+    if (drawIndex == (barCount - 1))
     {
       drawH = tft.height() - y;
     }
 
-    tft.fillRect(barX, y, barW, drawH, bars[index].fillColor);
+    tft.fillRect(0, y, tft.width(), drawH, panelColor);
+    tft.setTextColor(labelColor, panelColor);
+    tft.setCursor(26, y + ((drawH - 16) / 2));
+    tft.print(colorProfiles[profileIndex].colorName);
 
-    //--- Left text is visually white (inverted panel: ST77XX_BLACK renders white)
-    tft.setTextColor(ST77XX_BLACK, bars[index].fillColor);
-    tft.setCursor(barX + 8, y + ((drawH - 16) / 2));
-    tft.print(bars[index].label);
-
-    //--- Right text is visually black (inverted panel: ST77XX_WHITE renders black)
-    tft.getTextBounds(bars[index].label, 0, 0, &textX1, &textY1, &textW, &textH);
-    rightX = (barX + barW) - static_cast<int>(textW) - 8;
-
-    if (rightX < (barX + 8))
+    if (drawIndex == selectedIndex)
     {
-      rightX = barX + 8;
+      tft.setTextColor(labelColor, panelColor);
+      tft.setCursor(6, y + ((drawH - 16) / 2));
+      tft.print(">");
     }
 
-    tft.setTextColor(ST77XX_WHITE, bars[index].fillColor);
-    tft.setCursor(rightX, y + ((drawH - 16) / 2));
-    tft.print(bars[index].label);
+    drawIndex++;
   }
 
-} //   displayDrawTestColorPattern()
+} //   displayDrawTestColorPalette()
+
+//--- Draw color fade test for selected color
+void displayDrawTestColorFade(const char* colorName, uint16_t darkColorVisual, uint16_t lightColorVisual, VisualTextColor darkLabelColor, VisualTextColor lightLabelColor)
+{
+  const int rowCount = 8;
+  const int rowY0 = 24;
+  const int rowH = (tft.height() - rowY0) / rowCount;
+  const int textHeight = 16;
+  uint16_t darkLabelPanelColor = mapVisualTextColorToPanelColor(darkLabelColor);
+  uint16_t lightLabelPanelColor = mapVisualTextColorToPanelColor(lightLabelColor);
+  char rowText[8];
+  char hexText[24];
+
+  invalidateStatusScreenCache();
+  tft.fillScreen(ST77XX_BLACK);
+  drawHeader(colorName);
+  tft.setTextSize(2);
+
+  for (int rowIndex = 0; rowIndex < rowCount; rowIndex++)
+  {
+    int y = rowY0 + (rowIndex * rowH);
+    int drawH = rowH;
+    uint8_t blendFactor = static_cast<uint8_t>((rowIndex * 255) / (rowCount - 1));
+    uint16_t shadeVisual = blendRgb565(darkColorVisual, lightColorVisual, blendFactor);
+    uint16_t shadePanel = PANEL_COLOR(shadeVisual);
+
+    if (rowIndex == (rowCount - 1))
+    {
+      drawH = tft.height() - y;
+    }
+
+    tft.fillRect(0, y, tft.width(), drawH, shadePanel);
+    snprintf(rowText, sizeof(rowText), "%02d", rowIndex + 1);
+    snprintf(hexText, sizeof(hexText), "0x%04X", static_cast<unsigned int>(shadeVisual));
+
+    tft.setTextColor(darkLabelPanelColor, shadePanel);
+    tft.setCursor(8, y + ((drawH - textHeight) / 2));
+    tft.print(rowText);
+
+    tft.setTextColor(lightLabelPanelColor, shadePanel);
+    tft.setCursor(44, y + ((drawH - textHeight) / 2));
+    tft.print(hexText);
+  }
+
+} //   displayDrawTestColorFade()
 
 //--- Set display backlight state
 void displaySetBacklight(bool enabled)
@@ -711,3 +775,32 @@ static String formatRemainingMs(uint32_t remainingMs)
   return String(buffer);
 
 } //   formatRemainingMs()
+
+//--- Blend two RGB565 colors by 8-bit factor
+static uint16_t blendRgb565(uint16_t darkColor, uint16_t lightColor, uint8_t blendFactor)
+{
+  uint8_t darkR = static_cast<uint8_t>((darkColor >> 11) & 0x1FU);
+  uint8_t darkG = static_cast<uint8_t>((darkColor >> 5) & 0x3FU);
+  uint8_t darkB = static_cast<uint8_t>(darkColor & 0x1FU);
+  uint8_t lightR = static_cast<uint8_t>((lightColor >> 11) & 0x1FU);
+  uint8_t lightG = static_cast<uint8_t>((lightColor >> 5) & 0x3FU);
+  uint8_t lightB = static_cast<uint8_t>(lightColor & 0x1FU);
+  uint16_t mixedR = static_cast<uint16_t>((static_cast<uint16_t>(darkR) * static_cast<uint16_t>(255U - blendFactor) + static_cast<uint16_t>(lightR) * static_cast<uint16_t>(blendFactor)) / 255U);
+  uint16_t mixedG = static_cast<uint16_t>((static_cast<uint16_t>(darkG) * static_cast<uint16_t>(255U - blendFactor) + static_cast<uint16_t>(lightG) * static_cast<uint16_t>(blendFactor)) / 255U);
+  uint16_t mixedB = static_cast<uint16_t>((static_cast<uint16_t>(darkB) * static_cast<uint16_t>(255U - blendFactor) + static_cast<uint16_t>(lightB) * static_cast<uint16_t>(blendFactor)) / 255U);
+
+  return static_cast<uint16_t>((mixedR << 11) | (mixedG << 5) | mixedB);
+
+} //   blendRgb565()
+
+//--- Resolve visual text color to panel text value
+static uint16_t mapVisualTextColorToPanelColor(VisualTextColor visualTextColor)
+{
+  if (visualTextColor == VISUAL_TEXT_WHITE)
+  {
+    return ST77XX_BLACK;
+  }
+
+  return ST77XX_WHITE;
+
+} //   mapVisualTextColorToPanelColor()
