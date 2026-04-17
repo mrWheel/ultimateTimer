@@ -81,43 +81,45 @@ static const uint16_t idleButtonTextColor     = ST77XX_BLACK;
 | Fill color `PANEL_COLOR(0x2104)` (near-black) | Tile invisible on black background | Use `selectionFillColor` or a clearly different hue |
 | Using raw 0xRRGG for fills without `PANEL_COLOR` | Color looks wrong/inverted | Wrap with `PANEL_COLOR()` |
 
-## Two button contexts — CRITICAL distinction
+## Button rendering — one rule for ALL buttons
 
-There are two distinct button contexts in this project with **opposite** fill conventions:
+Every button in this project uses the **same** dark/light convention, regardless of context:
 
-### 1. Navigation action buttons (Timer Screen: Start / Stop / Reset)
-- These are action triggers arranged as a navigation strip.
-- **Active / focused:** `getUiSelectedFillColor()` = `PANEL_COLOR(getDarkColor())` → dark shade visible on screen.
-- **Inactive:** `getUiInactiveFillColor()` = `PANEL_COLOR(getLightColor())` → light shade.
-- Active also gets a **double inner border** (`ST77XX_BLACK` → appears WHITE on inverted panel).
+| State | Fill | Border | Text |
+|---|---|---|---|
+| **Selected / active** | `getUiSelectedFillColor()` = `PANEL_COLOR(getDarkColor())` | `getUiSelectedBorderColor()` | `getUiSelectedTextColor()` |
+| **Unselected / inactive** | `getUiInactiveFillColor()` = `PANEL_COLOR(getLightColor())` | `getUiInactiveBorderColor()` | `getUiInactiveTextColor()` |
 
-### 2. Choice / toggle buttons (Field Input: Yes/No, High/Low, color picker, etc.)
-- These represent mutually exclusive options (like a hardware selector switch).
-- **Selected option (current value):** `getUiInactiveFillColor()` = **LIGHT shade** — appears "lit up" / glowing.
-- **Unselected options:** `getUiSelectedFillColor()` = **DARK shade** — appears dimmed / off.
-- Selected also gets a **double inner border** (`tileBorderColor`) to reinforce the selection.
-- Text colors are swapped accordingly: selected uses `getUiInactiveTextColor()`, unselected uses `getUiSelectedTextColor()`.
-
-> **Why the inversion?** A physical selector switch lights up the active position. The bright/light shade visually reads as "this is the current choice". The dark shade reads as "this option is off / not chosen". If you use dark=active for choice buttons they look identically dull against each other — the light shade creates the needed "glow" distinction.
-
-> **ST77XX note:** `ST77XX_BLACK` (0x0000) drawn without PANEL_COLOR → panel inverts → appears **WHITE**. Use it for visible inner borders on any fill.
-> `ST77XX_WHITE` (0xFFFF) drawn without PANEL_COLOR → panel inverts → appears **BLACK**. Do NOT use for borders on dark fills — it is invisible.
-
-## Button rendering — code reference
+Additional rule: the **selected button** always gets an extra inner border drawn with `ST77XX_BLACK`.
+On this inverted panel `ST77XX_BLACK` (0x0000) → panel inverts → appears **WHITE**, making the inner border visible.
 
 ```cpp
-// Choice buttons (Field Input) — light=selected, dark=inactive
-uint16_t selectedFillColor   = getUiInactiveFillColor();   // LIGHT → appears "lit/active"
-uint16_t selectedTextColor   = getUiInactiveTextColor();
-uint16_t unselectedFillColor = getUiSelectedFillColor();   // DARK → appears "dimmed"
-uint16_t unselectedTextColor = getUiSelectedTextColor();
-// + double inner border on selected button for clarity
+// Every button, both Timer Screen and Field Input:
+uint16_t buttonFill   = isSelected ? getUiSelectedFillColor()   : getUiInactiveFillColor();
+uint16_t buttonBorder = isSelected ? getUiSelectedBorderColor() : getUiInactiveBorderColor();
+uint16_t buttonText   = isSelected ? getUiSelectedTextColor()   : getUiInactiveTextColor();
 
-// Navigation buttons (Timer Screen) — dark=active, light=inactive
-uint16_t fillActive   = getUiSelectedFillColor();           // DARK
-uint16_t fillInactive = getUiInactiveFillColor();           // LIGHT
-// + double inner border (ST77XX_BLACK → white) on active button
+tft.fillRoundRect(x, y, w, h, 8, buttonFill);
+tft.drawRoundRect(x, y, w, h, 8, buttonBorder);
+if (isSelected) {
+  tft.drawRoundRect(x+1, y+1, w-2, h-2, 8, ST77XX_BLACK);  // inner border → appears WHITE
+}
+tft.setTextColor(buttonText, buttonFill);
 ```
+
+This matches the visual appearance of the Timer Screen Start/Stop/Reset buttons exactly.
+Do NOT invert this logic for any button type.
+
+### Practical UI rule (must stay true)
+
+- Timer Screen action buttons and Field Input selection buttons must look the same:
+  - selected = dark fill + selected border + white inner border + selected text
+  - unselected = light fill + inactive border + inactive text
+- Any future button UI should reuse this same mapping to avoid confusing behavior.
+- In button-mode Field Input (`positionCount == 1`, `tokenCount 2..6`):
+  - rotate encoder = change selected button
+  - encoder SHORT/MEDIUM/LONG press = apply selected value and return
+  - PIN_KEY0 SHORT = back without save, PIN_KEY0 MEDIUM/LONG = save and return
 
 ## Color profile rules (active project convention)
 
@@ -144,8 +146,7 @@ Current configured profiles:
 
 - If asked: `text must be red`, use the **first** (dark) variant of `Red`.
 - If asked: `tile must be yellow`, use the **second** (light/background) variant of `Yellow`.
-- For **navigation** action buttons: dark shade = focused/active, light shade = idle.
-- For **choice** toggle buttons: light shade = current selection ("lit"), dark shade = not chosen ("off").
+- For **all** buttons: dark shade = selected/active, light shade = idle/inactive. No exceptions.
 
 ## Visual text mapping for this inverted panel
 

@@ -21,7 +21,7 @@
 #include <freertos/task.h>
 #include <string>
 
-const char* PROG_VERSION = "v1.0.11";
+const char* PROG_VERSION = "v1.0.12";
 
 //--- Logging tag
 static const char* logTag = "main";

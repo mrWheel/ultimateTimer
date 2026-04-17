@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 14:28 ***/
+/*** Last Changed: 2026-04-17 - 14:46 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -611,6 +611,16 @@ static void handleFieldInput(EncoderEvent encoderEvent)
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
+    bool isButtonMode = (fieldInputPositionCount == 1) && (fieldInputTokenCount >= 2) && (fieldInputTokenCount <= 6);
+
+    if (isButtonMode)
+    {
+      //--- In button-mode screens: SHORT press applies the current selection and returns
+      applyFieldInputAndReturn();
+
+      return;
+    }
+
     if (fieldInputCursorPosition < fieldInputPositionCount - 1)
     {
       fieldInputCursorPosition++;

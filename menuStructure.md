@@ -109,7 +109,7 @@ A `BUTTON_MEDIUM_EVENT` has in all menu's the same effect as selecting `Exit` in
 - SHORT press moves the cursor to the next position. At the last position, SHORT press does nothing (cursor stays).
 - ENCODER MEDIUM or LONG press at any position saves the field value and returns to the previous menu.
 - PIN_KEY0 SHORT press moves the cursor 1 position to the left. At the first (left-most) position, exits without saving.
-- PIN_KEY0 MEDIUM or LONG press saves the field value and exits.
+- PIN_KEY0 MEDIUM or LONG press saves the field value and returns to the previous menu.
 
 ## Generic field input parameters:
 - fieldName
@@ -125,12 +125,16 @@ A `BUTTON_MEDIUM_EVENT` has in all menu's the same effect as selecting `Exit` in
 When `positionCount == 1` and `tokenCount` is 2–6, the field input renders as a button grid instead of a token scroll.
 - 2–4 options: single row of buttons.
 - 5–6 options: two rows of 3 buttons each.
-- **Selected button (current value):** LIGHT fill (`getUiInactiveFillColor()`) — visually "lit up", with a double inner border.
-- **Unselected buttons:** DARK fill (`getUiSelectedFillColor()`) — visually "off/dimmed".
-- Text colors follow the fill: selected uses `getUiInactiveTextColor()`, unselected uses `getUiSelectedTextColor()`.
-- This is the **opposite** of list-row selection (which uses dark=selected). See colorSettings.md "Two button contexts" for explanation.
-- Encoder LEFT/RIGHT cycles the selection. Encoder/button MEDIUM or LONG press saves and returns.
-- Button SHORT press at cursor position 0 cancels and returns without saving.
+- All buttons rendered **identically** to the Timer Screen Start/Stop/Reset buttons: dark fill + inner border = selected, light fill = inactive.
+- `getUiSelectedFillColor()` / `getUiSelectedBorderColor()` / `getUiSelectedTextColor()` for selected.
+- `getUiInactiveFillColor()` / `getUiInactiveBorderColor()` / `getUiInactiveTextColor()` for unselected.
+- Selected button gets an extra inner border with `ST77XX_BLACK` (appears WHITE on the inverted panel).
+- Corner radius = 8 (matches Timer Screen).
+- Encoder LEFT/RIGHT cycles the selection.
+- Encoder SHORT press saves the currently selected button value immediately and returns to the previous menu.
+- Encoder MEDIUM or LONG press also saves and returns.
+- PIN_KEY0 SHORT press at cursor position 0 exits without saving.
+- PIN_KEY0 MEDIUM or LONG press saves and returns.
 
 ### Button token sets used in System Settings:
 - Confirm actions: `[No] [Yes]` (confirmNoYesTokens)

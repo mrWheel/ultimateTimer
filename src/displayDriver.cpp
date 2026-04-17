@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 14:28 ***/
+/*** Last Changed: 2026-04-17 - 14:46 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -505,13 +505,6 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
     int itemsPerRow = useTwoRowButtons ? 3 : tokenOptionCount;
     int rowCount = useTwoRowButtons ? 2 : 1;
     int buttonW = (buttonRowW - (buttonGap * (itemsPerRow - 1))) / itemsPerRow;
-    //--- Choice buttons: selected = LIGHT (glowing/lit), unselected = DARK (dimmed)
-    //--- This is intentionally the inverse of list-row selection, which is dark=selected.
-    //--- A lit-up button visually reads as "this is the current choice".
-    uint16_t selectedFillColor = getUiInactiveFillColor();
-    uint16_t selectedTextColor = getUiInactiveTextColor();
-    uint16_t unselectedFillColor = getUiSelectedFillColor();
-    uint16_t unselectedTextColor = getUiSelectedTextColor();
 
     tft.setTextSize(2);
 
@@ -530,8 +523,10 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
 
         int buttonX = buttonRowX + (col * (buttonW + buttonGap));
         bool isSelected = (optionIndex == selectedOptionIndex);
-        uint16_t buttonFill = isSelected ? selectedFillColor : unselectedFillColor;
-        uint16_t buttonText = isSelected ? selectedTextColor : unselectedTextColor;
+        //--- Same convention as Timer Screen action buttons: dark=selected, light=inactive
+        uint16_t buttonFill = isSelected ? getUiSelectedFillColor() : getUiInactiveFillColor();
+        uint16_t buttonBorder = isSelected ? getUiSelectedBorderColor() : getUiInactiveBorderColor();
+        uint16_t buttonText = isSelected ? getUiSelectedTextColor() : getUiInactiveTextColor();
         const char* optionLabel = tokenOptions[optionIndex];
         int16_t buttonTextX;
         int16_t buttonTextY;
@@ -540,13 +535,13 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
         int labelX;
         int labelY;
 
-        tft.fillRoundRect(buttonX, buttonRowY, buttonW, buttonH, 5, buttonFill);
-        tft.drawRoundRect(buttonX, buttonRowY, buttonW, buttonH, 5, tileBorderColor);
+        tft.fillRoundRect(buttonX, buttonRowY, buttonW, buttonH, 8, buttonFill);
+        tft.drawRoundRect(buttonX, buttonRowY, buttonW, buttonH, 8, buttonBorder);
 
         if (isSelected)
         {
-          //--- Extra inner border so the lit button is unambiguous
-          tft.drawRoundRect(buttonX + 1, buttonRowY + 1, buttonW - 2, buttonH - 2, 4, tileBorderColor);
+          //--- Inner border identical to Timer Screen: ST77XX_BLACK appears WHITE on inverted panel
+          tft.drawRoundRect(buttonX + 1, buttonRowY + 1, buttonW - 2, buttonH - 2, 8, ST77XX_BLACK);
         }
 
         tft.getTextBounds(optionLabel, 0, 0, &buttonTextX, &buttonTextY, &buttonTextW, &buttonTextH);

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 14:28 ***/
+/*** Last Changed: 2026-04-17 - 14:46 ***/
 #include "settingsStore.h"
 #include "appConfig.h"
 
@@ -121,11 +121,11 @@ void settingsStoreSaveOutputPolarityHigh(bool activeHigh)
 
 } //   settingsStoreSaveOutputPolarityHigh()
 
-//--- Load theme color index (0-based, default from THEME_COLOR build flag)
+//--- Load theme color index (0-based, default from DEFAULT_THEME_COLOR build flag)
 uint8_t settingsStoreLoadThemeColorIndex()
 {
-#ifdef THEME_COLOR
-  const uint8_t defaultIndex = static_cast<uint8_t>(THEME_COLOR - 1);
+#ifdef DEFAULT_THEME_COLOR
+  const uint8_t defaultIndex = static_cast<uint8_t>(DEFAULT_THEME_COLOR - 1);
 #else
   const uint8_t defaultIndex = 2U;
 #endif
