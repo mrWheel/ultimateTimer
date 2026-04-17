@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-16 - 14:54 ***/
+/*** Last Changed: 2026-04-17 - 09:09 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "timerEngine.h"
@@ -511,46 +511,66 @@ void displayDrawStartupConnectionScreen(const String& line1, const String& line2
 //--- Draw color palette test pattern
 void displayDrawTestColorPattern()
 {
-  struct PaletteCell
+  struct ColorBar
   {
     const char* label;
-    uint16_t color;
+    uint16_t fillColor;
   };
 
-  const PaletteCell cells[] =
+  const ColorBar bars[] =
       {
-          {"Sel Fill", selectionFillColor},
-          {"Sel Border", selectionBorderColor},
-          {"Idle Fill", idleButtonFillColor},
-          {"Idle Border", idleButtonBorderColor},
-          {"Blue", ST77XX_BLUE},
-          {"Yellow", ST77XX_YELLOW},
-          {"Gray", 0x8410},
-          {"White", ST77XX_WHITE}};
+          {"Groen", PANEL_COLOR(0x07E0)},
+          {"Groen", PANEL_COLOR(0x87F0)},
+          {"Rood", PANEL_COLOR(0xF800)},
+          {"Rood", PANEL_COLOR(0xFBEF)},
+          {"Blauw", PANEL_COLOR(0x001F)},
+          {"Blauw", PANEL_COLOR(0x7DFF)}};
 
-  const int cols = 2;
-  const int cellW = 152;
-  const int cellH = 42;
-  const int x0 = 8;
-  const int y0 = 32;
+  const int barCount = 6;
+  const int barX = 0;
+  const int barY0 = 24;
+  const int barW = tft.width();
+  const int barH = (tft.height() - barY0) / barCount;
 
   invalidateStatusScreenCache();
   tft.fillScreen(ST77XX_BLACK);
-  drawHeader("Color Pattern");
+  drawHeader("Test Pattern");
   tft.setTextSize(2);
 
-  for (int index = 0; index < 8; index++)
+  for (int index = 0; index < barCount; index++)
   {
-    int col = index % cols;
-    int row = index / cols;
-    int x = x0 + (col * (cellW + 8));
-    int y = y0 + (row * (cellH + 8));
+    int y = barY0 + (index * barH);
+    int drawH = barH;
+    int16_t textX1;
+    int16_t textY1;
+    uint16_t textW;
+    uint16_t textH;
+    int rightX;
 
-    tft.fillRoundRect(x, y, cellW, cellH, 6, cells[index].color);
-    tft.drawRoundRect(x, y, cellW, cellH, 6, ST77XX_WHITE);
-    tft.setTextColor(ST77XX_BLACK, cells[index].color);
-    tft.setCursor(x + 8, y + 12);
-    tft.print(cells[index].label);
+    if (index == (barCount - 1))
+    {
+      drawH = tft.height() - y;
+    }
+
+    tft.fillRect(barX, y, barW, drawH, bars[index].fillColor);
+
+    //--- Left text is visually white (inverted panel: ST77XX_BLACK renders white)
+    tft.setTextColor(ST77XX_BLACK, bars[index].fillColor);
+    tft.setCursor(barX + 8, y + ((drawH - 16) / 2));
+    tft.print(bars[index].label);
+
+    //--- Right text is visually black (inverted panel: ST77XX_WHITE renders black)
+    tft.getTextBounds(bars[index].label, 0, 0, &textX1, &textY1, &textW, &textH);
+    rightX = (barX + barW) - static_cast<int>(textW) - 8;
+
+    if (rightX < (barX + 8))
+    {
+      rightX = barX + 8;
+    }
+
+    tft.setTextColor(ST77XX_WHITE, bars[index].fillColor);
+    tft.setCursor(rightX, y + ((drawH - 16) / 2));
+    tft.print(bars[index].label);
   }
 
 } //   displayDrawTestColorPattern()
