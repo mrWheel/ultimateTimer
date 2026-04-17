@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 14:46 ***/
+/*** Last Changed: 2026-04-17 - 14:57 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -7,10 +7,12 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
 #include <SPI.h>
+#include <WiFi.h>
 #include <array>
 #include <esp_log.h>
 #include <string>
 #include <string.h>
+#include <time.h>
 
 //--- TFT instance
 static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
@@ -31,6 +33,7 @@ static const uint32_t minimumCountdownDisplayMs = 2000UL;
 //--- Status screen cache
 static bool statusScreenPrepared = false;
 static std::array<std::string, statusLineCount> cachedStatusLines;
+static uint32_t lastStatusHeaderRefreshMs = 0;
 
 //--- Draw a status tile
 static void drawStatusTile(int x, int y, int w, int h, const char* label, const std::string& value);
@@ -46,6 +49,12 @@ static void invalidateStatusScreenCache();
 
 //--- Draw screen header
 static void drawHeader(const char* title);
+
+//--- Build header clock text in HH:mm format
+static std::string buildHeaderClockText();
+
+//--- Build right-aligned header text
+static std::string buildHeaderRightText();
 
 //--- Draw centered single line text
 static void drawCenteredLine(const std::string& lineText, int y, uint16_t textColor, uint16_t backgroundColor);
@@ -141,6 +150,12 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     }
 
     statusScreenPrepared = true;
+    lastStatusHeaderRefreshMs = millis();
+  }
+  else if (millis() - lastStatusHeaderRefreshMs >= 1000UL)
+  {
+    drawHeader("Universal Timer");
+    lastStatusHeaderRefreshMs = millis();
   }
 
   char buffer[32];
@@ -785,16 +800,81 @@ static void drawHeader(const char* title)
 {
   uint16_t headerBackgroundColor = getUiSelectedFillColor();
   uint16_t headerTextColor = getUiSelectedTextColor();
+  std::string rightText = buildHeaderRightText();
+  int16_t textX1;
+  int16_t textY1;
+  uint16_t titleWidth;
+  uint16_t titleHeight;
+  uint16_t rightWidth;
+  uint16_t rightHeight;
+  int titleX = 6;
+  int rightX;
+  int minimumGap = 10;
 
   tft.fillRect(0, 0, tft.width(), 24, headerBackgroundColor);
-  tft.setCursor(6, 4);
-  tft.setTextColor(headerTextColor, headerBackgroundColor);
   tft.setTextSize(2);
+  tft.setTextColor(headerTextColor, headerBackgroundColor);
+  tft.getTextBounds(title, 0, 0, &textX1, &textY1, &titleWidth, &titleHeight);
+  tft.getTextBounds(rightText.c_str(), 0, 0, &textX1, &textY1, &rightWidth, &rightHeight);
+  (void)titleHeight;
+  (void)rightHeight;
+  rightX = tft.width() - static_cast<int>(rightWidth) - 6;
+
+  if (rightX < (titleX + static_cast<int>(titleWidth) + minimumGap))
+  {
+    rightX = titleX + static_cast<int>(titleWidth) + minimumGap;
+  }
+
+  tft.setCursor(titleX, 4);
   tft.print(title);
-  tft.setCursor(7, 4);
+  tft.setCursor(titleX + 1, 4);
   tft.print(title);
 
+  tft.setCursor(rightX, 4);
+  tft.print(rightText.c_str());
+
 } //   drawHeader()
+
+//--- Build right-aligned header text
+static std::string buildHeaderRightText()
+{
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    return "No WiFi";
+  }
+
+  return buildHeaderClockText();
+
+} //   buildHeaderRightText()
+
+//--- Build header clock text in HH:mm format
+static std::string buildHeaderClockText()
+{
+  time_t now = time(nullptr);
+
+  if (now <= 0)
+  {
+    return "--:--";
+  }
+
+  struct tm localTimeInfo;
+
+  if (localtime_r(&now, &localTimeInfo) == nullptr)
+  {
+    return "--:--";
+  }
+
+  if (localTimeInfo.tm_year < (2020 - 1900))
+  {
+    return "--:--";
+  }
+
+  char timeBuffer[6];
+  strftime(timeBuffer, sizeof(timeBuffer), "%H:%M", &localTimeInfo);
+
+  return std::string(timeBuffer);
+
+} //   buildHeaderClockText()
 
 //--- Draw centered single line text
 static void drawCenteredLine(const std::string& lineText, int y, uint16_t textColor, uint16_t backgroundColor)
@@ -897,6 +977,7 @@ static void drawStatusActionButtons(int statusActionIndex)
 static void invalidateStatusScreenCache()
 {
   statusScreenPrepared = false;
+  lastStatusHeaderRefreshMs = 0;
 
 } //   invalidateStatusScreenCache()
 

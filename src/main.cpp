@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 14:28 ***/
+/*** Last Changed: 2026-04-17 - 14:57 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -20,8 +20,9 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <string>
+#include <time.h>
 
-const char* PROG_VERSION = "v1.0.12";
+const char* PROG_VERSION = "v1.1.0";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -31,6 +32,12 @@ static AppSettings activeSettings;
 
 //--- WiFi disable indicator
 static bool wifiDisabled = false;
+
+//--- Track WiFi link transitions for NTP sync
+static bool wifiWasConnected = false;
+
+//--- Track whether NTP has already been configured in current session
+static bool ntpConfigured = false;
 
 //--- Task handles
 static TaskHandle_t timerTaskHandle = nullptr;
@@ -45,6 +52,11 @@ static bool wifiResetPressed = false;
 static bool wifiResetTriggered = false;
 static uint32_t wifiResetPressStartMs = 0;
 static uint32_t wifiResetLastUiUpdateMs = 0;
+
+//--- NTP configuration
+static const char* ntpTimeZone = "CET-1CEST,M3.5.0/2,M10.5.0/3";
+static const char* ntpServer1 = "pool.ntp.org";
+static const char* ntpServer2 = "time.nist.gov";
 
 //--- Load initial settings and profiles
 static void loadStartupSettings();
@@ -63,6 +75,9 @@ static bool handleWifiCredentialResetHold();
 
 //--- Show startup WiFi connection message
 static void showStartupWifiConnectionMessage();
+
+//--- Configure NTP when WiFi STA becomes connected
+static void syncNtpTimeIfNeeded();
 
 #ifdef TEST_COLOR_PATERN
 //--- Test pattern screens
@@ -254,6 +269,35 @@ static void showStartupWifiConnectionMessage()
   displayDrawStartupConnectionScreen("Trying to connect to", ssid);
 
 } //   showStartupWifiConnectionMessage()
+
+//--- Configure NTP when WiFi STA becomes connected
+static void syncNtpTimeIfNeeded()
+{
+  if (wifiDisabled)
+  {
+    return;
+  }
+
+  bool wifiConnected = wifiManagerIsStaConnected();
+
+  if (!wifiConnected)
+  {
+    wifiWasConnected = false;
+
+    return;
+  }
+
+  if (wifiWasConnected && ntpConfigured)
+  {
+    return;
+  }
+
+  configTzTime(ntpTimeZone, ntpServer1, ntpServer2);
+  ntpConfigured = true;
+  wifiWasConnected = true;
+  ESP_LOGI(logTag, "NTP sync configured (servers: %s, %s)", ntpServer1, ntpServer2);
+
+} //   syncNtpTimeIfNeeded()
 
 #ifdef TEST_COLOR_PATERN
 //--- Get number of enabled palette colors
@@ -507,6 +551,7 @@ void loop()
   if (!wifiDisabled)
   {
     wifiManagerUpdate();
+    syncNtpTimeIfNeeded();
     webUiUpdate();
   }
 
