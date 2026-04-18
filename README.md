@@ -42,6 +42,7 @@ ESP32 cyclic timer for a 2.4 inch SPI TFT + EC11 rotary encoder module.
 | [codingRules.md](codingRules.md) | Coding conventions and rules for this project |
 | [menuStructure.md](menuStructure.md) | Menu layout, navigation, and event handling specification |
 | [colorSettings.md](colorSettings.md) | Display color theme and UI color rules |
+| [webUI.md](webUI.md) | Web UI architecture, behavior, menus, and API endpoints |
 
 ## Confirm to codingRules
 Read `codingRules.md`
@@ -111,12 +112,6 @@ Current configured values in this repository:
 - If no WiFi credentials are found (or STA connection fails), use the local `WiFi Setup` menu: scan nearby APs, select SSID with the rotary encoder, then enter the WiFi password via rotary text input and save/apply.
 - The local UI currently includes timer and profile management
 - Local TFT WiFi credential editing is available through the rotary menu
-
-## Web UI behavior
-- While timer state is `Idle`, timer/profile inputs are editable.
-- While timer state is `Running`, timer/profile inputs are disabled to prevent race conditions with live status updates.
-- Timer settings are applied immediately when fields change.
-- `Save Settings` persists settings/profile as configured.
 
 ## TFT display behavior
 - All TFT text is rendered with the built-in monospaced font.
