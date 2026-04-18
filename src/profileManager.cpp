@@ -1,3 +1,4 @@
+/*** Last Changed: 2026-04-18 - 13:35 ***/
 #include "profileManager.h"
 
 #include <ArduinoJson.h>
@@ -5,19 +6,20 @@
 #include <esp_log.h>
 
 //--- Logging tag
-static const char *logTag = "profileManager";
+static const char* logTag = "profileManager";
+const char* const profileManagerDefaultProfileName = "default";
 
 //--- Build file path for profile
-static String buildProfilePath(const String &profileName);
+static String buildProfilePath(const String& profileName);
 
 //--- Sanitize profile name
-static String sanitizeProfileName(const String &profileName);
+static String sanitizeProfileName(const String& profileName);
 
 //--- Read settings from JSON document
-static void loadSettingsFromJson(const JsonDocument &doc, AppSettings &settings);
+static void loadSettingsFromJson(const JsonDocument& doc, AppSettings& settings);
 
 //--- Write settings into JSON document
-static void saveSettingsToJson(JsonDocument &doc, const AppSettings &settings);
+static void saveSettingsToJson(JsonDocument& doc, const AppSettings& settings);
 
 //--- Initialize profile manager
 bool profileManagerInit()
@@ -35,10 +37,10 @@ bool profileManagerInit()
 
   return ok;
 
-}   //   profileManagerInit()
+} //   profileManagerInit()
 
 //--- Save profile
-bool profileManagerSaveProfile(const String &profileName, const AppSettings &settings)
+bool profileManagerSaveProfile(const String& profileName, const AppSettings& settings)
 {
   String safeName = sanitizeProfileName(profileName);
 
@@ -77,10 +79,10 @@ bool profileManagerSaveProfile(const String &profileName, const AppSettings &set
 
   return true;
 
-}   //   profileManagerSaveProfile()
+} //   profileManagerSaveProfile()
 
 //--- Load profile
-bool profileManagerLoadProfile(const String &profileName, AppSettings &settings)
+bool profileManagerLoadProfile(const String& profileName, AppSettings& settings)
 {
   String safeName = sanitizeProfileName(profileName);
   String path = buildProfilePath(safeName);
@@ -111,12 +113,20 @@ bool profileManagerLoadProfile(const String &profileName, AppSettings &settings)
 
   return true;
 
-}   //   profileManagerLoadProfile()
+} //   profileManagerLoadProfile()
 
 //--- Delete profile
-bool profileManagerDeleteProfile(const String &profileName)
+bool profileManagerDeleteProfile(const String& profileName)
 {
   String safeName = sanitizeProfileName(profileName);
+
+  if (safeName.equalsIgnoreCase(profileManagerDefaultProfileName))
+  {
+    ESP_LOGW(logTag, "Refused to delete default profile: %s", safeName.c_str());
+
+    return false;
+  }
+
   String path = buildProfilePath(safeName);
 
   if (!LittleFS.exists(path))
@@ -137,7 +147,7 @@ bool profileManagerDeleteProfile(const String &profileName)
 
   return ok;
 
-}   //   profileManagerDeleteProfile()
+} //   profileManagerDeleteProfile()
 
 //--- Get profile names
 size_t profileManagerListProfiles(String profileNames[], size_t maxProfiles)
@@ -169,28 +179,28 @@ size_t profileManagerListProfiles(String profileNames[], size_t maxProfiles)
 
   return count;
 
-}   //   profileManagerListProfiles()
+} //   profileManagerListProfiles()
 
 //--- Check whether profile exists
-bool profileManagerProfileExists(const String &profileName)
+bool profileManagerProfileExists(const String& profileName)
 {
   String path = buildProfilePath(profileName);
 
   return LittleFS.exists(path);
 
-}   //   profileManagerProfileExists()
+} //   profileManagerProfileExists()
 
 //--- Build file path for profile
-static String buildProfilePath(const String &profileName)
+static String buildProfilePath(const String& profileName)
 {
   String safeName = sanitizeProfileName(profileName);
 
   return "/" + safeName + ".json";
 
-}   //   buildProfilePath()
+} //   buildProfilePath()
 
 //--- Sanitize profile name
-static String sanitizeProfileName(const String &profileName)
+static String sanitizeProfileName(const String& profileName)
 {
   String safeName = profileName;
   safeName.trim();
@@ -209,10 +219,10 @@ static String sanitizeProfileName(const String &profileName)
 
   return filtered;
 
-}   //   sanitizeProfileName()
+} //   sanitizeProfileName()
 
 //--- Read settings from JSON document
-static void loadSettingsFromJson(const JsonDocument &doc, AppSettings &settings)
+static void loadSettingsFromJson(const JsonDocument& doc, AppSettings& settings)
 {
   settings.onTimeValue = doc["onTimeValue"] | settings.onTimeValue;
   settings.offTimeValue = doc["offTimeValue"] | settings.offTimeValue;
@@ -225,10 +235,10 @@ static void loadSettingsFromJson(const JsonDocument &doc, AppSettings &settings)
   settings.lockInputDuringRun = doc["lockInputDuringRun"] | settings.lockInputDuringRun;
   settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
 
-}   //   loadSettingsFromJson()
+} //   loadSettingsFromJson()
 
 //--- Write settings into JSON document
-static void saveSettingsToJson(JsonDocument &doc, const AppSettings &settings)
+static void saveSettingsToJson(JsonDocument& doc, const AppSettings& settings)
 {
   doc["onTimeValue"] = settings.onTimeValue;
   doc["offTimeValue"] = settings.offTimeValue;
@@ -241,4 +251,4 @@ static void saveSettingsToJson(JsonDocument &doc, const AppSettings &settings)
   doc["lockInputDuringRun"] = settings.lockInputDuringRun;
   doc["autoSaveLastProfile"] = settings.autoSaveLastProfile;
 
-}   //   saveSettingsToJson()
+} //   saveSettingsToJson()

@@ -1,3 +1,5 @@
+[← Back to README](README.md)
+
 # Menu, Field Input and Eventhandling
 
 ## Selection rule:
@@ -12,10 +14,22 @@
 [Start]
   |
 [Trying to connect to]
+```
+<div align="center">
+<img src="assets/UT_Connect2AP.png" width="300" align="center">
+</div>
+
+```
 [<SSID>] (centered)
   |
   V
 [Timer Screen]
+```
+<div align="center">
+<img src="assets/UniversalTimer.png" width="300" align="center">
+</div>
+
+```
 - Start (SHORT press when selected)
 - Stop (SHORT press when selected)
 - Reset (SHORT press when selected)
@@ -25,6 +39,12 @@
   |
   V
 [Edit Timer Menu]
+```
+<div align="center">
+<img src="assets/EditTimerMenu.png" width="300" align="center">
+</div>
+
+```
 - Timer Settings -> [Timer Settings Menu]
 - Save Profile -> [Save Profile Menu]
 - Load Profile -> [Load Profile Menu]
@@ -34,6 +54,12 @@
 - Exit -> return to [Timer Screen]
 
 [Timer Settings Menu]
+```
+<div align="center">
+<img src="assets/TimerSettingsMenu.png" width="300" align="center">
+</div>
+
+```
 - On Time
 - On Time Unit
 - Off Time
@@ -44,8 +70,11 @@
 - PIN_KEY0 MEDIUM or LONG press -> return to [Edit Timer Menu]
 
 [Save Profile Menu]
-- Profile field input (alphanumeric, fixed positions)
-- Auto return to [Edit Timer Menu] after last position is confirmed
+- Confirmation buttons: [No] [Yes]
+- Label shows active profile name: Save "<activeProfile>"?
+- Default selection is [No] (least destructive first)
+- [Yes] saves current active profile and returns to [Edit Timer Menu]
+- [No] cancels and returns to [Edit Timer Menu]
 
 [Load Profile Menu]
 - Profile list
@@ -58,7 +87,10 @@
 
 [Delete Profile Menu]
 - Profile list
-- Selecting a profile opens confirmation: Are you sure (Y/N)
+- Default profile is never shown in this list
+- Selecting a profile opens confirmation buttons: [No] [Yes]
+- Default selection is [No] (least destructive first)
+- Deleting the active profile immediately loads [default]
 - Exit (last item) -> return to [Edit Timer Menu]
 
 [Show System Settings Menu]
@@ -80,8 +112,16 @@
 - [Cancel WiFi Manager]
 - Cancel WiFi Manager -> sets WiFi Disabled/Ignore flag and returns to [Timer Screen] without restart
 ```
+
+# platforio.ini
+> **Source of truth: `platformio.ini` is always leading.**
+> If any `build_flags` value in `platformio.ini` differs from the value mentioned anywhere in the documentation (any `.md` file), the value in `platformio.ini` is correct.
+> `platformio.ini` must **never** be changed to match documentation.
+> The documentation must be updated to match `platformio.ini`.
+
 # ======= Event Handling =======
 These `build_flags` triggers events.
+
 ```
  ENCODER_SHORT_PRESS_MS=50
  ENCODER_MEDIUM_PRESS_MS=1000
@@ -111,6 +151,7 @@ A `BUTTON_MEDIUM_EVENT` has in all menu's the same effect as selecting `Exit` in
 - Start at the left-most position.
 - Rotating the encoder changes the token at the current cursor position.
 - SHORT press moves the cursor to the next position. At the last position, SHORT press does nothing (cursor stays).
+- For alphanumeric profile-name input: if the current token is "-", SHORT press must NOT move the cursor right.
 - ENCODER MEDIUM or LONG press at any position saves the field value and returns to the previous menu.
 - PIN_KEY0 SHORT press moves the cursor 1 position to the left. At the first (left-most) position, exits without saving.
 - PIN_KEY0 MEDIUM or LONG press saves the field value and returns to the previous menu.
@@ -150,3 +191,5 @@ When `positionCount == 1` and `tokenCount` is 2–6, the field input renders as 
 ## Status output countdown:
 - Format is MMM:SS while running/paused.
 - Idle placeholder is ---:--.
+
+[← Back to README](README.md)

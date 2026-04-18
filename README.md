@@ -1,23 +1,47 @@
 # Ultimate Timer
-## Disclaimer
-This software and/or  hardware is developed incrementally. That means I have no clear idea how it works (though it mostly does).
 
-If you have questions about this software, it will probably take you just as long to figure things out as it would take me. So I’d prefer that you investigate it yourself.
+## Disclaimer
+This software and/or  hardware is developed incrementally. That means I have 
+no clear idea how it works (though it mostly does).
+
+If you have questions about this software, it will probably take you just 
+as long to figure things out as it would take me. So I’d prefer that you 
+investigate it yourself.
 
 Having said that ***Don’t Even Think About Using It***.
 
 Seriously. Don’t.
 
-Building this design may injure or kill you during construction, burn your house down while in use, and then—just to be thorough—explode afterward.
+Building this design may injure or kill you during construction, burn your 
+house down while in use, and then—*just to be thorough*—explode afterward.
 
-This is not a joke. This project involves lethal voltages. If you are not a qualified electronics engineer, close this repository, step away from the soldering iron, and make yourself a cup of tea.
+This is not a joke. This project involves lethal voltages and temperatures. 
+If you are not a qualified electronics engineer, close this repository, 
+step away from the soldering iron, and make yourself a cup of tea.
 
-If you decide to ignore all of the above and build it anyway, you do so entirely at your own risk. You are fully responsible for taking proper safety precautions. I take zero responsibility for anything that happens—electrically, mechanically, chemically, spiritually, or otherwise.
+If you decide to ignore all of the above and build it anyway, you do so 
+**entirely** at your own risk. You are fully responsible for taking proper 
+safety precautions. I take zero responsibility for anything that 
+happens—electrically, mechanically, chemically, spiritually, or otherwise.
 
-Also, full disclosure: *I am not a qualified electrical engineer*. I provide no guarantees, no warranties, and absolutely no assurance that this design is correct, safe, or suitable for any purpose whatsoever.
+Also, full disclosure: *I am not a qualified electrical engineer*. I provide 
+no guarantees, no warranties, and absolutely no assurance that this design 
+is correct, safe, or suitable for any purpose whatsoever.
 
 ## What it is
 ESP32 cyclic timer for a 2.4 inch SPI TFT + EC11 rotary encoder module.
+
+<div align="center">
+<img src="assets/TFT_LCD_RotaryModule1.png" width="300" align="center">
+</div>
+
+## Documentation
+
+| Document | Description |
+|---|---|
+| [codingRules.md](codingRules.md) | Coding conventions and rules for this project |
+| [menuStructure.md](menuStructure.md) | Menu layout, navigation, and event handling specification |
+| [colorSettings.md](colorSettings.md) | Display color theme and UI color rules |
 
 ## Confirm to codingRules
 Read `codingRules.md`
@@ -31,7 +55,8 @@ read `colorSettings.md`
 ## Implemented structure
 - Local TFT menu
 - Rotary encoder editing
-- Long press profile save with character-by-character name entry
+- Save Profile confirmation via [No] [Yes] buttons for the active profile
+- New Profile name entry with character-by-character editing
 - JSON profiles in LittleFS
 - Trigger and reset inputs
 - Output control with selectable polarity
@@ -80,6 +105,8 @@ Current configured values in this repository:
 
 ## Notes
 - Profile files are stored as `/<profileName>.json`
+- Built-in profile `default` cannot be deleted and is hidden from the Delete Profile list
+- If the active profile is deleted, firmware automatically loads `default`
 - The fallback access point is open (no password)
 - If no WiFi credentials are found (or STA connection fails), use the local `WiFi Setup` menu: scan nearby APs, select SSID with the rotary encoder, then enter the WiFi password via rotary text input and save/apply.
 - The local UI currently includes timer and profile management

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 12:26 ***/
+/*** Last Changed: 2026-04-18 - 13:35 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -454,8 +454,8 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
   uint16_t tokenNeighborColor = getUiInactiveFillColor();
   uint16_t tileFillColor = getUiSelectedFillColor();
   uint16_t tileBorderColor = getUiSelectedBorderColor();
-  uint16_t tileLabelColor = getUiAccentColor();
   uint16_t tileValueColor = getUiSelectedTextColor();
+  uint16_t tileLabelColor = tileValueColor;
 
   const int tileX = 3;
   const int tileW = 314;
@@ -983,8 +983,8 @@ static void drawStatusTile(int x, int y, int w, int h, const char* label, const 
 {
   uint16_t tileFillColor = getUiSelectedFillColor();
   uint16_t tileBorderColor = getUiSelectedBorderColor();
-  uint16_t tileLabelColor = getUiAccentColor();
   uint16_t tileValueColor = getUiSelectedTextColor();
+  uint16_t tileLabelColor = tileValueColor;
 
   tft.fillRoundRect(x, y, w, h, 5, tileFillColor);
   tft.drawRoundRect(x, y, w, h, 5, tileBorderColor);

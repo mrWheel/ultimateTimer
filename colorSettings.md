@@ -1,3 +1,5 @@
+[← Back to README](README.md)
+
 # Color Settings — ultimateTimer Display
 
 ## Hardware background
@@ -155,3 +157,5 @@ Current configured profiles:
 
 - Visual `WHITE` text -> use `ST77XX_BLACK`.
 - Visual `BLACK` text -> use `ST77XX_WHITE`.
+
+[← Back to README](README.md)

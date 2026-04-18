@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 12:26 ***/
+/*** Last Changed: 2026-04-18 - 13:35 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -139,11 +139,6 @@ static const char* timeUnitTokens[] =
 static const char* triggerEdgeTokens[] =
     {
         "Falling", "Rising"};
-
-//--- Yes/No field tokens
-static const char* yesNoTokens[] =
-    {
-        "Y", "N"};
 
 //--- Confirm (No/Yes) button tokens
 static const char* confirmNoYesTokens[] =
@@ -397,33 +392,31 @@ static void applyFieldInputAndReturn()
   switch (fieldInputTarget)
   {
   case FIELD_INPUT_TARGET_SAVE_PROFILE:
-    while (!fieldValue.empty() && fieldValue.back() == '-')
+    if (fieldValue == "Yes")
     {
-      fieldValue.pop_back();
-    }
-
-    if (fieldValue.empty())
-    {
-      uiMenuShowTransientMessage("Empty profile name");
-
-      return;
-    }
-
-    settings.profileName = fieldValue.c_str();
-
-    if (profileManagerSaveProfile(settings.profileName, settings))
-    {
-      commitSettings(settings);
-      settingsStoreSaveLastProfileName(settings.profileName);
-      uiMenuShowTransientMessage("Profile saved");
+      if (profileManagerSaveProfile(settings.profileName, settings))
+      {
+        commitSettings(settings);
+        settingsStoreSaveLastProfileName(settings.profileName);
+        uiMenuShowTransientMessage("Profile saved");
+      }
+      else
+      {
+        uiMenuShowTransientMessage("Save failed");
+      }
     }
     else
     {
-      uiMenuShowTransientMessage("Save failed");
+      uiMenuShowTransientMessage("Save cancelled");
     }
     break;
 
   case FIELD_INPUT_TARGET_NEW_PROFILE:
+    while (!fieldValue.empty() && fieldValue.front() == '-')
+    {
+      fieldValue.erase(fieldValue.begin());
+    }
+
     while (!fieldValue.empty() && fieldValue.back() == '-')
     {
       fieldValue.pop_back();
@@ -518,11 +511,30 @@ static void applyFieldInputAndReturn()
     break;
 
   case FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM:
-    if (fieldValue == "Y")
+    if (fieldValue == "Yes")
     {
+      bool deletingActiveProfile = settings.profileName.equalsIgnoreCase(pendingDeleteProfileName);
+
       if (profileManagerDeleteProfile(pendingDeleteProfileName))
       {
-        uiMenuShowTransientMessage("Profile deleted");
+        if (deletingActiveProfile)
+        {
+          AppSettings fallbackSettings = timerGetSettings();
+
+          if (!profileManagerLoadProfile(profileManagerDefaultProfileName, fallbackSettings))
+          {
+            timerLoadDefaultSettings(fallbackSettings);
+          }
+
+          commitSettings(fallbackSettings);
+          timerReset();
+          settingsStoreSaveLastProfileName(fallbackSettings.profileName);
+          uiMenuShowTransientMessage("Deleted, default loaded");
+        }
+        else
+        {
+          uiMenuShowTransientMessage("Profile deleted");
+        }
       }
       else
       {
@@ -628,8 +640,13 @@ static void handleFieldInput(EncoderEvent encoderEvent)
 
     if (fieldInputCursorPosition < fieldInputPositionCount - 1)
     {
-      fieldInputCursorPosition++;
-      redrawRequired = true;
+      bool currentIsDash = (strcmp(fieldInputTokenList[fieldInputTokenIndexes[fieldInputCursorPosition]], "-") == 0);
+
+      if (!currentIsDash)
+      {
+        fieldInputCursorPosition++;
+        redrawRequired = true;
+      }
     }
   }
   else if (encoderEvent == ENCODER_EVENT_MEDIUM_PRESS || encoderEvent == ENCODER_EVENT_LONG_PRESS)
@@ -650,6 +667,24 @@ static void handleFieldInput(EncoderEvent encoderEvent)
 static void refreshProfileListWithExit()
 {
   size_t loadedProfiles = profileManagerListProfiles(profileNames, profileManagerMaxProfiles);
+
+  if (profileListMode == PROFILE_LIST_DELETE)
+  {
+    size_t visibleCount = 0;
+
+    for (size_t index = 0; index < loadedProfiles; index++)
+    {
+      if (profileNames[index].equalsIgnoreCase(profileManagerDefaultProfileName))
+      {
+        continue;
+      }
+
+      profileNames[visibleCount] = profileNames[index];
+      visibleCount++;
+    }
+
+    loadedProfiles = visibleCount;
+  }
 
   profileCount = loadedProfiles + 1;
   profileNames[profileCount - 1] = "Exit";
@@ -990,8 +1025,11 @@ static void handleMainMenu(EncoderEvent encoderEvent)
       return;
 
     case MENU_ITEM_SAVE_PROFILE:
-      openFieldInput("Save Profile Menu", "Profile", 8, alphaNumericTokens, sizeof(alphaNumericTokens) / sizeof(alphaNumericTokens[0]), FIELD_INPUT_TARGET_SAVE_PROFILE, UI_SCREEN_MAIN_MENU, settings.profileName.c_str());
+    {
+      std::string saveLabel = "Save \"" + std::string(settings.profileName.c_str()) + "\"?";
+      openFieldInput("Save Profile", saveLabel, 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_SAVE_PROFILE, UI_SCREEN_MAIN_MENU, "No");
       return;
+    }
 
     case MENU_ITEM_LOAD_PROFILE:
       openProfileList(PROFILE_LIST_LOAD);
@@ -1275,7 +1313,7 @@ static void handleProfileList(EncoderEvent encoderEvent)
     else
     {
       pendingDeleteProfileName = selectedProfile;
-      openFieldInput("Delete Profile", "Are you sure (Y/N)", 1, yesNoTokens, sizeof(yesNoTokens) / sizeof(yesNoTokens[0]), FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM, UI_SCREEN_PROFILE_LIST, "N");
+      openFieldInput("Delete Profile", "Delete \"" + std::string(selectedProfile.c_str()) + "\"?", 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM, UI_SCREEN_PROFILE_LIST, "No");
 
       return;
     }

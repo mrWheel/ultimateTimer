@@ -22,7 +22,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v1.1.2";
+const char* PROG_VERSION = "v1.1.3";
 
 //--- Logging tag
 static const char* logTag = "main";
