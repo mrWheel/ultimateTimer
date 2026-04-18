@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 14:40 ***/
+/*** Last Changed: 2026-04-18 - 15:14 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -6,6 +6,7 @@
 #include "WiFiManagerExt.h"
 #include "colorSettings.h"
 #include "displayDriver.h"
+#include "appConfig.h"
 
 #include <ArduinoJson.h>
 #include <WiFi.h>
@@ -267,8 +268,16 @@ body {
 }
 
 .cardDisabled {
-  opacity: 0.54;
+  background: rgba(255, 255, 255, 0.68);
 }
+
+.cardDisabled input,
+.cardDisabled select,
+.cardDisabled button {
+  opacity: 0.56;
+}
+
+
 
 .formGrid {
   display: grid;
@@ -289,6 +298,13 @@ body {
   text-transform: uppercase;
 }
 
+.roField label::after {
+  content: "  RO";
+  font-size: 10px;
+  color: var(--themeAccentStrong);
+  letter-spacing: 0.08em;
+}
+
 .fieldRow input,
 .fieldRow select {
   width: 100%;
@@ -298,6 +314,20 @@ body {
   padding: 9px 10px;
   color: var(--ink);
   font-size: 14px;
+}
+
+.fieldRow input[readonly] {
+  border-color: #8ea3bb;
+  border-style: dashed;
+  background: repeating-linear-gradient(
+    135deg,
+    #edf3fa,
+    #edf3fa 8px,
+    #e2ebf6 8px,
+    #e2ebf6 16px
+  );
+  color: #223246;
+  font-weight: 600;
 }
 
 .footerActions {
@@ -427,13 +457,21 @@ body {
 }
 
 .tileNotice {
+  display: none;
   margin: 0 0 12px 0;
   padding: 8px 10px;
   border-left: 3px solid var(--themeAccent);
   background: var(--themeTint);
-  color: var(--inkMuted);
-  font-size: 12px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
   border-radius: 8px;
+}
+
+.cardDisabled .tileNotice {
+  display: block;
+  opacity: 1;
+  color: var(--ink);
 }
 
 @keyframes tileEnter {
@@ -559,6 +597,7 @@ body {
       </div>
 
       <div class="footerActions">
+        <button id="cancelSettingsButton" class="secondaryButton" type="button">Cancel</button>
         <button id="saveSettingsButton" class="primaryButton" type="button">Save Settings</button>
       </div>
     </div>
@@ -571,11 +610,11 @@ body {
     <div class="tileBody">
       <p class="tileNotice">Only mutable when Timer is Stopped.</p>
       <div class="formGrid">
-        <div class="fieldRow"><label for="systemSsid">SSID</label><input id="systemSsid" type="text" readonly></div>
-        <div class="fieldRow"><label for="systemIp">IP</label><input id="systemIp" type="text" readonly></div>
-        <div class="fieldRow"><label for="systemMac">MAC</label><input id="systemMac" type="text" readonly></div>
-        <div class="fieldRow"><label for="systemEncoderOrder">Encoder X-Y</label><input id="systemEncoderOrder" type="text" readonly></div>
-        <div class="fieldRow"><label for="systemOutputPolarity">Output</label><select id="systemOutputPolarity"><option value="1">High</option><option value="0">Low</option></select></div>
+        <div class="fieldRow roField"><label for="systemSsid">SSID</label><input id="systemSsid" type="text" readonly></div>
+        <div class="fieldRow roField"><label for="systemIp">IP</label><input id="systemIp" type="text" readonly></div>
+        <div class="fieldRow roField"><label for="systemMac">MAC</label><input id="systemMac" type="text" readonly></div>
+        <div class="fieldRow roField"><label for="systemEncoderOrder">Encoder X-Y</label><input id="systemEncoderOrder" type="text" readonly></div>
+        <div class="fieldRow"><label for="systemOutputPolarity">Output</label><select id="systemOutputPolarity"><option value="1">Active HIGH</option><option value="0">Active LOW</option></select></div>
         <div class="fieldRow"><label for="systemThemeIndex">Theme</label><select id="systemThemeIndex"><option value="0">Red</option><option value="1">Green</option><option value="2">Blue</option><option value="3">Indigo</option><option value="4">Violet</option><option value="5">Yellow</option></select></div>
         <div class="fieldRow"><label for="systemRestart">Restart Ultimate Timer</label><select id="systemRestart"><option value="0">No</option><option value="1">Yes</option></select></div>
       </div>
@@ -915,10 +954,10 @@ async function refreshStatus()
     'Network: ' + (data.network.connected ? 'Connected' : 'Not connected') + ' | IP: ' + data.network.address;
   document.getElementById('systemThemeName').textContent = data.settings.themeColorName || '-';
   document.getElementById('systemNetworkState').textContent = data.network.connected ? 'Connected' : 'Disconnected';
-  document.getElementById('systemSsid').value = data.network.ssid || '-';
-  document.getElementById('systemIp').value = data.network.address || '-';
-  document.getElementById('systemMac').value = data.network.macAddress || '-';
-  document.getElementById('systemEncoderOrder').value = data.settings.encoderOrderLabel || '-';
+  document.getElementById('systemSsid').value = data.network.ssid || '(not connected)';
+  document.getElementById('systemIp').value = data.network.address || '(none)';
+  document.getElementById('systemMac').value = data.network.macAddress || '(unknown)';
+  document.getElementById('systemEncoderOrder').value = data.settings.encoderOrderLabel || '(unknown)';
   document.getElementById('systemOutputPolarity').value = data.settings.outputPolarityHigh ? '1' : '0';
   document.getElementById('systemThemeIndex').value = String(data.settings.themeColorIndex || 0);
 
@@ -1175,6 +1214,10 @@ function bindActionButtons()
     await callPost('/api/reset');
   });
 
+  document.getElementById('cancelSettingsButton').addEventListener('click', () =>
+  {
+    setActiveMenu('');
+  });
   document.getElementById('saveSettingsButton').addEventListener('click', saveSettings);
   document.getElementById('systemCancelButton').addEventListener('click', () =>
   {
@@ -1369,7 +1412,7 @@ static void handleSaveSettings()
   timerSetSettings(settings);
   settings = timerGetSettings();
 
-  if (settings.autoSaveLastProfile && !settings.profileName.isEmpty())
+  if (DEFAULT_AUTO_SAVE_LAST_PROFILE != 0 && !settings.profileName.isEmpty())
   {
     profileManagerSaveProfile(settings.profileName, settings);
     settingsStoreSaveLastProfileName(settings.profileName);
@@ -1406,6 +1449,13 @@ static void handleApplySettings()
 
   timerSetSettings(settings);
   settings = timerGetSettings();
+
+  if (DEFAULT_AUTO_SAVE_LAST_PROFILE != 0 && !settings.profileName.isEmpty())
+  {
+    profileManagerSaveProfile(settings.profileName, settings);
+    settingsStoreSaveLastProfileName(settings.profileName);
+  }
+
   handleStatus();
 
 } //   handleApplySettings()

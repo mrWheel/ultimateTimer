@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 13:35 ***/
+/*** Last Changed: 2026-04-18 - 15:14 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -8,6 +8,7 @@
 #include "settingsStore.h"
 #include "timerEngine.h"
 #include "WiFiManagerExt.h"
+#include "appConfig.h"
 
 #include <WiFi.h>
 #include <cstdlib>
@@ -1348,7 +1349,7 @@ static void commitSettings(const AppSettings& settings)
 {
   timerSetSettings(settings);
 
-  if (settings.autoSaveLastProfile && !settings.profileName.isEmpty())
+  if (DEFAULT_AUTO_SAVE_LAST_PROFILE != 0 && !settings.profileName.isEmpty())
   {
     profileManagerSaveProfile(settings.profileName, settings);
     settingsStoreSaveLastProfileName(settings.profileName);

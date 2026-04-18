@@ -69,6 +69,15 @@
 - Exit -> return to [Timer Screen]
 - PIN_KEY0 MEDIUM or LONG press -> return to [Edit Timer Menu]
 
+### Timer Settings persistence rule (source: `DEFAULT_AUTO_SAVE_LAST_PROFILE`)
+- `DEFAULT_AUTO_SAVE_LAST_PROFILE=1`:
+  - Every change in `Timer Settings Menu` is applied immediately to the active runtime timer state.
+  - The same changed state is also written immediately to the active profile.
+- `DEFAULT_AUTO_SAVE_LAST_PROFILE=0`:
+  - Every change in `Timer Settings Menu` is applied immediately to the active runtime timer state.
+  - The changed state is **not** written to the active profile automatically.
+  - Profile write only happens on explicit profile save action.
+
 [Save Profile Menu]
 - Confirmation buttons: [No] [Yes]
 - Label shows active profile name: Save "<activeProfile>"?
@@ -155,6 +164,7 @@ A `BUTTON_MEDIUM_EVENT` has in all menu's the same effect as selecting `Exit` in
 - ENCODER MEDIUM or LONG press at any position saves the field value and returns to the previous menu.
 - PIN_KEY0 SHORT press moves the cursor 1 position to the left. At the first (left-most) position, exits without saving.
 - PIN_KEY0 MEDIUM or LONG press saves the field value and returns to the previous menu.
+- For `Timer Settings Menu` field input targets, save-to-profile behavior follows `DEFAULT_AUTO_SAVE_LAST_PROFILE` exactly as defined above.
 
 ## Generic field input parameters:
 - fieldName
