@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 11:49 ***/
+/*** Last Changed: 2026-04-18 - 12:26 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
@@ -17,6 +17,9 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
 
 //--- Draw text list
 void displayDrawListScreen(const char* title, const String items[], size_t itemCount, int selectedIndex, int firstVisibleIndex);
+
+//--- Refresh current header line when time/WiFi text changes
+void displayRefreshHeaderIfNeeded(uint32_t minimumIntervalMs);
 
 //--- Draw numeric editor
 void displayDrawNumberEditor(const char* label, uint32_t value, const char* unitLabel);

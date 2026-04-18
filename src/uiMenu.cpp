@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 14:46 ***/
+/*** Last Changed: 2026-04-18 - 12:26 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -166,6 +166,9 @@ static const int maxFieldPositions = 12;
 //--- Current screen
 static UiScreen currentScreen = UI_SCREEN_STATUS;
 
+//--- Previous screen (for PIN_KEY0 returns)
+static UiScreen previousScreen = UI_SCREEN_STATUS;
+
 //--- Menu indexes and visible offsets
 static int mainMenuIndex = 0;
 static int mainMenuFirstVisibleIndex = 0;
@@ -202,6 +205,7 @@ static uint32_t transientMessageUntilMs = 0;
 //--- Status refresh timing
 static const uint32_t statusRefreshIntervalMs = 100;
 static uint32_t lastStatusRefreshMs = 0;
+static const uint32_t headerRefreshIntervalMs = 10000;
 
 //--- Draw current screen
 static void drawCurrentScreen();
@@ -377,6 +381,7 @@ static void openFieldInput(const std::string& title, const std::string& fieldNam
     }
   }
 
+  previousScreen = currentScreen;
   currentScreen = UI_SCREEN_FIELD_INPUT;
   logActiveScreen(title.c_str());
   drawCurrentScreen();
@@ -675,6 +680,7 @@ static void openMainMenu(bool selectExitItem)
 {
   mainMenuIndex = selectExitItem ? MENU_ITEM_EXIT : 0;
   mainMenuFirstVisibleIndex = 0;
+  previousScreen = currentScreen;
   currentScreen = UI_SCREEN_MAIN_MENU;
   logActiveScreen("Edit Timer Menu");
   drawCurrentScreen();
@@ -686,6 +692,7 @@ static void openTimerSettingsMenu(bool selectExitItem)
 {
   timerSettingsIndex = selectExitItem ? TIMER_SETTINGS_ITEM_EXIT : 0;
   timerSettingsFirstVisibleIndex = 0;
+  previousScreen = currentScreen;
   currentScreen = UI_SCREEN_TIMER_SETTINGS_MENU;
   logActiveScreen("Timer Settings Menu");
   drawCurrentScreen();
@@ -696,6 +703,7 @@ static void openTimerSettingsMenu(bool selectExitItem)
 static void openSystemSettingsMenu()
 {
   systemSettingsIndex = getFirstVisibleSystemSettingsItem();
+  previousScreen = currentScreen;
   currentScreen = UI_SCREEN_SYSTEM_SETTINGS_MENU;
   logActiveScreen("Show System Settings Menu");
   drawCurrentScreen();
@@ -708,6 +716,7 @@ static void openProfileList(ProfileListMode mode)
   profileListMode = mode;
   profileIndex = 0;
   profileFirstVisibleIndex = 0;
+  previousScreen = currentScreen;
   refreshProfileListWithExit();
 
   currentScreen = UI_SCREEN_PROFILE_LIST;
@@ -1465,7 +1474,8 @@ void uiMenuUpdate()
     return;
   }
 
-  if (buttonEvent == BUTTON_EVENT_MEDIUM_PRESS)
+  //--- PIN_KEY0 MEDIUM or LONG press: return to parent menu per screen
+  if (buttonEvent == BUTTON_EVENT_MEDIUM_PRESS || buttonEvent == BUTTON_EVENT_LONG_PRESS)
   {
     if (currentScreen == UI_SCREEN_MAIN_MENU)
     {
@@ -1474,14 +1484,8 @@ void uiMenuUpdate()
       return;
     }
 
-    if (currentScreen == UI_SCREEN_TIMER_SETTINGS_MENU)
-    {
-      openStatusScreen();
-
-      return;
-    }
-
-    if (currentScreen == UI_SCREEN_SYSTEM_SETTINGS_MENU ||
+    if (currentScreen == UI_SCREEN_TIMER_SETTINGS_MENU ||
+        currentScreen == UI_SCREEN_SYSTEM_SETTINGS_MENU ||
         currentScreen == UI_SCREEN_PROFILE_LIST)
     {
       openMainMenu(true);
@@ -1521,6 +1525,9 @@ void uiMenuUpdate()
     transientMessageUntilMs = 0;
     drawCurrentScreen();
   }
+
+  //--- Update header time/WiFi text without redrawing full screens
+  displayRefreshHeaderIfNeeded(headerRefreshIntervalMs);
 
   switch (currentScreen)
   {

@@ -50,6 +50,7 @@ read `colorSettings.md`
 - Select menu options with a **short press on the rotary encoder**.
 - Menu navigation is clamped (no wrap-around).
 - Timer action row includes `Start`, `Stop`, `Reset`.
+- Menu list items are rendered left-aligned with a two-character prefix area: selected item is shown as `> Item <`, unselected items use leading spaces so text starts at the same position.
 
 ### Main menu options
 - `Timer Settings`
@@ -69,6 +70,14 @@ The press durations are configurable in `platformio.ini` via `build_flags`:
 - `BUTTON_MEDIUM_PRESS_MS`
 - `BUTTON_LONG_PRESS_MS`
 
+Current configured values in this repository:
+- `ENCODER_SHORT_PRESS_MS=50`
+- `ENCODER_MEDIUM_PRESS_MS=1000`
+- `ENCODER_LONG_PRESS_MS=2000`
+- `BUTTON_SHORT_PRESS_MS=50`
+- `BUTTON_MEDIUM_PRESS_MS=1000`
+- `BUTTON_LONG_PRESS_MS=2000`
+
 ## Notes
 - Profile files are stored as `/<profileName>.json`
 - The fallback access point is open (no password)
@@ -85,9 +94,12 @@ The press durations are configurable in `platformio.ini` via `build_flags`:
 ## TFT display behavior
 - All TFT text is rendered with the built-in monospaced font.
 - Header uses the same calibrated blue background as selected action buttons.
+- Header right side shows `No WiFi` when disconnected, or `HH:MM` when WiFi and NTP time are available.
+- Header time is refreshed across all screens with a lightweight header-only redraw (at least once per 10 seconds while NTP time is valid).
 - Selected action button is blue; not-selected action buttons are light gray.
 - Button text is rendered in the calibrated high-contrast mapping used by this panel.
 - Status screen redraws only changed lines for smooth runtime updates.
+- In button-mode field input, buttons are centered and drawn directly on the black background near the bottom (no tile behind the button group).
 
 ## TEST_COLOR_PATERN mode
 - Add `-D TEST_COLOR_PATERN` to `build_flags` in `platformio.ini` to enable test mode.

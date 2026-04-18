@@ -41,7 +41,7 @@
 - Number of Cycles
 - Trigger (Rise/Fall)
 - Exit -> return to [Timer Screen]
-- PIN_KEY0 MEDIUM press -> return to [Timer Screen]
+- PIN_KEY0 MEDIUM or LONG press -> return to [Edit Timer Menu]
 
 [Save Profile Menu]
 - Profile field input (alphanumeric, fixed positions)
@@ -84,11 +84,11 @@
 These `build_flags` triggers events.
 ```
  ENCODER_SHORT_PRESS_MS=50
- ENCODER_MEDIUM_PRESS_MS=1500
- ENCODER_LONG_PRESS_MS=3000
+ ENCODER_MEDIUM_PRESS_MS=1000
+ ENCODER_LONG_PRESS_MS=2000
  BUTTON_SHORT_PRESS_MS=50
- BUTTON_MEDIUM_PRESS_MS=1500
- BUTTON_LONG_PRESS_MS=3000
+ BUTTON_MEDIUM_PRESS_MS=1000
+ BUTTON_LONG_PRESS_MS=2000
 ```
 ## Event Handling should be as follows:
 Every press shorter than `XX_SHORT_PRESS_MS` is considered switch-bouncing or noice!
@@ -101,6 +101,10 @@ Presses equal or longer than `XX_LONG_PRESS_MS` triggers the `XX_LONG_EVENT` and
 
 A `BUTTON_MEDIUM_EVENT` has in all menu's the same effect as selecting `Exit` in the menu's.
 
+**PIN_KEY0 behavior in ALL menus:**
+- `PIN_KEY0 SHORT press`: In field input, moves cursor 1 position left. At the first position, exits without saving. In regular menus, no effect.
+- `PIN_KEY0 MEDIUM press`: In regular menus, acts as Exit/Back to the parent menu immediately. In field input, saves and returns.
+- `PIN_KEY0 LONG press`: Same behavior as MEDIUM press, but triggers immediately when LONG_PRESS_MS is reached (does NOT wait for button release).
 # ======= Field Input =======
 
 ## Field Input behavior:
@@ -125,6 +129,8 @@ A `BUTTON_MEDIUM_EVENT` has in all menu's the same effect as selecting `Exit` in
 When `positionCount == 1` and `tokenCount` is 2–6, the field input renders as a button grid instead of a token scroll.
 - 2–4 options: single row of buttons.
 - 5–6 options: two rows of 3 buttons each.
+- Buttons are drawn on the black screen background (no surrounding tile panel).
+- Buttons are centered horizontally; in two-row mode the lower row sits near the bottom and the upper row is placed directly above it.
 - All buttons rendered **identically** to the Timer Screen Start/Stop/Reset buttons: dark fill + inner border = selected, light fill = inactive.
 - `getUiSelectedFillColor()` / `getUiSelectedBorderColor()` / `getUiSelectedTextColor()` for selected.
 - `getUiInactiveFillColor()` / `getUiInactiveBorderColor()` / `getUiInactiveTextColor()` for unselected.

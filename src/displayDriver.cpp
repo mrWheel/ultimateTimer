@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 11:49 ***/
+/*** Last Changed: 2026-04-18 - 12:26 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -33,7 +33,9 @@ static const uint32_t minimumCountdownDisplayMs = 2000UL;
 //--- Status screen cache
 static bool statusScreenPrepared = false;
 static std::array<std::string, statusLineCount> cachedStatusLines;
-static uint32_t lastStatusHeaderRefreshMs = 0;
+static uint32_t lastHeaderRefreshMs = 0;
+static std::string activeHeaderTitle = "";
+static std::string lastHeaderRightText = "";
 
 //--- Draw a status tile
 static void drawStatusTile(int x, int y, int w, int h, const char* label, const std::string& value);
@@ -55,6 +57,9 @@ static std::string buildHeaderClockText();
 
 //--- Build right-aligned header text
 static std::string buildHeaderRightText();
+
+//--- Determine whether NTP time is valid
+static bool hasValidNtpTime();
 
 //--- Draw centered single line text
 static void drawCenteredLine(const std::string& lineText, int y, uint16_t textColor, uint16_t backgroundColor);
@@ -150,12 +155,6 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     }
 
     statusScreenPrepared = true;
-    lastStatusHeaderRefreshMs = millis();
-  }
-  else if (millis() - lastStatusHeaderRefreshMs >= 1000UL)
-  {
-    drawHeader("Universal Timer");
-    lastStatusHeaderRefreshMs = millis();
   }
 
   char buffer[32];
@@ -334,6 +333,33 @@ void displayDrawListScreen(const char* title, const String items[], size_t itemC
 
 } //   displayDrawListScreen()
 
+//--- Refresh current header line when time/WiFi text changes
+void displayRefreshHeaderIfNeeded(uint32_t minimumIntervalMs)
+{
+  uint32_t nowMs = millis();
+  std::string rightText = buildHeaderRightText();
+  bool headerTitleAvailable = !activeHeaderTitle.empty();
+  bool rightTextChanged = (rightText != lastHeaderRightText);
+
+  if (!headerTitleAvailable)
+  {
+    return;
+  }
+
+  if (rightTextChanged)
+  {
+    drawHeader(activeHeaderTitle.c_str());
+
+    return;
+  }
+
+  if (hasValidNtpTime() && (nowMs - lastHeaderRefreshMs >= minimumIntervalMs))
+  {
+    drawHeader(activeHeaderTitle.c_str());
+  }
+
+} //   displayRefreshHeaderIfNeeded()
+
 //--- Draw numeric editor
 void displayDrawNumberEditor(const char* label, uint32_t value, const char* unitLabel)
 {
@@ -440,9 +466,9 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
   const int tile1Y = 30;
   const int tile1H = 84;
 
-  //--- Tile 2: token selector fixed near bottom
-  const int tile2H = useButtonOptions ? (useTwoRowButtons ? 104 : 70) : 44;
-  const int tile2Y = useButtonOptions ? (useTwoRowButtons ? 116 : 130) : 156;
+  //--- Tile 2: token selector fixed near bottom (only when NOT using button options)
+  const int tile2H = !useButtonOptions ? 44 : 0;
+  const int tile2Y = !useButtonOptions ? 156 : 0;
 
   std::string valueText = "[" + fieldValue + "]";
   std::string leftTokenText = prevToken + " < ";
@@ -504,31 +530,44 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
     tft.print("^");
   }
 
-  //--- Tile 2: token selector
-  tft.fillRoundRect(tileX, tile2Y, tileW, tile2H, 5, tileFillColor);
-  tft.drawRoundRect(tileX, tile2Y, tileW, tile2H, 5, tileBorderColor);
+  //--- Tile 2: token selector (only when NOT using button options)
+  if (!useButtonOptions)
+  {
+    tft.fillRoundRect(tileX, tile2Y, tileW, tile2H, 5, tileFillColor);
+    tft.drawRoundRect(tileX, tile2Y, tileW, tile2H, 5, tileBorderColor);
 
-  tft.setTextSize(2);
-  tft.setTextColor(tileLabelColor, tileFillColor);
-  tft.setCursor(tileX + 6, tile2Y + 5);
-  tft.print("SELECT");
+    tft.setTextSize(2);
+    tft.setTextColor(tileLabelColor, tileFillColor);
+    tft.setCursor(tileX + 6, tile2Y + 5);
+    tft.print("SELECT");
+  }
 
   if (useButtonOptions)
   {
-    const int buttonRowX = tileX + 8;
-    const int buttonRowW = tileW - 16;
-    const int buttonH = 30;
-    const int buttonGap = 6;
+    const int buttonHeight = 30;
+    const int buttonWidth = 92;
+    const int buttonSpacing = 10;
     int itemsPerRow = useTwoRowButtons ? 3 : tokenOptionCount;
     int rowCount = useTwoRowButtons ? 2 : 1;
-    int buttonW = (buttonRowW - (buttonGap * (itemsPerRow - 1))) / itemsPerRow;
+
+    //--- Calculate total button area dimensions
+    int totalButtonWidth = (itemsPerRow * buttonWidth) + ((itemsPerRow - 1) * buttonSpacing);
+    int totalButtonHeight = (rowCount * buttonHeight) + ((rowCount - 1) * buttonSpacing);
+
+    //--- Center buttons horizontally on screen
+    int buttonAreaX = (tft.width() - totalButtonWidth) / 2;
+
+    //--- Position button area at bottom with padding
+    const int bottomPadding = 12;
+    int buttonAreaY = tft.height() - totalButtonHeight - bottomPadding;
+
+    //--- Clear entire area for buttons (with margin)
+    tft.fillRect(0, buttonAreaY - 10, tft.width(), totalButtonHeight + 20, ST77XX_BLACK);
 
     tft.setTextSize(2);
 
     for (int row = 0; row < rowCount; row++)
     {
-      int buttonRowY = tile2Y + 26 + (row * (buttonH + buttonGap));
-
       for (int col = 0; col < itemsPerRow; col++)
       {
         int optionIndex = row * itemsPerRow + col;
@@ -538,7 +577,8 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
           break;
         }
 
-        int buttonX = buttonRowX + (col * (buttonW + buttonGap));
+        int buttonX = buttonAreaX + (col * (buttonWidth + buttonSpacing));
+        int buttonY = buttonAreaY + (row * (buttonHeight + buttonSpacing));
         bool isSelected = (optionIndex == selectedOptionIndex);
         //--- Same convention as Timer Screen action buttons: dark=selected, light=inactive
         uint16_t buttonFill = isSelected ? getUiSelectedFillColor() : getUiInactiveFillColor();
@@ -552,18 +592,18 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
         int labelX;
         int labelY;
 
-        tft.fillRoundRect(buttonX, buttonRowY, buttonW, buttonH, 8, buttonFill);
-        tft.drawRoundRect(buttonX, buttonRowY, buttonW, buttonH, 8, buttonBorder);
+        tft.fillRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 8, buttonFill);
+        tft.drawRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, 8, buttonBorder);
 
         if (isSelected)
         {
           //--- Inner border identical to Timer Screen: ST77XX_BLACK appears WHITE on inverted panel
-          tft.drawRoundRect(buttonX + 1, buttonRowY + 1, buttonW - 2, buttonH - 2, 8, ST77XX_BLACK);
+          tft.drawRoundRect(buttonX + 1, buttonY + 1, buttonWidth - 2, buttonHeight - 2, 8, ST77XX_BLACK);
         }
 
         tft.getTextBounds(optionLabel, 0, 0, &buttonTextX, &buttonTextY, &buttonTextW, &buttonTextH);
-        labelX = buttonX + ((buttonW - static_cast<int>(buttonTextW)) / 2);
-        labelY = buttonRowY + ((buttonH - static_cast<int>(buttonTextH)) / 2);
+        labelX = buttonX + ((buttonWidth - static_cast<int>(buttonTextW)) / 2);
+        labelY = buttonY + ((buttonHeight - static_cast<int>(buttonTextH)) / 2);
 
         if (labelX < (buttonX + 2))
         {
@@ -609,15 +649,22 @@ void displayDrawFieldInput(const char* title, const char* fieldName, const std::
     tft.print(rightTokenText.c_str());
   }
 
+  //--- Position help text
   tft.setTextColor(ST77XX_BLACK);
   tft.setTextSize(2);
-  tft.setCursor(6, tile2Y + tile2H + 4);
   if (useButtonOptions)
   {
+    //--- Position help text above buttons
+    int rowCount = useTwoRowButtons ? 2 : 1;
+    int totalButtonHeight = (rowCount * 30) + ((rowCount - 1) * 10);
+    int buttonAreaY = tft.height() - totalButtonHeight - 12;
+    int helpTextY = buttonAreaY - 14;
+    tft.setCursor(6, helpTextY);
     tft.print("Turn=Select  Short=Save");
   }
   else
   {
+    tft.setCursor(6, tile2Y + tile2H + 4);
     tft.print("Short=Next  Turn=Change");
   }
 
@@ -835,6 +882,10 @@ static void drawHeader(const char* title)
   tft.setCursor(rightX, 4);
   tft.print(rightText.c_str());
 
+  activeHeaderTitle = title;
+  lastHeaderRightText = rightText;
+  lastHeaderRefreshMs = millis();
+
 } //   drawHeader()
 
 //--- Build right-aligned header text
@@ -877,6 +928,32 @@ static std::string buildHeaderClockText()
   return std::string(timeBuffer);
 
 } //   buildHeaderClockText()
+
+//--- Determine whether NTP time is valid
+static bool hasValidNtpTime()
+{
+  time_t now = time(nullptr);
+
+  if (now <= 0)
+  {
+    return false;
+  }
+
+  struct tm localTimeInfo;
+
+  if (localtime_r(&now, &localTimeInfo) == nullptr)
+  {
+    return false;
+  }
+
+  if (localTimeInfo.tm_year < (2020 - 1900))
+  {
+    return false;
+  }
+
+  return true;
+
+} //   hasValidNtpTime()
 
 //--- Draw centered single line text
 static void drawCenteredLine(const std::string& lineText, int y, uint16_t textColor, uint16_t backgroundColor)
@@ -979,7 +1056,9 @@ static void drawStatusActionButtons(int statusActionIndex)
 static void invalidateStatusScreenCache()
 {
   statusScreenPrepared = false;
-  lastStatusHeaderRefreshMs = 0;
+  lastHeaderRefreshMs = 0;
+  activeHeaderTitle = "";
+  lastHeaderRightText = "";
 
 } //   invalidateStatusScreenCache()
 

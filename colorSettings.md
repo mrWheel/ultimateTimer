@@ -117,6 +117,9 @@ Do NOT invert this logic for any button type.
   - unselected = light fill + inactive border + inactive text
 - Any future button UI should reuse this same mapping to avoid confusing behavior.
 - In button-mode Field Input (`positionCount == 1`, `tokenCount 2..6`):
+  - buttons are rendered on the black background (no tile panel behind them)
+  - 2-4 options are centered in one row
+  - 5-6 options are centered in two rows, with the lower row placed near the bottom of the screen
   - rotate encoder = change selected button
   - encoder SHORT/MEDIUM/LONG press = apply selected value and return
   - PIN_KEY0 SHORT = back without save, PIN_KEY0 MEDIUM/LONG = save and return
