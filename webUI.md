@@ -38,7 +38,8 @@
   - `MAC`
   - `Encoder X-Y`
 - Mutable fields:
-  - `Output` (`High` / `Low`)
+  - `Output` (`Active HIGH` / `Active LOW`)
+  - `Auto Save Profile` (`Yes` / `No`)
   - `Theme` (`Red`, `Green`, `Blue`, `Indigo`, `Violet`, `Yellow`)
   - `Restart Ultimate Timer` (`No` / `Yes`)
 - Buttons:
@@ -54,10 +55,9 @@
   - `Cycles`
   - `Trigger Mode`
   - `Trigger Edge`
-  - `Output Polarity`
   - `Lock Input While Running`
-  - `Auto Save Profile`
-- Button:
+- Buttons:
+  - `Cancel`
   - `Save Settings`
 
 ## Profile Tiles
@@ -95,10 +95,10 @@
 
 ## Global Interaction Rules
 - Only one menu tile is visible at a time below the Timer Screen tile.
-- Every popup/menu tile includes the note:
+- Every popup/menu tile can show the note:
   - `Only mutable when Timer is Stopped.`
-- While timer state is `Idle`, form controls are editable.
-- While timer state is `Running`, form controls are disabled.
+- While timer state is `Idle`, form controls are editable and the note is hidden.
+- While timer state is `Running`, form controls are disabled and the note is shown in bold with a larger font.
 - Clicking `Cancel` closes the current tile.
 - After pressing `Save Profile`, `Load Profile`, `New Profile`, or `Delete Profile`, the tile closes automatically.
 - After pressing `Save Settings`, the Timer Settings tile closes automatically.
@@ -107,12 +107,14 @@
 - Web UI accent colors follow the selected system theme.
 - Theme names map to browser palettes (not required to match TFT inversion behavior exactly).
 - The active theme is exposed by status JSON and applied dynamically in the browser.
+- When theme color is changed through the Web UI, the local TFT display is forced back to `Timer Screen` and fully rebuilt, even if it was already showing `Timer Screen`.
 
 ## Refresh and Live Apply
-- Status polling is active and updates runtime information.
+- Status polling is always active and updates runtime information, including starts initiated from the device itself.
 - Profile list polling keeps profile selections up to date.
 - Timer setting fields use live-apply (`/api/settings/apply`) with debounce.
 - Explicit Save uses `/api/settings`.
+- Web `Cycles` display follows the same cycle-progress logic as the TFT status screen.
 
 ## Web API Endpoints
 ### Page
@@ -123,13 +125,29 @@
 - `GET /api/status`
   - Returns current settings, runtime, and network/system info.
 - `POST /api/settings`
-  - Saves timer settings.
+  - Saves timer settings and persists system-scoped fields included in the Timer Settings form.
 - `POST /api/settings/apply`
   - Applies timer settings without persistence.
 
 ### System
 - `POST /api/system/save`
-  - Saves system mutable values (`Output`, `Theme`, optional `Restart`).
+  - Saves system mutable values (`Output`, `Auto Save Profile`, `Theme`, optional `Restart`).
+
+## Persistence Model
+- Profile files store only profile-scoped timer fields:
+  - `onTimeValue`
+  - `offTimeValue`
+  - `onTimeUnit`
+  - `offTimeUnit`
+  - `repeatCount`
+- System-scoped fields are stored separately in Preferences/NVS:
+  - `triggerMode`
+  - `triggerEdge`
+  - `outputPolarityHigh`
+  - `lockInputDuringRun`
+  - `autoSaveLastProfile`
+  - `themeColorIndex`
+  - encoder direction and WiFi-related settings
 
 ### Timer Actions
 - `POST /api/start`

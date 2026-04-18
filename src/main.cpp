@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 14:40 ***/
+/*** Last Changed: 2026-04-18 - 15:49 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -22,7 +22,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v1.2.1";
+const char* PROG_VERSION = "v1.3.0";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -128,7 +128,7 @@ static void loadStartupSettings()
     }
   }
 
-  activeSettings.outputPolarityHigh = settingsStoreLoadOutputPolarityHigh();
+  settingsStoreLoadSystemSettings(activeSettings);
   encoderSetDirectionReversed(settingsStoreLoadEncoderDirectionReversed());
   displaySetThemeColorIndex(settingsStoreLoadThemeColorIndex());
 

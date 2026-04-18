@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 13:35 ***/
+/*** Last Changed: 2026-04-18 - 15:49 ***/
 #include "profileManager.h"
 
 #include <ArduinoJson.h>
@@ -63,7 +63,6 @@ bool profileManagerSaveProfile(const String& profileName, const AppSettings& set
 
   JsonDocument doc;
   saveSettingsToJson(doc, settings);
-  doc["profileName"] = safeName;
 
   if (serializeJsonPretty(doc, file) == 0)
   {
@@ -229,11 +228,6 @@ static void loadSettingsFromJson(const JsonDocument& doc, AppSettings& settings)
   settings.onTimeUnit = static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
   settings.offTimeUnit = static_cast<TimeUnit>(doc["offTimeUnit"] | static_cast<int>(settings.offTimeUnit));
   settings.repeatCount = doc["repeatCount"] | settings.repeatCount;
-  settings.triggerMode = static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
-  settings.triggerEdge = static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
-  settings.outputPolarityHigh = doc["outputPolarityHigh"] | settings.outputPolarityHigh;
-  settings.lockInputDuringRun = doc["lockInputDuringRun"] | settings.lockInputDuringRun;
-  settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
 
 } //   loadSettingsFromJson()
 
@@ -245,10 +239,5 @@ static void saveSettingsToJson(JsonDocument& doc, const AppSettings& settings)
   doc["onTimeUnit"] = static_cast<int>(settings.onTimeUnit);
   doc["offTimeUnit"] = static_cast<int>(settings.offTimeUnit);
   doc["repeatCount"] = settings.repeatCount;
-  doc["triggerMode"] = static_cast<int>(settings.triggerMode);
-  doc["triggerEdge"] = static_cast<int>(settings.triggerEdge);
-  doc["outputPolarityHigh"] = settings.outputPolarityHigh;
-  doc["lockInputDuringRun"] = settings.lockInputDuringRun;
-  doc["autoSaveLastProfile"] = settings.autoSaveLastProfile;
 
 } //   saveSettingsToJson()

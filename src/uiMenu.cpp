@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 15:14 ***/
+/*** Last Changed: 2026-04-18 - 15:49 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -50,9 +50,10 @@ enum SystemSettingsItem
   SYSTEM_SETTINGS_ITEM_ERASE_WIFI = 5,
   SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER = 6,
   SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY = 7,
-  SYSTEM_SETTINGS_ITEM_THEME_COLOR = 8,
-  SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER = 9,
-  SYSTEM_SETTINGS_ITEM_EXIT = 10
+  SYSTEM_SETTINGS_ITEM_AUTO_SAVE_PROFILE = 8,
+  SYSTEM_SETTINGS_ITEM_THEME_COLOR = 9,
+  SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER = 10,
+  SYSTEM_SETTINGS_ITEM_EXIT = 11
 };
 
 //--- Profile list modes
@@ -77,9 +78,10 @@ enum FieldInputTarget
   FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM = 9,
   FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM = 10,
   FIELD_INPUT_TARGET_OUTPUT_POLARITY_SELECT = 11,
-  FIELD_INPUT_TARGET_THEME_COLOR_SELECT = 12,
-  FIELD_INPUT_TARGET_RESTART_CONFIRM = 13,
-  FIELD_INPUT_TARGET_WIFI_MANAGER_CONFIRM = 14
+  FIELD_INPUT_TARGET_AUTO_SAVE_PROFILE_SELECT = 12,
+  FIELD_INPUT_TARGET_THEME_COLOR_SELECT = 13,
+  FIELD_INPUT_TARGET_RESTART_CONFIRM = 14,
+  FIELD_INPUT_TARGET_WIFI_MANAGER_CONFIRM = 15
 };
 
 //--- Main menu labels
@@ -90,7 +92,7 @@ static const String mainMenuItems[] =
         "Load Profile",
         "New Profile",
         "Delete Profile",
-        "Show System Settings",
+        "System Settings",
         "Exit"};
 
 //--- Timer settings menu labels
@@ -115,6 +117,7 @@ static const String systemSettingsMenuItems[] =
         "Erase WiFi credentials",
         "Start WiFi Manager",
         "Output Polarity",
+        "Auto Save Profile",
         "Theme Color",
         "Restart ultimateTimer",
         "Exit"};
@@ -555,8 +558,16 @@ static void applyFieldInputAndReturn()
     AppSettings polaritySettings = timerGetSettings();
 
     polaritySettings.outputPolarityHigh = (fieldValue == "High");
-    settingsStoreSaveOutputPolarityHigh(polaritySettings.outputPolarityHigh);
     commitSettings(polaritySettings);
+    break;
+  }
+
+  case FIELD_INPUT_TARGET_AUTO_SAVE_PROFILE_SELECT:
+  {
+    AppSettings autoSaveSettings = timerGetSettings();
+
+    autoSaveSettings.autoSaveLastProfile = (fieldValue == "Yes");
+    commitSettings(autoSaveSettings);
     break;
   }
 
@@ -741,7 +752,7 @@ static void openSystemSettingsMenu()
   systemSettingsIndex = getFirstVisibleSystemSettingsItem();
   previousScreen = currentScreen;
   currentScreen = UI_SCREEN_SYSTEM_SETTINGS_MENU;
-  logActiveScreen("Show System Settings Menu");
+  logActiveScreen("System Settings Menu");
   drawCurrentScreen();
 
 } //   openSystemSettingsMenu()
@@ -799,8 +810,8 @@ static void drawCurrentScreen()
 
   case UI_SCREEN_SYSTEM_SETTINGS_MENU:
   {
-    String dynamicSystemSettingsItems[11];
-    int visibleItemLogicalIndexes[11];
+    String dynamicSystemSettingsItems[12];
+    int visibleItemLogicalIndexes[12];
     int visibleItemCount = 0;
     int selectedVisibleIndex = 0;
     int firstVisibleIndex = 0;
@@ -850,15 +861,19 @@ static void drawCurrentScreen()
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY;
     visibleItemCount++;
 
+    dynamicSystemSettingsItems[visibleItemCount] = String("Auto Save Profile: ") + String(settings.autoSaveLastProfile ? "Yes" : "No");
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_AUTO_SAVE_PROFILE;
+    visibleItemCount++;
+
     dynamicSystemSettingsItems[visibleItemCount] = String("Theme: ") + colorProfiles[displayGetThemeColorIndex()].colorName;
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_THEME_COLOR;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[9];
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[10];
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[10];
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[11];
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_EXIT;
     visibleItemCount++;
 
@@ -876,7 +891,7 @@ static void drawCurrentScreen()
       firstVisibleIndex = selectedVisibleIndex - 8;
     }
 
-    displayDrawListScreen("Show System Settings", dynamicSystemSettingsItems, visibleItemCount, selectedVisibleIndex, firstVisibleIndex);
+    displayDrawListScreen("System Settings", dynamicSystemSettingsItems, visibleItemCount, selectedVisibleIndex, firstVisibleIndex);
     break;
   }
 
@@ -1237,6 +1252,15 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
       return;
     }
 
+    if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_AUTO_SAVE_PROFILE)
+    {
+      const char* currentAutoSave = settings.autoSaveLastProfile ? "Yes" : "No";
+
+      openFieldInput("Auto Save Profile", "Save profile changes", 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_AUTO_SAVE_PROFILE_SELECT, UI_SCREEN_SYSTEM_SETTINGS_MENU, currentAutoSave);
+
+      return;
+    }
+
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_THEME_COLOR)
     {
       const char* currentColorName = colorProfiles[displayGetThemeColorIndex()].colorName;
@@ -1347,6 +1371,20 @@ static void handleProfileList(EncoderEvent encoderEvent)
 //--- Apply current settings back into timer
 static void commitSettings(const AppSettings& settings)
 {
+  AppSettings previousSettings = timerGetSettings();
+
+  bool systemSettingsChanged =
+      (previousSettings.triggerMode != settings.triggerMode) ||
+      (previousSettings.triggerEdge != settings.triggerEdge) ||
+      (previousSettings.outputPolarityHigh != settings.outputPolarityHigh) ||
+      (previousSettings.lockInputDuringRun != settings.lockInputDuringRun) ||
+      (previousSettings.autoSaveLastProfile != settings.autoSaveLastProfile);
+
+  if (systemSettingsChanged)
+  {
+    settingsStoreSaveSystemSettings(settings);
+  }
+
   timerSetSettings(settings);
 
   if (DEFAULT_AUTO_SAVE_LAST_PROFILE != 0 && !settings.profileName.isEmpty())
@@ -1452,7 +1490,7 @@ static const char* uiScreenToLabel(UiScreen screen)
     return "Timer Settings Menu";
 
   case UI_SCREEN_SYSTEM_SETTINGS_MENU:
-    return "Show System Settings";
+    return "System Settings";
 
   case UI_SCREEN_PROFILE_LIST:
     return (profileListMode == PROFILE_LIST_LOAD) ? "Load Profile Menu" : "Delete Profile Menu";
@@ -1616,3 +1654,13 @@ void uiMenuShowTransientMessage(const std::string& message)
   displayDrawMessage(transientTitle.c_str(), message.c_str());
 
 } //   uiMenuShowTransientMessage()
+
+//--- Force switch to Timer Screen and redraw immediately
+void uiMenuForceTimerScreen()
+{
+  transientMessage = "";
+  transientMessageUntilMs = 0;
+  displayForceStatusScreenRebuild();
+  openStatusScreen();
+
+} //   uiMenuForceTimerScreen()

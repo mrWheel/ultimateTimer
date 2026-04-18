@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 15:14 ***/
+/*** Last Changed: 2026-04-18 - 15:49 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -6,6 +6,7 @@
 #include "WiFiManagerExt.h"
 #include "colorSettings.h"
 #include "displayDriver.h"
+#include "uiMenu.h"
 #include "appConfig.h"
 
 #include <ArduinoJson.h>
@@ -591,9 +592,7 @@ body {
         <div class="fieldRow"><label for="repeatCount">Cycles</label><input id="repeatCount" type="number" min="0"></div>
         <div class="fieldRow"><label for="triggerMode">Trigger Mode</label><select id="triggerMode"><option value="0">Manual</option><option value="1">External</option></select></div>
         <div class="fieldRow"><label for="triggerEdge">Trigger Edge</label><select id="triggerEdge"><option value="0">Falling</option><option value="1">Rising</option></select></div>
-        <div class="fieldRow"><label for="outputPolarityHigh">Output Polarity</label><select id="outputPolarityHigh"><option value="1">Active High</option><option value="0">Active Low</option></select></div>
         <div class="fieldRow"><label for="lockInputDuringRun">Lock Input While Running</label><select id="lockInputDuringRun"><option value="0">No</option><option value="1">Yes</option></select></div>
-        <div class="fieldRow"><label for="autoSaveLastProfile">Auto Save Profile</label><select id="autoSaveLastProfile"><option value="1">Yes</option><option value="0">No</option></select></div>
       </div>
 
       <div class="footerActions">
@@ -615,6 +614,7 @@ body {
         <div class="fieldRow roField"><label for="systemMac">MAC</label><input id="systemMac" type="text" readonly></div>
         <div class="fieldRow roField"><label for="systemEncoderOrder">Encoder X-Y</label><input id="systemEncoderOrder" type="text" readonly></div>
         <div class="fieldRow"><label for="systemOutputPolarity">Output</label><select id="systemOutputPolarity"><option value="1">Active HIGH</option><option value="0">Active LOW</option></select></div>
+        <div class="fieldRow"><label for="systemAutoSaveLastProfile">Auto Save Profile</label><select id="systemAutoSaveLastProfile"><option value="1">Yes</option><option value="0">No</option></select></div>
         <div class="fieldRow"><label for="systemThemeIndex">Theme</label><select id="systemThemeIndex"><option value="0">Red</option><option value="1">Green</option><option value="2">Blue</option><option value="3">Indigo</option><option value="4">Violet</option><option value="5">Yellow</option></select></div>
         <div class="fieldRow"><label for="systemRestart">Restart Ultimate Timer</label><select id="systemRestart"><option value="0">No</option><option value="1">Yes</option></select></div>
       </div>
@@ -865,21 +865,12 @@ function bindMenu()
 
 function setStatusAutoRefresh(enabled)
 {
-  if (enabled)
+  if (statusRefreshTimer !== null)
   {
-    if (statusRefreshTimer === null)
-    {
-      statusRefreshTimer = setInterval(refreshStatus, 1000);
-    }
-
     return;
   }
 
-  if (statusRefreshTimer !== null)
-  {
-    clearInterval(statusRefreshTimer);
-    statusRefreshTimer = null;
-  }
+  statusRefreshTimer = setInterval(refreshStatus, 1000);
 }
 
 function setEditControlsEnabled(enabled)
@@ -942,14 +933,31 @@ async function refreshStatus()
     ? 'OFF [---:--]'
     : (data.runtime.outputActive ? 'ON' : 'OFF') + ' [' + countdown + ' to ' + nextPhase + ']';
 
+  let displayCycle = data.runtime.currentCycle;
+
+  if (data.runtime.state === 1 || data.runtime.state === 2)
+  {
+    if (data.runtime.totalCycles === 0 || displayCycle < data.runtime.totalCycles)
+    {
+      displayCycle += 1;
+    }
+  }
+  else if (data.runtime.state === 3)
+  {
+    if (data.runtime.totalCycles > 0)
+    {
+      displayCycle = data.runtime.totalCycles;
+    }
+  }
+
   document.getElementById('statusState').textContent = data.runtime.stateLabel;
   document.getElementById('statusOn').textContent = data.settings.onTimeValue + ' ' + data.settings.onTimeUnitLabel;
   document.getElementById('statusOff').textContent = data.settings.offTimeValue + ' ' + data.settings.offTimeUnitLabel;
   document.getElementById('statusOutput').textContent = outputLabel;
   document.getElementById('statusCycles').textContent =
-    data.settings.repeatCount === 0
-      ? String(data.runtime.currentCycle) + '/INF'
-      : String(data.runtime.currentCycle) + '/' + String(data.settings.repeatCount);
+    data.runtime.totalCycles === 0
+      ? String(displayCycle) + '/INF'
+      : String(displayCycle) + '/' + String(data.runtime.totalCycles);
   document.getElementById('networkStatus').textContent =
     'Network: ' + (data.network.connected ? 'Connected' : 'Not connected') + ' | IP: ' + data.network.address;
   document.getElementById('systemThemeName').textContent = data.settings.themeColorName || '-';
@@ -959,6 +967,7 @@ async function refreshStatus()
   document.getElementById('systemMac').value = data.network.macAddress || '(unknown)';
   document.getElementById('systemEncoderOrder').value = data.settings.encoderOrderLabel || '(unknown)';
   document.getElementById('systemOutputPolarity').value = data.settings.outputPolarityHigh ? '1' : '0';
+  document.getElementById('systemAutoSaveLastProfile').value = data.settings.autoSaveLastProfile ? '1' : '0';
   document.getElementById('systemThemeIndex').value = String(data.settings.themeColorIndex || 0);
 
   document.getElementById('headerProfileName').textContent = data.settings.profileName || '-';
@@ -975,9 +984,7 @@ async function refreshStatus()
   document.getElementById('repeatCount').value = data.settings.repeatCount;
   document.getElementById('triggerMode').value = data.settings.triggerMode;
   document.getElementById('triggerEdge').value = data.settings.triggerEdge;
-  document.getElementById('outputPolarityHigh').value = data.settings.outputPolarityHigh ? '1' : '0';
   document.getElementById('lockInputDuringRun').value = data.settings.lockInputDuringRun ? '1' : '0';
-  document.getElementById('autoSaveLastProfile').value = data.settings.autoSaveLastProfile ? '1' : '0';
   document.getElementById('profileName').value = data.settings.profileName;
   applyTimeInputConstraints();
 }
@@ -1076,9 +1083,7 @@ function readSettingsFromForm()
     repeatCount: Number(document.getElementById('repeatCount').value),
     triggerMode: Number(document.getElementById('triggerMode').value),
     triggerEdge: Number(document.getElementById('triggerEdge').value),
-    outputPolarityHigh: document.getElementById('outputPolarityHigh').value === '1',
     lockInputDuringRun: document.getElementById('lockInputDuringRun').value === '1',
-    autoSaveLastProfile: document.getElementById('autoSaveLastProfile').value === '1',
     profileName: document.getElementById('profileName').value
   };
 }
@@ -1087,6 +1092,7 @@ function readSystemFromForm()
 {
   return {
     outputPolarityHigh: document.getElementById('systemOutputPolarity').value === '1',
+    autoSaveLastProfile: document.getElementById('systemAutoSaveLastProfile').value === '1',
     themeColorIndex: Number(document.getElementById('systemThemeIndex').value),
     restart: document.getElementById('systemRestart').value === '1'
   };
@@ -1136,9 +1142,7 @@ function bindLiveApplySettings()
     'repeatCount',
     'triggerMode',
     'triggerEdge',
-    'outputPolarityHigh',
     'lockInputDuringRun',
-    'autoSaveLastProfile',
     'profileName'
   ];
 
@@ -1411,6 +1415,7 @@ static void handleSaveSettings()
 
   timerSetSettings(settings);
   settings = timerGetSettings();
+  settingsStoreSaveSystemSettings(settings);
 
   if (DEFAULT_AUTO_SAVE_LAST_PROFILE != 0 && !settings.profileName.isEmpty())
   {
@@ -1576,14 +1581,21 @@ static void handleSaveSystem()
 
   bool outputPolarityHigh = doc["outputPolarityHigh"] | settingsStoreLoadOutputPolarityHigh();
   bool restartRequested = doc["restart"] | false;
+  bool themeChanged = (displayGetThemeColorIndex() != static_cast<int>(themeColorIndex));
 
   AppSettings settings = timerGetSettings();
   settings.outputPolarityHigh = outputPolarityHigh;
+  settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
+  settingsStoreSaveSystemSettings(settings);
   timerSetSettings(settings);
 
-  settingsStoreSaveOutputPolarityHigh(outputPolarityHigh);
   settingsStoreSaveThemeColorIndex(themeColorIndex);
   displaySetThemeColorIndex(themeColorIndex);
+
+  if (themeChanged)
+  {
+    uiMenuForceTimerScreen();
+  }
 
   server.send(200, "application/json", "{\"ok\":true}");
 

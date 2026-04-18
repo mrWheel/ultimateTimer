@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 14:46 ***/
+/*** Last Changed: 2026-04-18 - 15:49 ***/
 #include "settingsStore.h"
 #include "appConfig.h"
 
@@ -120,6 +120,30 @@ void settingsStoreSaveOutputPolarityHigh(bool activeHigh)
   ESP_LOGI(logTag, "Output polarity activeHigh saved: %s", activeHigh ? "true" : "false");
 
 } //   settingsStoreSaveOutputPolarityHigh()
+
+//--- Load system-level application settings
+void settingsStoreLoadSystemSettings(AppSettings& settings)
+{
+  settings.triggerMode = static_cast<TriggerMode>(preferences.getUChar("trigMode", static_cast<uint8_t>(DEFAULT_TRIGGER_MODE)));
+  settings.triggerEdge = static_cast<TriggerEdge>(preferences.getUChar("trigEdge", static_cast<uint8_t>(DEFAULT_TRIGGER_EDGE)));
+  settings.outputPolarityHigh = preferences.getBool("outHigh", DEFAULT_OUTPUT_POLARITY != 0);
+  settings.lockInputDuringRun = preferences.getBool("lockRun", DEFAULT_LOCK_INPUT_DURING_RUN != 0);
+  settings.autoSaveLastProfile = preferences.getBool("autoSave", DEFAULT_AUTO_SAVE_LAST_PROFILE != 0);
+
+} //   settingsStoreLoadSystemSettings()
+
+//--- Save system-level application settings
+void settingsStoreSaveSystemSettings(const AppSettings& settings)
+{
+  preferences.putUChar("trigMode", static_cast<uint8_t>(settings.triggerMode));
+  preferences.putUChar("trigEdge", static_cast<uint8_t>(settings.triggerEdge));
+  preferences.putBool("outHigh", settings.outputPolarityHigh);
+  preferences.putBool("lockRun", settings.lockInputDuringRun);
+  preferences.putBool("autoSave", settings.autoSaveLastProfile);
+
+  ESP_LOGI(logTag, "System settings saved");
+
+} //   settingsStoreSaveSystemSettings()
 
 //--- Load theme color index (0-based, default from DEFAULT_THEME_COLOR build flag)
 uint8_t settingsStoreLoadThemeColorIndex()

@@ -50,7 +50,7 @@
 - Load Profile -> [Load Profile Menu]
 - New Profile -> [New Profile Menu]
 - Delete Profile -> [Delete Profile Menu]
-- Show System Settings -> [Show System Settings Menu]
+- System Settings -> [System Settings Menu]
 - Exit -> return to [Timer Screen]
 
 [Timer Settings Menu]
@@ -102,7 +102,7 @@
 - Deleting the active profile immediately loads [default]
 - Exit (last item) -> return to [Edit Timer Menu]
 
-[Show System Settings Menu]
+[System Settings Menu]
 - WiFi SSID (RO display only, cursor skips this item, only shown if WiFi enabled)
 - IP Address (RO display only, cursor skips this item, only shown if WiFi enabled)
 - MAC Address (RO display only, cursor skips this item)
@@ -111,9 +111,24 @@
 - Erase WiFi credentials — opens button screen [No] [Yes]
 - Start WiFi Manager — opens button screen [No] [Yes]; Yes clears WiFi Disabled flag and restarts
 - Output Polarity — opens button screen [High] [Low]
+- Auto Save Profile — opens button screen [No] [Yes]
 - Theme Color — opens button screen (2 rows): [Red][Green][Blue] / [Indigo][Violet][Yellow]
 - Restart ultimateTimer — opens button screen [No] [Yes]
 - Exit -> return to [Edit Timer Menu]
+
+### Persistence model
+- Profile files store only profile-scoped timer fields:
+  - `onTimeValue`
+  - `offTimeValue`
+  - `onTimeUnit`
+  - `offTimeUnit`
+  - `repeatCount`
+- System-scoped settings are stored separately in Preferences/NVS:
+  - `triggerMode`
+  - `triggerEdge`
+  - `outputPolarityHigh`
+  - `lockInputDuringRun`
+  - `autoSaveLastProfile`
 
 [WiFi Manager Started]
 - Connect to AP (centered, wrapped if needed)

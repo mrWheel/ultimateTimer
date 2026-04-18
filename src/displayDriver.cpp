@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 13:35 ***/
+/*** Last Changed: 2026-04-18 - 15:49 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -287,6 +287,13 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
   }
 
 } //   displayDrawStatusScreen()
+
+//--- Force next Timer Screen draw to rebuild from scratch
+void displayForceStatusScreenRebuild()
+{
+  invalidateStatusScreenCache();
+
+} //   displayForceStatusScreenRebuild()
 
 //--- Draw text list
 void displayDrawListScreen(const char* title, const String items[], size_t itemCount, int selectedIndex, int firstVisibleIndex)

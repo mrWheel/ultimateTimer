@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 13:35 ***/
+/*** Last Changed: 2026-04-18 - 15:49 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
@@ -14,6 +14,9 @@ int displayGetThemeColorIndex();
 
 //--- Update status screen
 void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& runtimeStatus, bool wifiConnected, int statusActionIndex);
+
+//--- Force next Timer Screen draw to rebuild from scratch
+void displayForceStatusScreenRebuild();
 
 //--- Draw text list
 void displayDrawListScreen(const char* title, const String items[], size_t itemCount, int selectedIndex, int firstVisibleIndex);

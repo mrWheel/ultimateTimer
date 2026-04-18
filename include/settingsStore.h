@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 14:46 ***/
+/*** Last Changed: 2026-04-18 - 15:49 ***/
 #ifndef SETTINGS_STORE_H
 #define SETTINGS_STORE_H
 
@@ -40,6 +40,12 @@ bool settingsStoreLoadOutputPolarityHigh();
 
 //--- Save output polarity default state
 void settingsStoreSaveOutputPolarityHigh(bool activeHigh);
+
+//--- Load system-level application settings
+void settingsStoreLoadSystemSettings(AppSettings& settings);
+
+//--- Save system-level application settings
+void settingsStoreSaveSystemSettings(const AppSettings& settings);
 
 //--- Load theme color index (0-based index into colorProfiles[])
 uint8_t settingsStoreLoadThemeColorIndex();

@@ -63,6 +63,7 @@ read `colorSettings.md`
 - Output control with selectable polarity
 - Web UI with matching timer settings
 - Web UI live-apply for timer settings (apply immediately, save only on explicit save)
+- System settings stored separately from profile timer fields
 - Profile dropdown refresh keeps current selection
 - `repeatCount = 0` support for infinite cycles
 - TFT status updates while running with partial line redraw (no full-screen flicker)
@@ -84,7 +85,7 @@ read `colorSettings.md`
 - `Load Profile`
 - `New Profile`
 - `Delete Profile`
-- `Show System Settings`
+- `System Settings`
 - `Exit` (return to status screen)
 
 ### Press duration build flags
@@ -106,6 +107,8 @@ Current configured values in this repository:
 
 ## Notes
 - Profile files are stored as `/<profileName>.json`
+- Profile files store only: `onTimeValue`, `offTimeValue`, `onTimeUnit`, `offTimeUnit`, and `repeatCount`
+- System-level settings such as trigger mode/edge, output polarity, lock input during run, auto-save profile, theme color, and encoder direction are stored separately in Preferences/NVS
 - Built-in profile `default` cannot be deleted and is hidden from the Delete Profile list
 - If the active profile is deleted, firmware automatically loads `default`
 - The fallback access point is open (no password)
