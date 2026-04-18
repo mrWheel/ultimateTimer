@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-17 - 14:57 ***/
+/*** Last Changed: 2026-04-18 - 11:49 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -320,12 +320,14 @@ void displayDrawListScreen(const char* title, const String items[], size_t itemC
       tft.setCursor(6, y);
       tft.print("> ");
       tft.print(items[itemIndex]);
+      tft.print(" <");
     }
     else
     {
       tft.fillRect(0, y, tft.width(), 22, ST77XX_BLACK);
       tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
       tft.setCursor(6, y);
+      tft.print("  ");
       tft.print(items[itemIndex]);
     }
   }

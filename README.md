@@ -19,8 +19,8 @@ Also, full disclosure: *I am not a qualified electrical engineer*. I provide no 
 ## What it is
 ESP32 cyclic timer for a 2.4 inch SPI TFT + EC11 rotary encoder module.
 
-## Confirm to .codingRules
-Read `.codingRules.md`
+## Confirm to codingRules
+Read `codingRules.md`
 
 ## Comply to Menu, and Event rules
 read `menuStructure.md`
