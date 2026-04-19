@@ -68,7 +68,7 @@
 - Trigger (Rise/Fall)
 - Exit -> return to [Timer Screen]
 - PIN_KEY0 MEDIUM or LONG press -> return to [Edit Timer Menu]
-
+```
 ### Timer Settings persistence rule (source: `DEFAULT_AUTO_SAVE_LAST_PROFILE`)
 - `DEFAULT_AUTO_SAVE_LAST_PROFILE=1`:
   - Every change in `Timer Settings Menu` is applied immediately to the active runtime timer state.
@@ -142,7 +142,7 @@
 > If any `build_flags` value in `platformio.ini` differs from the value mentioned anywhere in the documentation (any `.md` file), the value in `platformio.ini` is correct.
 > `platformio.ini` must **never** be changed to match documentation.
 > The documentation must be updated to match `platformio.ini`.
-
+```
 # ======= Event Handling =======
 These `build_flags` triggers events.
 
