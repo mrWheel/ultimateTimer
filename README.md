@@ -1,5 +1,14 @@
 # Ultimate Timer
 
+## Documentation
+
+| Document | Description |
+|---|---|
+| [codingRules.md](codingRules.md) | Coding conventions and rules for this project |
+| [menuStructure.md](menuStructure.md) | Menu layout, navigation, and event handling specification |
+| [colorSettings.md](colorSettings.md) | Display color theme and UI color rules |
+| [webUI.md](webUI.md) | Web UI architecture, behavior, menus, and API endpoints |
+
 ## Disclaimer
 This software and/or  hardware is developed incrementally. That means I have 
 no clear idea how it works (though it mostly does).
@@ -34,15 +43,6 @@ ESP32 cyclic timer for a 2.4 inch SPI TFT + EC11 rotary encoder module.
 <div align="center">
 <img src="assets/TFT_LCD_RotaryModule1.png" width="300" align="center">
 </div>
-
-## Documentation
-
-| Document | Description |
-|---|---|
-| [codingRules.md](codingRules.md) | Coding conventions and rules for this project |
-| [menuStructure.md](menuStructure.md) | Menu layout, navigation, and event handling specification |
-| [colorSettings.md](colorSettings.md) | Display color theme and UI color rules |
-| [webUI.md](webUI.md) | Web UI architecture, behavior, menus, and API endpoints |
 
 ## Confirm to codingRules
 Read `codingRules.md`
