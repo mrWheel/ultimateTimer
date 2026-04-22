@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 15:49 ***/
+/*** Last Changed: 2026-04-22 - 13:07 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -619,10 +619,6 @@ body {
         <div class="fieldRow"><label for="systemRestart">Restart Ultimate Timer</label><select id="systemRestart"><option value="0">No</option><option value="1">Yes</option></select></div>
       </div>
       <div class="metaCard">
-        <div class="metaCardLabel">Theme</div>
-        <div class="metaCardValue" id="systemThemeName">-</div>
-      </div>
-      <div class="metaCard">
         <div class="metaCardLabel">Network</div>
         <div class="metaCardValue" id="systemNetworkState">-</div>
       </div>
@@ -647,10 +643,6 @@ body {
         <div class="activeProfileTitle">Active Profile</div>
         <div id="activeProfileInSave" class="activeProfileName">-</div>
       </div>
-      <div class="formGrid">
-        <div class="fieldRow"><label for="profileName">Profile Name</label><input id="profileName" type="text" maxlength="16"></div>
-      </div>
-
       <div class="footerActions">
         <button id="cancelSaveProfileButton" class="secondaryButton" type="button">Cancel</button>
         <button id="saveProfileButton" class="primaryButton" type="button">Save Profile</button>
@@ -722,6 +714,45 @@ body {
 <script>
 let statusRefreshTimer = null;
 let applySettingsTimer = null;
+let savedProfileName = '';
+let savedProfileSignature = '';
+let profileDirtyResetPending = false;
+
+function buildProfileSettingsSignature(settings)
+{
+  return [
+    String(settings.onTimeValue),
+    String(settings.offTimeValue),
+    String(settings.onTimeUnit),
+    String(settings.offTimeUnit),
+    String(settings.repeatCount),
+    String(settings.triggerMode),
+    String(settings.triggerEdge),
+    settings.lockInputDuringRun ? '1' : '0'
+  ].join('|');
+}
+
+function updateProfileHeaderDisplay(settings)
+{
+  const profileName = settings.profileName || '-';
+  const currentSignature = buildProfileSettingsSignature(settings);
+
+  if (savedProfileName === '' || profileName !== savedProfileName || profileDirtyResetPending)
+  {
+    savedProfileName = profileName;
+    savedProfileSignature = currentSignature;
+    profileDirtyResetPending = false;
+  }
+
+  const profileIsDirty = currentSignature !== savedProfileSignature;
+
+  document.getElementById('headerProfileName').textContent =
+    (profileIsDirty && profileName !== '-')
+      ? profileName + ' (not saved)'
+      : profileName;
+
+  return profileName;
+}
 
 function updateHeaderClock()
 {
@@ -876,6 +907,17 @@ function setStatusAutoRefresh(enabled)
 function setEditControlsEnabled(enabled)
 {
   const cardIds = ['timerSettingsCard', 'systemCard', 'saveProfileCard', 'loadProfileCard', 'deleteProfileCard', 'newProfileCard'];
+  const cancelButtonIds = new Set([
+    'cancelSettingsButton',
+    'systemCancelButton',
+    'cancelSaveProfileButton',
+    'cancelLoadProfileButton',
+    'cancelDeleteProfileButton',
+    'cancelNewProfileButton'
+  ]);
+  const alwaysEnabledButtonIds = new Set([
+    'saveProfileButton'
+  ]);
 
   for (const cardId of cardIds)
   {
@@ -890,6 +932,12 @@ function setEditControlsEnabled(enabled)
 
     for (const control of controls)
     {
+      if (cancelButtonIds.has(control.id) || alwaysEnabledButtonIds.has(control.id))
+      {
+        control.disabled = false;
+        continue;
+      }
+
       control.disabled = !enabled;
     }
 
@@ -950,6 +998,7 @@ async function refreshStatus()
     }
   }
 
+  // === Always update Timer Screen display ===
   document.getElementById('statusState').textContent = data.runtime.stateLabel;
   document.getElementById('statusOn').textContent = data.settings.onTimeValue + ' ' + data.settings.onTimeUnitLabel;
   document.getElementById('statusOff').textContent = data.settings.offTimeValue + ' ' + data.settings.offTimeUnitLabel;
@@ -960,32 +1009,50 @@ async function refreshStatus()
       : String(displayCycle) + '/' + String(data.runtime.totalCycles);
   document.getElementById('networkStatus').textContent =
     'Network: ' + (data.network.connected ? 'Connected' : 'Not connected') + ' | IP: ' + data.network.address;
-  document.getElementById('systemThemeName').textContent = data.settings.themeColorName || '-';
+
+  // === Update System read-only fields (always) ===
   document.getElementById('systemNetworkState').textContent = data.network.connected ? 'Connected' : 'Disconnected';
   document.getElementById('systemSsid').value = data.network.ssid || '(not connected)';
   document.getElementById('systemIp').value = data.network.address || '(none)';
   document.getElementById('systemMac').value = data.network.macAddress || '(unknown)';
   document.getElementById('systemEncoderOrder').value = data.settings.encoderOrderLabel || '(unknown)';
-  document.getElementById('systemOutputPolarity').value = data.settings.outputPolarityHigh ? '1' : '0';
-  document.getElementById('systemAutoSaveLastProfile').value = data.settings.autoSaveLastProfile ? '1' : '0';
-  document.getElementById('systemThemeIndex').value = String(data.settings.themeColorIndex || 0);
 
-  document.getElementById('headerProfileName').textContent = data.settings.profileName || '-';
-  document.getElementById('activeProfileInSave').textContent = data.settings.profileName || '-';
-  document.getElementById('activeProfileInLoad').textContent = data.settings.profileName || '-';
-  document.getElementById('activeProfileInDelete').textContent = data.settings.profileName || '-';
-  document.getElementById('activeProfileInNew').textContent = data.settings.profileName || '-';
+  // === Update profile info (always) ===
+  const activeProfileName = updateProfileHeaderDisplay(data.settings);
+  document.getElementById('activeProfileInSave').textContent = activeProfileName;
+  document.getElementById('activeProfileInLoad').textContent = activeProfileName;
+  document.getElementById('activeProfileInDelete').textContent = activeProfileName;
+  document.getElementById('activeProfileInNew').textContent = activeProfileName;
+
+  // === Update theme (always) ===
   applyTheme(data.settings.themeColorName || 'Blue');
 
-  document.getElementById('onTimeValue').value = data.settings.onTimeValue;
-  document.getElementById('offTimeValue').value = data.settings.offTimeValue;
-  document.getElementById('onTimeUnit').value = data.settings.onTimeUnit;
-  document.getElementById('offTimeUnit').value = data.settings.offTimeUnit;
-  document.getElementById('repeatCount').value = data.settings.repeatCount;
-  document.getElementById('triggerMode').value = data.settings.triggerMode;
-  document.getElementById('triggerEdge').value = data.settings.triggerEdge;
-  document.getElementById('lockInputDuringRun').value = data.settings.lockInputDuringRun ? '1' : '0';
-  document.getElementById('profileName').value = data.settings.profileName;
+  // === Only update editable form fields when their menus are CLOSED ===
+  // This prevents form values from being reset while user is editing
+
+  // Update Timer Settings fields only if menu is NOT open
+  const timerSettingsCard = document.getElementById('timerSettingsCard');
+  if (timerSettingsCard && timerSettingsCard.getAttribute('aria-hidden') === 'true')
+  {
+    document.getElementById('onTimeValue').value = data.settings.onTimeValue;
+    document.getElementById('offTimeValue').value = data.settings.offTimeValue;
+    document.getElementById('onTimeUnit').value = data.settings.onTimeUnit;
+    document.getElementById('offTimeUnit').value = data.settings.offTimeUnit;
+    document.getElementById('repeatCount').value = data.settings.repeatCount;
+    document.getElementById('triggerMode').value = data.settings.triggerMode;
+    document.getElementById('triggerEdge').value = data.settings.triggerEdge;
+    document.getElementById('lockInputDuringRun').value = data.settings.lockInputDuringRun ? '1' : '0';
+  }
+
+  // Update System Settings fields only if menu is NOT open
+  const systemCard = document.getElementById('systemCard');
+  if (systemCard && systemCard.getAttribute('aria-hidden') === 'true')
+  {
+    document.getElementById('systemOutputPolarity').value = data.settings.outputPolarityHigh ? '1' : '0';
+    document.getElementById('systemAutoSaveLastProfile').value = data.settings.autoSaveLastProfile ? '1' : '0';
+    document.getElementById('systemThemeIndex').value = String(data.settings.themeColorIndex || 0);
+  }
+
   applyTimeInputConstraints();
 }
 
@@ -1084,7 +1151,6 @@ function readSettingsFromForm()
     triggerMode: Number(document.getElementById('triggerMode').value),
     triggerEdge: Number(document.getElementById('triggerEdge').value),
     lockInputDuringRun: document.getElementById('lockInputDuringRun').value === '1',
-    profileName: document.getElementById('profileName').value
   };
 }
 
@@ -1143,7 +1209,6 @@ function bindLiveApplySettings()
     'triggerMode',
     'triggerEdge',
     'lockInputDuringRun',
-    'profileName'
   ];
 
   for (const id of timerSettingIds)
@@ -1162,9 +1227,28 @@ function bindLiveApplySettings()
 
 async function saveProfile()
 {
-  await callPost('/api/profile/save', {
-    profileName: document.getElementById('profileName').value
-  });
+  const currentProfileName = document.getElementById('activeProfileInSave').textContent;
+
+  try
+  {
+    const response = await fetch('/api/profile/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileName: currentProfileName })
+    });
+
+    if (response.ok)
+    {
+      profileDirtyResetPending = true;
+    }
+  }
+  catch (_error)
+  {
+    return;
+  }
+
+  await refreshStatus();
+  await refreshProfiles();
   setActiveMenu('');
 }
 
@@ -1193,7 +1277,6 @@ async function createNewProfile()
     return;
   }
 
-  document.getElementById('profileName').value = newProfileName;
   await callPost('/api/profile/save', {
     profileName: newProfileName
   });

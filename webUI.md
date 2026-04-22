@@ -6,6 +6,7 @@
 - The Web UI is a single-page application (SPA) served by the firmware from `src/webUi.cpp`.
 - The page is delivered from `/` and communicates with firmware through JSON API endpoints.
 - The top bar shows the active profile and a live clock (`HH:mm:ss`).
+- If Timer Settings differ from the last saved state of the active profile, the header shows ` (not saved)` directly after the active profile name.
 
 ## Top Menu Structure
 - Top-level order:
@@ -37,6 +38,9 @@
   - `IP`
   - `MAC`
   - `Encoder X-Y`
+- Info cards:
+  - `Network`
+  - `Profiles`
 - Mutable fields:
   - `Output` (`Active HIGH` / `Active LOW`)
   - `Auto Save Profile` (`Yes` / `No`)
@@ -63,11 +67,12 @@
 ## Profile Tiles
 ### Save Profile
 - Shows active profile.
-- Field:
-  - `Profile Name`
+- No editable fields.
 - Buttons:
   - `Cancel`
   - `Save Profile`
+- `Save Profile` saves the currently active profile name shown in the tile.
+- `Save Profile` remains enabled while timer state is `Running`.
 
 ### Load Profile
 - Shows active profile.
@@ -99,7 +104,9 @@
   - `Only mutable when Timer is Stopped.`
 - While timer state is `Idle`, form controls are editable and the note is hidden.
 - While timer state is `Running`, form controls are disabled and the note is shown in bold with a larger font.
-- Clicking `Cancel` closes the current tile.
+- All `Cancel` buttons remain enabled, also while timer state is `Running`.
+- In `Save Profile`, the `Save Profile` button remains enabled, also while timer state is `Running`.
+- Clicking `Cancel` always closes the current tile without saving changes.
 - After pressing `Save Profile`, `Load Profile`, `New Profile`, or `Delete Profile`, the tile closes automatically.
 - After pressing `Save Settings`, the Timer Settings tile closes automatically.
 
@@ -111,9 +118,14 @@
 
 ## Refresh and Live Apply
 - Status polling is always active and updates runtime information, including starts initiated from the device itself.
+- The always-visible `Timer Screen` is always refreshed from status data.
 - Profile list polling keeps profile selections up to date.
 - Timer setting fields use live-apply (`/api/settings/apply`) with debounce.
+- Live-apply is only used for `Timer Settings` fields, not for `System` fields.
 - Explicit Save uses `/api/settings`.
+- `System` changes are only applied through explicit `Save` (`/api/system/save`).
+- Editable fields in an open submenu are not overwritten by status polling while the user is editing.
+- Header profile text includes ` (not saved)` when current Timer Settings differ from the saved baseline of the active profile, and this suffix is cleared after successful `Save Profile`.
 - Web `Cycles` display follows the same cycle-progress logic as the TFT status screen.
 
 ## Web API Endpoints

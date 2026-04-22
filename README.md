@@ -62,7 +62,14 @@ read `colorSettings.md`
 - Trigger and reset inputs
 - Output control with selectable polarity
 - Web UI with matching timer settings
-- Web UI live-apply for timer settings (apply immediately, save only on explicit save)
+- Web UI live-apply only for Timer Settings (apply immediately, save only on explicit save)
+- Web UI System settings are changed only via explicit Save (no live-apply)
+- Web UI Cancel buttons always close the current sub-screen without saving
+- Web UI Save Profile uses the active profile (no editable profile-name field in Save Profile tile)
+- Web UI Save Profile button remains enabled while timer is running
+- Web UI System tile has a Theme selector only (no extra read-only Theme display field)
+- Web UI status refresh always updates Timer Screen, but does not overwrite fields in an open edit tile
+- Web UI header shows ` (not saved)` after active profile name when Timer Settings are changed but not saved to profile
 - System settings stored separately from profile timer fields
 - Profile dropdown refresh keeps current selection
 - `repeatCount = 0` support for infinite cycles
