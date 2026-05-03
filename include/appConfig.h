@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 16:11 ***/
+/*** Last Changed: 2026-05-03 - 12:13 ***/
 #ifndef APP_CONFIG_H
 #define APP_CONFIG_H
 
@@ -130,7 +130,7 @@
 #endif
 
 #ifndef DEFAULT_REPEAT_COUNT
-#define DEFAULT_REPEAT_COUNT 1
+#define DEFAULT_REPEAT_COUNT 0
 #endif
 
 #ifndef DEFAULT_TRIGGER_MODE

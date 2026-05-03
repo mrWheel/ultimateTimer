@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 14:23 ***/
+/*** Last Changed: 2026-05-03 - 12:13 ***/
 #include "timerEngine.h"
 #include "appConfig.h"
 
@@ -252,22 +252,12 @@ void timerReset()
 //--- Request external trigger
 void timerHandleExternalTrigger()
 {
-  bool accepted = false;
-
-  lockTimerState();
-
-  if (appSettings.triggerMode == TRIGGER_MODE_EXTERNAL && !timerIsBusyLocked())
-  {
-    accepted = true;
-  }
-
-  unlockTimerState();
-
-  if (!accepted)
+  if (appSettings.triggerMode != TRIGGER_MODE_EXTERNAL)
   {
     return;
   }
 
+  timerReset();
   timerStart();
   ESP_LOGI(logTag, "External trigger accepted");
 

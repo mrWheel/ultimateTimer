@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 15:49 ***/
+/*** Last Changed: 2026-05-03 - 12:13 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -35,8 +35,9 @@ enum TimerSettingsItem
   TIMER_SETTINGS_ITEM_OFF_TIME = 2,
   TIMER_SETTINGS_ITEM_OFF_UNIT = 3,
   TIMER_SETTINGS_ITEM_REPEAT_COUNT = 4,
-  TIMER_SETTINGS_ITEM_TRIGGER_EDGE = 5,
-  TIMER_SETTINGS_ITEM_EXIT = 6
+  TIMER_SETTINGS_ITEM_TRIGGER_MODE = 5,
+  TIMER_SETTINGS_ITEM_TRIGGER_EDGE = 6,
+  TIMER_SETTINGS_ITEM_EXIT = 7
 };
 
 //--- System settings menu item identifiers
@@ -74,14 +75,15 @@ enum FieldInputTarget
   FIELD_INPUT_TARGET_REPEAT_COUNT = 5,
   FIELD_INPUT_TARGET_ON_UNIT = 6,
   FIELD_INPUT_TARGET_OFF_UNIT = 7,
-  FIELD_INPUT_TARGET_TRIGGER_EDGE = 8,
-  FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM = 9,
-  FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM = 10,
-  FIELD_INPUT_TARGET_OUTPUT_POLARITY_SELECT = 11,
-  FIELD_INPUT_TARGET_AUTO_SAVE_PROFILE_SELECT = 12,
-  FIELD_INPUT_TARGET_THEME_COLOR_SELECT = 13,
-  FIELD_INPUT_TARGET_RESTART_CONFIRM = 14,
-  FIELD_INPUT_TARGET_WIFI_MANAGER_CONFIRM = 15
+  FIELD_INPUT_TARGET_TRIGGER_MODE = 8,
+  FIELD_INPUT_TARGET_TRIGGER_EDGE = 9,
+  FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM = 10,
+  FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM = 11,
+  FIELD_INPUT_TARGET_OUTPUT_POLARITY_SELECT = 12,
+  FIELD_INPUT_TARGET_AUTO_SAVE_PROFILE_SELECT = 13,
+  FIELD_INPUT_TARGET_THEME_COLOR_SELECT = 14,
+  FIELD_INPUT_TARGET_RESTART_CONFIRM = 15,
+  FIELD_INPUT_TARGET_WIFI_MANAGER_CONFIRM = 16
 };
 
 //--- Main menu labels
@@ -103,6 +105,7 @@ static const String timerSettingsMenuItems[] =
         "Off Time",
         "Off Time Unit",
         "Number of Cycles",
+        "Trigger Mode",
         "Trigger (Rise/Fall)",
         "Exit"};
 
@@ -138,6 +141,11 @@ static const char* alphaNumericTokens[] =
 static const char* timeUnitTokens[] =
     {
         "ms", "s", "Min"};
+
+//--- Trigger mode field tokens
+static const char* triggerModeTokens[] =
+    {
+        "Manual", "External"};
 
 //--- Trigger edge field tokens
 static const char* triggerEdgeTokens[] =
@@ -491,6 +499,11 @@ static void applyFieldInputAndReturn()
     {
       settings.offTimeUnit = TIME_UNIT_MINUTES;
     }
+    commitSettings(settings);
+    break;
+
+  case FIELD_INPUT_TARGET_TRIGGER_MODE:
+    settings.triggerMode = (fieldValue == "External") ? TRIGGER_MODE_EXTERNAL : TRIGGER_MODE_MANUAL;
     commitSettings(settings);
     break;
 
@@ -1137,6 +1150,10 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
 
     case TIMER_SETTINGS_ITEM_REPEAT_COUNT:
       openFieldInput("Timer Settings Menu", "Cycles", 3, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_REPEAT_COUNT, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.repeatCount, 3));
+      return;
+
+    case TIMER_SETTINGS_ITEM_TRIGGER_MODE:
+      openFieldInput("Timer Settings Menu", "Trigger Mode", 1, triggerModeTokens, sizeof(triggerModeTokens) / sizeof(triggerModeTokens[0]), FIELD_INPUT_TARGET_TRIGGER_MODE, UI_SCREEN_TIMER_SETTINGS_MENU, timerGetTriggerModeLabel(settings.triggerMode));
       return;
 
     case TIMER_SETTINGS_ITEM_TRIGGER_EDGE:

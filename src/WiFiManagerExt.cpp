@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 14:23 ***/
+/*** Last Changed: 2026-05-03 - 12:13 ***/
 #include "WiFiManagerExt.h"
 
 #include "appConfig.h"
@@ -39,10 +39,10 @@ static void startPortal();
 //--- Start station connection attempt
 static void startStationAttempt();
 
-//--- Build MAC suffix using last three bytes (ab-cd-ef)
+//--- Build MAC suffix using full six bytes (aabbccddeeff)
 static String buildMacSuffix();
 
-//--- Remove trailing -ab-cd-ef suffix if present
+//--- Remove trailing identity MAC suffix if present
 static String stripMacSuffixIfPresent(const String& value);
 
 //--- Build identity text: first 8 chars + "-" + MAC suffix
@@ -475,7 +475,7 @@ bool wifiManagerExtConsumeNewStaCredentials(WifiSettings& wifiSettings)
 
 } //   wifiManagerExtConsumeNewStaCredentials()
 
-//--- Build MAC suffix using last three bytes (ab-cd-ef)
+//--- Build MAC suffix using full six bytes (aabbccddeeff)
 static String buildMacSuffix()
 {
   uint8_t macAddress[6];
@@ -483,10 +483,10 @@ static String buildMacSuffix()
 
   if (esp_read_mac(macAddress, ESP_MAC_WIFI_STA) != ESP_OK)
   {
-    return "00-00-00";
+    return "000000000000";
   }
 
-  snprintf(suffixBuffer, sizeof(suffixBuffer), "%02x-%02x-%02x", macAddress[3], macAddress[4], macAddress[5]);
+  snprintf(suffixBuffer, sizeof(suffixBuffer), "%02x%02x%02x%02x%02x%02x", macAddress[0], macAddress[1], macAddress[2], macAddress[3], macAddress[4], macAddress[5]);
 
   return String(suffixBuffer);
 
@@ -511,9 +511,35 @@ static String buildIdentityWithMacSuffix(const String& baseValue, const String& 
 
 } //   buildIdentityWithMacSuffix()
 
-//--- Remove trailing -ab-cd-ef suffix if present
+//--- Remove trailing identity MAC suffix if present
 static String stripMacSuffixIfPresent(const String& value)
 {
+  //--- New format: <base>-aabbccddeeff
+  if (value.length() >= 14)
+  {
+    int suffixStart = static_cast<int>(value.length()) - 13;
+
+    if (value.charAt(suffixStart) == '-')
+    {
+      String suffix = value.substring(suffixStart + 1);
+      bool validSuffix = (suffix.length() == 12);
+
+      for (int index = 0; validSuffix && index < static_cast<int>(suffix.length()); index++)
+      {
+        if (!isxdigit(suffix.charAt(index)))
+        {
+          validSuffix = false;
+        }
+      }
+
+      if (validSuffix)
+      {
+        return value.substring(0, suffixStart);
+      }
+    }
+  }
+
+  //--- Legacy format: <base>-ab-cd-ef
   if (value.length() < 10)
   {
     return value;

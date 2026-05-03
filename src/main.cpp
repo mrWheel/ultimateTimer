@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-19 - 17:07 ***/
+/*** Last Changed: 2026-05-03 - 12:13 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -14,6 +14,7 @@
 #include "WiFiManagerExt.h"
 #include "appConfig.h"
 
+#include <LittleFS.h>
 #include <WiFi.h>
 #include <cstdio>
 #include <esp_log.h>
@@ -22,7 +23,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v1.3.2";
+const char* PROG_VERSION = "v1.3.4";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -32,6 +33,9 @@ static AppSettings activeSettings;
 
 //--- WiFi disable indicator
 static bool wifiDisabled = false;
+
+//--- First-boot marker indicator for startup UI message
+static bool firstBootDetected = false;
 
 //--- Track WiFi link transitions for NTP sync
 static bool wifiWasConnected = false;
@@ -78,6 +82,9 @@ static void showStartupWifiConnectionMessage();
 
 //--- Configure NTP when WiFi STA becomes connected
 static void syncNtpTimeIfNeeded();
+
+//--- Handle first-boot marker file in LittleFS
+static bool handleFirstBootMarker();
 
 #ifdef TEST_COLOR_PATERN
 //--- Test pattern screens
@@ -141,7 +148,7 @@ static void updateExternalInputs()
 {
   AppSettings settings = timerGetSettings();
 
-  if (ioTriggerActivated(settings.triggerEdge))
+  if (settings.triggerMode == TRIGGER_MODE_EXTERNAL && ioTriggerActivated(settings.triggerEdge))
   {
     timerHandleExternalTrigger();
   }
@@ -298,6 +305,45 @@ static void syncNtpTimeIfNeeded()
   ESP_LOGI(logTag, "NTP sync configured (servers: %s, %s)", ntpServer1, ntpServer2);
 
 } //   syncNtpTimeIfNeeded()
+
+//--- Handle first-boot marker in LittleFS
+static bool handleFirstBootMarker()
+{
+  const char* rootPath = "/firstBoot";
+  const char* legacyPath = "firstBoot";
+  const char* markerPath = nullptr;
+
+  if (LittleFS.exists(rootPath))
+  {
+    markerPath = rootPath;
+  }
+  else if (LittleFS.exists(legacyPath))
+  {
+    markerPath = legacyPath;
+  }
+
+  if (markerPath == nullptr)
+  {
+    return false;
+  }
+
+  ESP_LOGW(logTag, "firstBoot marker detected, skipping WiFi startup for this boot");
+  settingsStoreEraseWifiCredentials();
+
+  if (!LittleFS.remove(markerPath))
+  {
+    ESP_LOGW(logTag, "Failed to remove firstBoot marker: %s", markerPath);
+  }
+  else
+  {
+    ESP_LOGI(logTag, "Removed firstBoot marker: %s", markerPath);
+  }
+
+  firstBootDetected = true;
+
+  return true;
+
+} //   handleFirstBootMarker()
 
 #ifdef TEST_COLOR_PATERN
 //--- Get number of enabled palette colors
@@ -501,8 +547,14 @@ void setup()
 #endif
 
   settingsStoreInit();
-  wifiDisabled = settingsStoreLoadWifiDisabled();
   profileManagerInit();
+  wifiDisabled = settingsStoreLoadWifiDisabled();
+
+  if (handleFirstBootMarker())
+  {
+    wifiDisabled = true;
+  }
+
   timerInit();
   loadStartupSettings();
   encoderInit();
@@ -510,6 +562,12 @@ void setup()
   pinMode(PIN_WIFI_ERASE, INPUT_PULLUP);
   ioInit();
   displayInit();
+
+  if (firstBootDetected)
+  {
+    displayDrawMessage("firstBoot", "WiFi init skipped");
+    delay(900);
+  }
 
   if (!wifiDisabled)
   {
