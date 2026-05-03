@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 15:49 ***/
+/*** Last Changed: 2026-05-03 - 13:35 ***/
 #include "profileManager.h"
 
 #include <ArduinoJson.h>
@@ -228,6 +228,8 @@ static void loadSettingsFromJson(const JsonDocument& doc, AppSettings& settings)
   settings.onTimeUnit = static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
   settings.offTimeUnit = static_cast<TimeUnit>(doc["offTimeUnit"] | static_cast<int>(settings.offTimeUnit));
   settings.repeatCount = doc["repeatCount"] | settings.repeatCount;
+  settings.triggerMode = static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
+  settings.triggerEdge = static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
 
 } //   loadSettingsFromJson()
 
@@ -239,5 +241,7 @@ static void saveSettingsToJson(JsonDocument& doc, const AppSettings& settings)
   doc["onTimeUnit"] = static_cast<int>(settings.onTimeUnit);
   doc["offTimeUnit"] = static_cast<int>(settings.offTimeUnit);
   doc["repeatCount"] = settings.repeatCount;
+  doc["triggerMode"] = static_cast<int>(settings.triggerMode);
+  doc["triggerEdge"] = static_cast<int>(settings.triggerEdge);
 
 } //   saveSettingsToJson()

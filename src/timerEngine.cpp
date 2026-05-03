@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-03 - 12:13 ***/
+/*** Last Changed: 2026-05-03 - 13:35 ***/
 #include "timerEngine.h"
 #include "appConfig.h"
 
@@ -266,6 +266,11 @@ void timerHandleExternalTrigger()
 //--- Request external reset
 void timerHandleExternalReset()
 {
+  if (appSettings.triggerMode != TRIGGER_MODE_EXTERNAL)
+  {
+    return;
+  }
+
   timerReset();
   ESP_LOGI(logTag, "External reset accepted");
 

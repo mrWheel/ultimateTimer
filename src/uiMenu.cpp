@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-03 - 12:13 ***/
+/*** Last Changed: 2026-05-03 - 13:35 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -691,7 +691,35 @@ static void handleFieldInput(EncoderEvent encoderEvent)
 //--- Refresh profile list and append Exit entry
 static void refreshProfileListWithExit()
 {
-  size_t loadedProfiles = profileManagerListProfiles(profileNames, profileManagerMaxProfiles);
+  // Reserve one slot in load mode so we can always show the built-in default profile.
+  size_t maxListProfiles = profileManagerMaxProfiles;
+
+  if (profileListMode == PROFILE_LIST_LOAD && maxListProfiles > 0)
+  {
+    maxListProfiles = profileManagerMaxProfiles - 1;
+  }
+
+  size_t loadedProfiles = profileManagerListProfiles(profileNames, maxListProfiles);
+
+  if (profileListMode == PROFILE_LIST_LOAD)
+  {
+    bool hasDefaultProfile = false;
+
+    for (size_t index = 0; index < loadedProfiles; index++)
+    {
+      if (profileNames[index].equalsIgnoreCase(profileManagerDefaultProfileName))
+      {
+        hasDefaultProfile = true;
+        break;
+      }
+    }
+
+    if (!hasDefaultProfile && loadedProfiles < profileManagerMaxProfiles)
+    {
+      profileNames[loadedProfiles] = profileManagerDefaultProfileName;
+      loadedProfiles++;
+    }
+  }
 
   if (profileListMode == PROFILE_LIST_DELETE)
   {
@@ -966,10 +994,12 @@ static void drawCurrentScreen()
 static void handleStatusScreen(EncoderEvent encoderEvent)
 {
   bool redrawRequired = false;
+  AppSettings settings = timerGetSettings();
+  bool externalTriggerMode = (settings.triggerMode == TRIGGER_MODE_EXTERNAL);
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
-    if (statusActionIndex > 0)
+    if (!externalTriggerMode && statusActionIndex > 0)
     {
       statusActionIndex--;
       redrawRequired = true;
@@ -977,7 +1007,7 @@ static void handleStatusScreen(EncoderEvent encoderEvent)
   }
   else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
-    if (statusActionIndex < 2)
+    if (!externalTriggerMode && statusActionIndex < 2)
     {
       statusActionIndex++;
       redrawRequired = true;
@@ -985,6 +1015,11 @@ static void handleStatusScreen(EncoderEvent encoderEvent)
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
+    if (externalTriggerMode)
+    {
+      return;
+    }
+
     if (statusActionIndex == 0)
     {
       timerStart();
@@ -1340,11 +1375,23 @@ static void handleProfileList(EncoderEvent encoderEvent)
 
     if (profileListMode == PROFILE_LIST_LOAD)
     {
+      bool loadOk = false;
+
       if (profileManagerLoadProfile(selectedProfile, settings))
+      {
+        loadOk = true;
+      }
+      else if (selectedProfile.equalsIgnoreCase(profileManagerDefaultProfileName))
+      {
+        timerLoadDefaultSettings(settings);
+        loadOk = true;
+      }
+
+      if (loadOk)
       {
         commitSettings(settings);
         timerReset();
-        settingsStoreSaveLastProfileName(selectedProfile);
+        settingsStoreSaveLastProfileName(settings.profileName);
         uiMenuShowTransientMessage("Profile loaded");
       }
       else

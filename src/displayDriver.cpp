@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 15:49 ***/
+/*** Last Changed: 2026-05-03 - 13:35 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -40,8 +40,8 @@ static std::string lastHeaderRightText = "";
 //--- Draw a status tile
 static void drawStatusTile(int x, int y, int w, int h, const char* label, const std::string& value);
 
-//--- Draw status action buttons
-static void drawStatusActionButtons(int statusActionIndex);
+//--- Draw status action row (buttons or external trigger label)
+static void drawStatusActionButtons(int statusActionIndex, bool externalTriggerMode);
 
 //--- Format remaining duration text from milliseconds
 static std::string formatRemainingMs(uint32_t remainingMs);
@@ -225,7 +225,7 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     nextStatusLines[4] = buffer;
   }
 
-  snprintf(buffer, sizeof(buffer), "A:%d", statusActionIndex);
+  snprintf(buffer, sizeof(buffer), "A:%d|T:%d", statusActionIndex, static_cast<int>(settings.triggerMode));
   nextStatusLines[5] = buffer;
 
   for (int lineIndex = 0; lineIndex < statusLineCount; lineIndex++)
@@ -279,7 +279,7 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
       break;
 
     case 5:
-      drawStatusActionButtons(statusActionIndex);
+      drawStatusActionButtons(statusActionIndex, settings.triggerMode == TRIGGER_MODE_EXTERNAL);
       break;
     }
 
@@ -1008,8 +1008,8 @@ static void drawStatusTile(int x, int y, int w, int h, const char* label, const 
 
 } //   drawStatusTile()
 
-//--- Draw status action buttons
-static void drawStatusActionButtons(int statusActionIndex)
+//--- Draw status action row (buttons or external trigger label)
+static void drawStatusActionButtons(int statusActionIndex, bool externalTriggerMode)
 {
   static const char* labels[] =
       {
@@ -1022,7 +1022,36 @@ static void drawStatusActionButtons(int statusActionIndex)
   const int buttonWidth = 92;
   const int buttonSpacing = 10;
   const int firstButtonX = 11;
+
   tft.fillRect(0, 182, tft.width(), 58, ST77XX_BLACK);
+
+  if (externalTriggerMode)
+  {
+    const char* message = "External Trigger";
+    int16_t textX1;
+    int16_t textY1;
+    uint16_t textWidth;
+    uint16_t textHeight;
+    int textX;
+    int textY;
+
+    tft.setTextSize(2);
+    tft.getTextBounds(message, 0, 0, &textX1, &textY1, &textWidth, &textHeight);
+    textX = (tft.width() - static_cast<int>(textWidth)) / 2;
+    textY = buttonY + ((buttonHeight - static_cast<int>(textHeight)) / 2);
+
+    if (textX < 0)
+    {
+      textX = 0;
+    }
+
+    tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+    tft.setCursor(textX, textY);
+    tft.print(message);
+
+    return;
+  }
+
   tft.setTextSize(2);
 
   for (int buttonIndex = 0; buttonIndex < 3; buttonIndex++)

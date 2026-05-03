@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-03 - 12:13 ***/
+/*** Last Changed: 2026-05-03 - 13:35 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -23,7 +23,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v1.3.4";
+const char* PROG_VERSION = "v1.4.0";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -153,7 +153,7 @@ static void updateExternalInputs()
     timerHandleExternalTrigger();
   }
 
-  if (ioResetActivated())
+  if (settings.triggerMode == TRIGGER_MODE_EXTERNAL && ioResetActivated())
   {
     timerHandleExternalReset();
   }
