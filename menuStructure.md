@@ -77,10 +77,11 @@
 ```
 
 [24h Timer Settings Menu]
-- Hour selection (0..23)
-- Hour state: `-`, `+`, `R`, `r`, or `S`
-- When the hour is `S`, the quarter-hour values become visible and editable
-- SHORT press changes the selected hour state or quarter-hour state
+- Hour selection (0..23) with derived hour type display
+- Hour type: `-`, `+`, `R`, `r`, or `S` (automatically derived from quarter-hour values and displayed)
+- When hour type is `+`, `-`, `R`, or `r`: quarters are hidden; SHORT press locks hour and moves to type selection
+- When hour type is `S` (split hour): quarter-hour values are immediately visible and editable; the quarters can be edited without advancing focus levels
+- SHORT press changes the selected hour or quarter-hour state
 - MEDIUM or LONG press saves and returns to [Edit Timer Menu]
 - PIN_KEY0 MEDIUM or LONG press saves and returns to [Edit Timer Menu]
 ### Timer Settings persistence rule (source: `DEFAULT_AUTO_SAVE_LAST_PROFILE`)

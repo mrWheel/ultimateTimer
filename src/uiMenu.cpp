@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 14:53 ***/
+/*** Last Changed: 2026-05-11 - 15:08 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -968,7 +968,20 @@ static void drawCurrentScreen()
       quarterStateLabels[q] = timerGet24hQuarterStateLabel(timerGet24hQuarterState(editorSettings, static_cast<uint8_t>(twentyFourHourEditorHourIndex), static_cast<uint8_t>(q)));
     }
 
-    if (twentyFourHourEditorFocus == EDITOR_FOCUS_TYPE)
+    if (twentyFourHourEditorFocus == EDITOR_FOCUS_HOUR)
+    {
+      //-- Derive the hour type from the current quarter values
+      typeLabel = timerGet24hHourLabel(editorSettings, static_cast<uint8_t>(twentyFourHourEditorHourIndex));
+      typeIsCursor = false;
+      //-- Only show quarters if the type is 'S' (split hour)
+      showQuarters = (strcmp(typeLabel, "S") == 0);
+      if (showQuarters)
+      {
+        quarterCursorSlot = -1;
+        quarterSlotHasCursor = false;
+      }
+    }
+    else if (twentyFourHourEditorFocus == EDITOR_FOCUS_TYPE)
     {
       typeLabel = get24hEditorTypeLabel(twentyFourHourEditorTypeValue);
       typeIsCursor = true;

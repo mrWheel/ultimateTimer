@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 14:53 ***/
+/*** Last Changed: 2026-05-11 - 15:08 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -23,7 +23,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v1.4.1";
+const char* PROG_VERSION = "v1.4.2";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -51,12 +51,6 @@ static TaskHandle_t inputTaskHandle = nullptr;
 static const TickType_t timerTaskPeriodTicks = pdMS_TO_TICKS(2);
 static const TickType_t inputTaskPeriodTicks = pdMS_TO_TICKS(2);
 
-//--- GPIO00 hold-to-reset tracking
-static bool wifiResetPressed = false;
-static bool wifiResetTriggered = false;
-static uint32_t wifiResetPressStartMs = 0;
-static uint32_t wifiResetLastUiUpdateMs = 0;
-
 //--- NTP configuration
 static const char* ntpTimeZone = "CET-1CEST,M3.5.0/2,M10.5.0/3";
 static const char* ntpServer1 = "pool.ntp.org";
@@ -73,9 +67,6 @@ static void timerTask(void* taskParameter);
 
 //--- Update all input-related modules
 static void inputTask(void* taskParameter);
-
-//--- Handle GPIO00 hold action for clearing WiFi credentials
-static bool handleWifiCredentialResetHold();
 
 //--- Show startup WiFi connection message
 static void showStartupWifiConnectionMessage();
@@ -189,75 +180,11 @@ static void inputTask(void* taskParameter)
     buttonUpdate();
     updateExternalInputs();
     uiMenuUpdate();
-    handleWifiCredentialResetHold();
 
     vTaskDelay(inputTaskPeriodTicks);
   }
 
 } //   inputTask()
-
-//--- Handle GPIO00 hold action for clearing WiFi credentials
-static bool handleWifiCredentialResetHold()
-{
-  bool rawPressed = digitalRead(PIN_WIFI_ERASE) == LOW;
-
-  if (rawPressed && !wifiResetPressed)
-  {
-    wifiResetPressed = true;
-    wifiResetTriggered = false;
-    wifiResetPressStartMs = millis();
-    wifiResetLastUiUpdateMs = 0;
-
-    return true;
-  }
-
-  if (!rawPressed)
-  {
-    wifiResetPressed = false;
-    wifiResetTriggered = false;
-    wifiResetLastUiUpdateMs = 0;
-
-    return false;
-  }
-
-  if (wifiResetTriggered)
-  {
-    return true;
-  }
-
-  uint32_t elapsedMs = millis() - wifiResetPressStartMs;
-
-  if (wifiResetLastUiUpdateMs == 0 || millis() - wifiResetLastUiUpdateMs >= 250)
-  {
-    uint32_t remainingMs = (elapsedMs < WIFI_CREDENTIAL_RESET_HOLD_MS) ? (WIFI_CREDENTIAL_RESET_HOLD_MS - elapsedMs) : 0;
-    uint32_t remainingSeconds = (remainingMs + 999UL) / 1000UL;
-    char messageBuffer[48];
-
-    snprintf(messageBuffer, sizeof(messageBuffer), "Hold %lus to erase WiFi", static_cast<unsigned long>(remainingSeconds));
-
-    displayDrawMessage("WiFi Reset", messageBuffer);
-    wifiResetLastUiUpdateMs = millis();
-  }
-
-  if (elapsedMs < WIFI_CREDENTIAL_RESET_HOLD_MS)
-  {
-    return true;
-  }
-
-  wifiResetTriggered = true;
-
-  ESP_LOGW(logTag, "GPIO00 hold detected, erasing WiFi credentials and restarting");
-  displayDrawMessage("WiFi Reset", "Erasing creds...");
-  settingsStoreEraseWifiCredentials();
-  settingsStoreSaveWifiDisabled(true);
-  WiFi.disconnect(true, true);
-  WiFi.mode(WIFI_OFF);
-  delay(100);
-  ESP.restart();
-
-  return true;
-
-} //   handleWifiCredentialResetHold()
 
 //--- Show startup WiFi connection message
 static void showStartupWifiConnectionMessage()
@@ -559,7 +486,6 @@ void setup()
   loadStartupSettings();
   encoderInit();
   buttonInit();
-  pinMode(PIN_WIFI_ERASE, INPUT_PULLUP);
   ioInit();
   displayInit();
 

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-03 - 12:13 ***/
+/*** Last Changed: 2026-05-11 - 15:08 ***/
 #ifndef APP_CONFIG_H
 #define APP_CONFIG_H
 
@@ -43,10 +43,6 @@
 
 #ifndef PIN_KEY0
 #define PIN_KEY0 26
-#endif
-
-#ifndef PIN_WIFI_ERASE
-#define PIN_WIFI_ERASE 0
 #endif
 
 #ifndef PIN_OUTPUT
@@ -95,10 +91,6 @@
 
 #ifndef BUTTON_MEDIUM_PRESS_MS
 #define BUTTON_MEDIUM_PRESS_MS 450
-#endif
-
-#ifndef WIFI_CREDENTIAL_RESET_HOLD_MS
-#define WIFI_CREDENTIAL_RESET_HOLD_MS 10000
 #endif
 
 #ifndef DEFAULT_AP_SSID

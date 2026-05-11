@@ -82,28 +82,47 @@ The editor uses four sequential focus levels:
 
 | Level | Focus | Encoder rotates | Short press |
 |---|---|---|---|
-| 0 | **Hour** `<HH>` | Hour 00–23 (wraps) | Lock hour → move to Type |
+| 0 | **Hour** `<HH>` with derived **Type** `[X]` | Hour 00–23 (wraps) | Lock hour → move to Type |
 | 1 | **Type** `<X>` | Type: `+`, `-`, `R`, `r`, `S` (wraps) | If `S` → move to Quarter Slot; else apply to all 4 quarters and return to Hour |
 | 2 | **Quarter Slot** `<00-15>` | Slot: 00-15, 16-30, 31-45, 46-59 (wraps) | Lock slot → move to Quarter Type |
 | 3 | **Quarter Type** `<X>` | Type: `+`, `-`, `R`, `r` (wraps) | Apply to this quarter; return to Quarter Slot |
+
+**Hour focus behavior:**
+- The hour type is always shown as `[type]` (locked, not under cursor).
+- The type is derived from the current quarter-hour values.
+- If type is `+`, `-`, `R`, or `r`: only the hour is displayed, quarters are hidden.
+- If type is `S`: the quarter-hour values are displayed below the hour/type, allowing immediate visibility without advancing to focus level 2.
 
 Medium press or long press at **any** focus level commits all changes and exits the editor.  
 `PIN_KEY0` medium or long press has the same effect.
 
 ### Display layout
 
-Hour focus (no type yet):
+Hour focus (type derived from quarters and displayed, quarters shown if type is `S`):
 ```
 24h Timer
 ┌──────────────────────────────────┐
-│ Hour              │              │
-│ <05>              │              │
+│ Hour              │ Type         │
+│ <05>              │ [R]          │
 └──────────────────────────────────┘
 Turn=Select hour  Short=Lock
 Hold=Save+Back  K0=Back
 ```
 
-Type focus (hour locked, type under cursor, no quarters):
+Hour focus with type `S` — quarters are visible below:
+```
+24h Timer
+┌──────────────────────────────────┐
+│ Hour              │ Type         │
+│ <05>              │ [S]          │
+└──────────────────────────────────┘
+ [00-15] [16-30] [31-45] [46-59]
+ [-]     [+]     [R]     [-]
+Turn=Select hour  Short=Lock
+Hold=Save+Back  K0=Back
+```
+
+Type focus (hour locked, type under cursor, quarters shown only if type is `S`):
 ```
 24h Timer
 ┌──────────────────────────────────┐
@@ -114,7 +133,7 @@ Turn=Select type  Short=Set
 Hold=Save+Back  K0=Back
 ```
 
-Type = `S` — quarters become visible when type cursor shows `<S>`:
+Type = `S` — quarters become editable when type cursor shows `<S>`:
 ```
 24h Timer
 ┌──────────────────────────────────┐

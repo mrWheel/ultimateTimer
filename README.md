@@ -8,6 +8,7 @@
 | [menuStructure.md](menuStructure.md) | Menu layout, navigation, and event handling specification |
 | [colorSettings.md](colorSettings.md) | Display color theme and UI color rules |
 | [webUI.md](webUI.md) | Web UI architecture, behavior, menus, and API endpoints |
+| [24hTimer.md](24hTimer.md) | 24 hour timer, behavior, menus, and API endpoints |
 
 ## Disclaimer
 This software and/or  hardware is developed incrementally. That means I have 
