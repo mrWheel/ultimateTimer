@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-03 - 13:35 ***/
+/*** Last Changed: 2026-05-11 - 14:53 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -23,7 +23,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v1.4.0";
+const char* PROG_VERSION = "v1.4.1";
 
 //--- Logging tag
 static const char* logTag = "main";

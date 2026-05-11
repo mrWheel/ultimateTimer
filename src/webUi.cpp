@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-22 - 13:07 ***/
+/*** Last Changed: 2026-05-11 - 14:53 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -590,6 +590,7 @@ body {
         <div class="fieldRow"><label for="offTimeValue">Off Time</label><input id="offTimeValue" type="number" min="0"></div>
         <div class="fieldRow"><label for="offTimeUnit">Off Time Unit</label><select id="offTimeUnit"><option value="0">ms</option><option value="1">s</option><option value="2">min</option></select></div>
         <div class="fieldRow"><label for="repeatCount">Cycles</label><input id="repeatCount" type="number" min="0"></div>
+        <div class="fieldRow"><label for="timerType">Timer Type</label><select id="timerType"><option value="0">Cyclic</option><option value="1">24h</option></select></div>
         <div class="fieldRow"><label for="triggerMode">Trigger Mode</label><select id="triggerMode"><option value="0">Manual</option><option value="1">External</option></select></div>
         <div class="fieldRow"><label for="triggerEdge">Trigger Edge</label><select id="triggerEdge"><option value="0">Falling</option><option value="1">Rising</option></select></div>
         <div class="fieldRow"><label for="lockInputDuringRun">Lock Input While Running</label><select id="lockInputDuringRun"><option value="0">No</option><option value="1">Yes</option></select></div>
@@ -726,9 +727,11 @@ function buildProfileSettingsSignature(settings)
     String(settings.onTimeUnit),
     String(settings.offTimeUnit),
     String(settings.repeatCount),
+    String(settings.timerType),
     String(settings.triggerMode),
     String(settings.triggerEdge),
-    settings.lockInputDuringRun ? '1' : '0'
+    settings.lockInputDuringRun ? '1' : '0',
+    Array.from(settings.timer24hQuarterStates || []).join(',')
   ].join('|');
 }
 
@@ -1039,6 +1042,7 @@ async function refreshStatus()
     document.getElementById('onTimeUnit').value = data.settings.onTimeUnit;
     document.getElementById('offTimeUnit').value = data.settings.offTimeUnit;
     document.getElementById('repeatCount').value = data.settings.repeatCount;
+    document.getElementById('timerType').value = data.settings.timerType;
     document.getElementById('triggerMode').value = data.settings.triggerMode;
     document.getElementById('triggerEdge').value = data.settings.triggerEdge;
     document.getElementById('lockInputDuringRun').value = data.settings.lockInputDuringRun ? '1' : '0';
@@ -1148,6 +1152,7 @@ function readSettingsFromForm()
     onTimeUnit: Number(document.getElementById('onTimeUnit').value),
     offTimeUnit: Number(document.getElementById('offTimeUnit').value),
     repeatCount: Number(document.getElementById('repeatCount').value),
+    timerType: Number(document.getElementById('timerType').value),
     triggerMode: Number(document.getElementById('triggerMode').value),
     triggerEdge: Number(document.getElementById('triggerEdge').value),
     lockInputDuringRun: document.getElementById('lockInputDuringRun').value === '1',
@@ -1206,6 +1211,7 @@ function bindLiveApplySettings()
     'onTimeUnit',
     'offTimeUnit',
     'repeatCount',
+    'timerType',
     'triggerMode',
     'triggerEdge',
     'lockInputDuringRun',
@@ -1483,6 +1489,7 @@ static void handleSaveSettings()
   }
 
   AppSettings settings = timerGetSettings();
+  settings.timerType = static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
   settings.onTimeValue = doc["onTimeValue"] | settings.onTimeValue;
   settings.offTimeValue = doc["offTimeValue"] | settings.offTimeValue;
   settings.onTimeUnit = static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
@@ -1523,6 +1530,7 @@ static void handleApplySettings()
   }
 
   AppSettings settings = timerGetSettings();
+  settings.timerType = static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
   settings.onTimeValue = doc["onTimeValue"] | settings.onTimeValue;
   settings.offTimeValue = doc["offTimeValue"] | settings.offTimeValue;
   settings.onTimeUnit = static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
@@ -1718,12 +1726,22 @@ static void fillStatusDocument(JsonDocument& doc)
   doc["settings"]["onTimeUnitLabel"] = timerGetTimeUnitLabel(settings.onTimeUnit);
   doc["settings"]["offTimeUnitLabel"] = timerGetTimeUnitLabel(settings.offTimeUnit);
   doc["settings"]["repeatCount"] = settings.repeatCount;
+  doc["settings"]["timerType"] = static_cast<int>(settings.timerType);
+  doc["settings"]["timerTypeLabel"] = timerGetTimerTypeLabel(settings.timerType);
   doc["settings"]["triggerMode"] = static_cast<int>(settings.triggerMode);
   doc["settings"]["triggerEdge"] = static_cast<int>(settings.triggerEdge);
   doc["settings"]["outputPolarityHigh"] = settings.outputPolarityHigh;
   doc["settings"]["lockInputDuringRun"] = settings.lockInputDuringRun;
   doc["settings"]["autoSaveLastProfile"] = settings.autoSaveLastProfile;
   doc["settings"]["profileName"] = settings.profileName;
+  {
+    JsonArray quarterStates = doc["settings"]["timer24hQuarterStates"].to<JsonArray>();
+
+    for (size_t stateIndex = 0; stateIndex < sizeof(settings.timer24hQuarterStates); stateIndex++)
+    {
+      quarterStates.add(settings.timer24hQuarterStates[stateIndex]);
+    }
+  }
   doc["settings"]["themeColorIndex"] = themeColorIndex;
   doc["settings"]["themeColorName"] = colorProfiles[themeColorIndex].colorName;
   doc["settings"]["encoderOrderLabel"] = settingsStoreLoadEncoderDirectionReversed() ? "B-A" : "A-B";

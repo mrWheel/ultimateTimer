@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-03 - 13:35 ***/
+/*** Last Changed: 2026-05-11 - 14:53 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -14,17 +14,19 @@
 #include <cstdlib>
 #include <esp_log.h>
 #include <string>
+#include <time.h>
 
 //--- Main menu item identifiers
 enum MainMenuItem
 {
-  MENU_ITEM_TIMER_SETTINGS = 0,
-  MENU_ITEM_SAVE_PROFILE = 1,
-  MENU_ITEM_LOAD_PROFILE = 2,
-  MENU_ITEM_NEW_PROFILE = 3,
-  MENU_ITEM_DELETE_PROFILE = 4,
-  MENU_ITEM_SHOW_SYSTEM_SETTINGS = 5,
-  MENU_ITEM_EXIT = 6
+  MENU_ITEM_CYCLIC_TIMER_SETTINGS = 0,
+  MENU_ITEM_24H_TIMER_SETTINGS = 1,
+  MENU_ITEM_SAVE_PROFILE = 2,
+  MENU_ITEM_LOAD_PROFILE = 3,
+  MENU_ITEM_NEW_PROFILE = 4,
+  MENU_ITEM_DELETE_PROFILE = 5,
+  MENU_ITEM_SHOW_SYSTEM_SETTINGS = 6,
+  MENU_ITEM_EXIT = 7
 };
 
 //--- Timer settings menu item identifiers
@@ -38,6 +40,15 @@ enum TimerSettingsItem
   TIMER_SETTINGS_ITEM_TRIGGER_MODE = 5,
   TIMER_SETTINGS_ITEM_TRIGGER_EDGE = 6,
   TIMER_SETTINGS_ITEM_EXIT = 7
+};
+
+//--- 24h timer editor focus levels
+enum TwentyFourHourEditorFocus
+{
+  EDITOR_FOCUS_HOUR = 0,         // cursor on hour, encoder changes hour
+  EDITOR_FOCUS_TYPE = 1,         // hour locked, cursor on type (+,-,R,r,S)
+  EDITOR_FOCUS_QUARTER_SLOT = 2, // type=S locked, cursor on quarter slot
+  EDITOR_FOCUS_QUARTER_TYPE = 3  // slot locked, cursor on quarter type
 };
 
 //--- System settings menu item identifiers
@@ -89,7 +100,8 @@ enum FieldInputTarget
 //--- Main menu labels
 static const String mainMenuItems[] =
     {
-        "Timer Settings",
+        "Cyclic Timer Settings",
+        "24h Timer Settings",
         "Save Profile",
         "Load Profile",
         "New Profile",
@@ -185,6 +197,13 @@ static int systemSettingsIndex = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
 static int statusActionIndex = 0;
 static UiScreen screenBeforeWifiPortal = UI_SCREEN_STATUS;
 
+//--- 24h timer editor state
+static int twentyFourHourEditorHourIndex = 0;
+static uint8_t twentyFourHourEditorTypeValue = 4; // 0-3 = Timer24hQuarterState, 4 = S (per-quarter)
+static int twentyFourHourEditorQuarterSlot = 0;
+static uint8_t twentyFourHourEditorQuarterTypeValue = 0; // 0-3 = Timer24hQuarterState
+static TwentyFourHourEditorFocus twentyFourHourEditorFocus = EDITOR_FOCUS_HOUR;
+
 //--- Profile list state
 static ProfileListMode profileListMode = PROFILE_LIST_LOAD;
 static String profileNames[profileManagerMaxProfiles + 1];
@@ -226,6 +245,9 @@ static void openMainMenu(bool selectExitItem = false);
 //--- Open timer settings menu
 static void openTimerSettingsMenu(bool selectExitItem = false);
 
+//--- Open 24h timer settings menu
+static void open24hTimerMenu(bool selectExitItem = false);
+
 //--- Open system settings menu
 static void openSystemSettingsMenu();
 
@@ -240,6 +262,9 @@ static void handleMainMenu(EncoderEvent encoderEvent);
 
 //--- Handle timer settings menu
 static void handleTimerSettingsMenu(EncoderEvent encoderEvent);
+
+//--- Handle 24h timer settings menu
+static void handle24hTimerMenu(EncoderEvent encoderEvent);
 
 //--- Handle system settings menu
 static void handleSystemSettingsMenu(EncoderEvent encoderEvent);
@@ -270,6 +295,12 @@ static std::string buildFixedWidthNumber(uint32_t value, int width);
 
 //--- Refresh profile list and append Exit entry
 static void refreshProfileListWithExit();
+
+//--- Check whether a 24h hour uses one uniform value
+static bool hourHasUniformQuarterState(const AppSettings& settings, int hourIndex, Timer24hQuarterState& state);
+
+//--- Get 24h editor type label (0-3 = quarter state label, 4 = "S")
+static const char* get24hEditorTypeLabel(uint8_t typeValue);
 
 //--- Apply current settings back into timer
 static void commitSettings(const AppSettings& settings);
@@ -754,6 +785,42 @@ static void refreshProfileListWithExit()
 
 } //   refreshProfileListWithExit()
 
+//--- Check whether a 24h hour uses one uniform value
+static bool hourHasUniformQuarterState(const AppSettings& settings, int hourIndex, Timer24hQuarterState& state)
+{
+  if (hourIndex < 0 || hourIndex >= 24)
+  {
+    state = TIMER_24H_QUARTER_OFF;
+
+    return false;
+  }
+
+  state = timerGet24hQuarterState(settings, static_cast<uint8_t>(hourIndex), 0);
+
+  for (int quarterIndex = 1; quarterIndex < 4; quarterIndex++)
+  {
+    if (timerGet24hQuarterState(settings, static_cast<uint8_t>(hourIndex), static_cast<uint8_t>(quarterIndex)) != state)
+    {
+      return false;
+    }
+  }
+
+  return true;
+
+} //   hourHasUniformQuarterState()
+
+//--- Get 24h editor type label (0-3 maps to quarter state label, 4 = "S")
+static const char* get24hEditorTypeLabel(uint8_t typeValue)
+{
+  if (typeValue >= 4)
+  {
+    return "S";
+  }
+
+  return timerGet24hQuarterStateLabel(static_cast<Timer24hQuarterState>(typeValue));
+
+} //   get24hEditorTypeLabel()
+
 //--- Open status screen
 static void openStatusScreen()
 {
@@ -778,14 +845,48 @@ static void openMainMenu(bool selectExitItem)
 //--- Open timer settings menu
 static void openTimerSettingsMenu(bool selectExitItem)
 {
+  AppSettings settings = timerGetSettings();
+
+  settings.timerType = TIMER_TYPE_CYCLIC;
+  commitSettings(settings);
+
   timerSettingsIndex = selectExitItem ? TIMER_SETTINGS_ITEM_EXIT : 0;
   timerSettingsFirstVisibleIndex = 0;
   previousScreen = currentScreen;
   currentScreen = UI_SCREEN_TIMER_SETTINGS_MENU;
-  logActiveScreen("Timer Settings Menu");
+  logActiveScreen("Cyclic Timer Settings Menu");
   drawCurrentScreen();
 
 } //   openTimerSettingsMenu()
+
+//--- Open 24h timer settings menu
+static void open24hTimerMenu(bool selectExitItem)
+{
+  AppSettings settings = timerGetSettings();
+  struct tm timeInfo;
+  time_t now;
+
+  (void)selectExitItem;
+
+  settings.timerType = TIMER_TYPE_24H;
+  commitSettings(settings);
+
+  //-- Start editor cursor at the current clock hour
+  now = time(nullptr);
+  localtime_r(&now, &timeInfo);
+  twentyFourHourEditorHourIndex = timeInfo.tm_hour;
+
+  twentyFourHourEditorFocus = EDITOR_FOCUS_HOUR;
+  twentyFourHourEditorTypeValue = 4;
+  twentyFourHourEditorQuarterSlot = 0;
+  twentyFourHourEditorQuarterTypeValue = 0;
+
+  previousScreen = currentScreen;
+  currentScreen = UI_SCREEN_24H_TIMER_MENU;
+  logActiveScreen("24h Timer Settings Menu");
+  drawCurrentScreen();
+
+} //   open24hTimerMenu()
 
 //--- Open system settings menu
 static void openSystemSettingsMenu()
@@ -846,8 +947,65 @@ static void drawCurrentScreen()
     break;
 
   case UI_SCREEN_TIMER_SETTINGS_MENU:
-    displayDrawListScreen("Timer Settings Menu", timerSettingsMenuItems, sizeof(timerSettingsMenuItems) / sizeof(timerSettingsMenuItems[0]), timerSettingsIndex, timerSettingsFirstVisibleIndex);
+    displayDrawListScreen("Cyclic Timer Settings Menu", timerSettingsMenuItems, sizeof(timerSettingsMenuItems) / sizeof(timerSettingsMenuItems[0]), timerSettingsIndex, timerSettingsFirstVisibleIndex);
     break;
+
+  case UI_SCREEN_24H_TIMER_MENU:
+  {
+    AppSettings editorSettings = timerGetSettings();
+    const char* quarterStateLabels[4];
+    bool hourIsCursor = (twentyFourHourEditorFocus == EDITOR_FOCUS_HOUR);
+    const char* typeLabel = nullptr;
+    bool typeIsCursor = false;
+    bool showQuarters = false;
+    int quarterCursorSlot = -1;
+    bool quarterSlotHasCursor = false;
+    const char* quarterTypeCursorLabel = nullptr;
+    bool quarterTypeIsCursor = false;
+
+    for (int q = 0; q < 4; q++)
+    {
+      quarterStateLabels[q] = timerGet24hQuarterStateLabel(timerGet24hQuarterState(editorSettings, static_cast<uint8_t>(twentyFourHourEditorHourIndex), static_cast<uint8_t>(q)));
+    }
+
+    if (twentyFourHourEditorFocus == EDITOR_FOCUS_TYPE)
+    {
+      typeLabel = get24hEditorTypeLabel(twentyFourHourEditorTypeValue);
+      typeIsCursor = true;
+      showQuarters = (twentyFourHourEditorTypeValue == 4);
+    }
+    else if (twentyFourHourEditorFocus == EDITOR_FOCUS_QUARTER_SLOT)
+    {
+      typeLabel = "S";
+      typeIsCursor = false;
+      showQuarters = true;
+      quarterCursorSlot = twentyFourHourEditorQuarterSlot;
+      quarterSlotHasCursor = true;
+    }
+    else if (twentyFourHourEditorFocus == EDITOR_FOCUS_QUARTER_TYPE)
+    {
+      typeLabel = "S";
+      typeIsCursor = false;
+      showQuarters = true;
+      quarterCursorSlot = twentyFourHourEditorQuarterSlot;
+      quarterSlotHasCursor = false;
+      quarterTypeCursorLabel = timerGet24hQuarterStateLabel(static_cast<Timer24hQuarterState>(twentyFourHourEditorQuarterTypeValue));
+      quarterTypeIsCursor = true;
+    }
+
+    displayDraw24hTimerEditor(
+        static_cast<uint8_t>(twentyFourHourEditorHourIndex),
+        hourIsCursor,
+        typeLabel,
+        typeIsCursor,
+        showQuarters,
+        quarterStateLabels,
+        quarterCursorSlot,
+        quarterSlotHasCursor,
+        quarterTypeCursorLabel,
+        quarterTypeIsCursor);
+    break;
+  }
 
   case UI_SCREEN_SYSTEM_SETTINGS_MENU:
   {
@@ -1084,8 +1242,12 @@ static void handleMainMenu(EncoderEvent encoderEvent)
 
     switch (mainMenuIndex)
     {
-    case MENU_ITEM_TIMER_SETTINGS:
+    case MENU_ITEM_CYCLIC_TIMER_SETTINGS:
       openTimerSettingsMenu(false);
+      return;
+
+    case MENU_ITEM_24H_TIMER_SETTINGS:
+      open24hTimerMenu(false);
       return;
 
     case MENU_ITEM_SAVE_PROFILE:
@@ -1117,7 +1279,7 @@ static void handleMainMenu(EncoderEvent encoderEvent)
     }
   }
 
-  mainMenuFirstVisibleIndex = mainMenuIndex - 3;
+  mainMenuFirstVisibleIndex = mainMenuIndex - 4;
 
   if (mainMenuFirstVisibleIndex < 0)
   {
@@ -1219,6 +1381,136 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
   }
 
 } //   handleTimerSettingsMenu()
+
+//--- Handle 24h timer settings menu
+static void handle24hTimerMenu(EncoderEvent encoderEvent)
+{
+  bool redrawRequired = false;
+  AppSettings settings = timerGetSettings();
+  Timer24hQuarterState uniformState;
+
+  settings.timerType = TIMER_TYPE_24H;
+
+  //-- Medium/long press at any level: commit and exit
+  if (encoderEvent == ENCODER_EVENT_MEDIUM_PRESS || encoderEvent == ENCODER_EVENT_LONG_PRESS)
+  {
+    commitSettings(settings);
+    currentScreen = previousScreen;
+    drawCurrentScreen();
+
+    return;
+  }
+
+  switch (twentyFourHourEditorFocus)
+  {
+  case EDITOR_FOCUS_HOUR:
+    if (encoderEvent == ENCODER_EVENT_LEFT)
+    {
+      twentyFourHourEditorHourIndex = (twentyFourHourEditorHourIndex > 0) ? twentyFourHourEditorHourIndex - 1 : 23;
+      redrawRequired = true;
+    }
+    else if (encoderEvent == ENCODER_EVENT_RIGHT)
+    {
+      twentyFourHourEditorHourIndex = (twentyFourHourEditorHourIndex < 23) ? twentyFourHourEditorHourIndex + 1 : 0;
+      redrawRequired = true;
+    }
+    else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
+    {
+      //-- Lock hour; initialise type value from stored state
+      if (hourHasUniformQuarterState(settings, twentyFourHourEditorHourIndex, uniformState))
+      {
+        twentyFourHourEditorTypeValue = static_cast<uint8_t>(uniformState);
+      }
+      else
+      {
+        twentyFourHourEditorTypeValue = 4; // S = mixed
+      }
+
+      twentyFourHourEditorFocus = EDITOR_FOCUS_TYPE;
+      redrawRequired = true;
+    }
+    break;
+
+  case EDITOR_FOCUS_TYPE:
+    if (encoderEvent == ENCODER_EVENT_LEFT)
+    {
+      twentyFourHourEditorTypeValue = (twentyFourHourEditorTypeValue == 0) ? 4 : twentyFourHourEditorTypeValue - 1;
+      redrawRequired = true;
+    }
+    else if (encoderEvent == ENCODER_EVENT_RIGHT)
+    {
+      twentyFourHourEditorTypeValue = (twentyFourHourEditorTypeValue >= 4) ? 0 : twentyFourHourEditorTypeValue + 1;
+      redrawRequired = true;
+    }
+    else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
+    {
+      if (twentyFourHourEditorTypeValue == 4)
+      {
+        //-- S selected: enter per-quarter editing
+        twentyFourHourEditorQuarterSlot = 0;
+        twentyFourHourEditorFocus = EDITOR_FOCUS_QUARTER_SLOT;
+      }
+      else
+      {
+        //-- Apply uniform type to all quarters of this hour
+        timerSet24hHourState(settings, static_cast<uint8_t>(twentyFourHourEditorHourIndex), static_cast<Timer24hQuarterState>(twentyFourHourEditorTypeValue));
+        commitSettings(settings);
+        twentyFourHourEditorFocus = EDITOR_FOCUS_HOUR;
+      }
+
+      redrawRequired = true;
+    }
+    break;
+
+  case EDITOR_FOCUS_QUARTER_SLOT:
+    if (encoderEvent == ENCODER_EVENT_LEFT)
+    {
+      twentyFourHourEditorQuarterSlot = (twentyFourHourEditorQuarterSlot > 0) ? twentyFourHourEditorQuarterSlot - 1 : 3;
+      redrawRequired = true;
+    }
+    else if (encoderEvent == ENCODER_EVENT_RIGHT)
+    {
+      twentyFourHourEditorQuarterSlot = (twentyFourHourEditorQuarterSlot < 3) ? twentyFourHourEditorQuarterSlot + 1 : 0;
+      redrawRequired = true;
+    }
+    else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
+    {
+      //-- Lock slot; initialise quarter type from stored state
+      twentyFourHourEditorQuarterTypeValue = static_cast<uint8_t>(
+          timerGet24hQuarterState(settings, static_cast<uint8_t>(twentyFourHourEditorHourIndex), static_cast<uint8_t>(twentyFourHourEditorQuarterSlot)));
+      twentyFourHourEditorFocus = EDITOR_FOCUS_QUARTER_TYPE;
+      redrawRequired = true;
+    }
+    break;
+
+  case EDITOR_FOCUS_QUARTER_TYPE:
+    if (encoderEvent == ENCODER_EVENT_LEFT)
+    {
+      twentyFourHourEditorQuarterTypeValue = (twentyFourHourEditorQuarterTypeValue == 0) ? 3 : twentyFourHourEditorQuarterTypeValue - 1;
+      redrawRequired = true;
+    }
+    else if (encoderEvent == ENCODER_EVENT_RIGHT)
+    {
+      twentyFourHourEditorQuarterTypeValue = (twentyFourHourEditorQuarterTypeValue >= 3) ? 0 : twentyFourHourEditorQuarterTypeValue + 1;
+      redrawRequired = true;
+    }
+    else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
+    {
+      //-- Apply type to this quarter; return to slot selection
+      timerSet24hQuarterState(settings, static_cast<uint8_t>(twentyFourHourEditorHourIndex), static_cast<uint8_t>(twentyFourHourEditorQuarterSlot), static_cast<Timer24hQuarterState>(twentyFourHourEditorQuarterTypeValue));
+      commitSettings(settings);
+      twentyFourHourEditorFocus = EDITOR_FOCUS_QUARTER_SLOT;
+      redrawRequired = true;
+    }
+    break;
+  }
+
+  if (redrawRequired)
+  {
+    drawCurrentScreen();
+  }
+
+} //   handle24hTimerMenu()
 
 //--- Handle WiFi portal info screen
 static void handleWifiPortalScreen(EncoderEvent encoderEvent)
@@ -1551,7 +1843,10 @@ static const char* uiScreenToLabel(UiScreen screen)
     return "Edit Timer Menu";
 
   case UI_SCREEN_TIMER_SETTINGS_MENU:
-    return "Timer Settings Menu";
+    return "Cyclic Timer Settings Menu";
+
+  case UI_SCREEN_24H_TIMER_MENU:
+    return "24h Timer Settings Menu";
 
   case UI_SCREEN_SYSTEM_SETTINGS_MENU:
     return "System Settings";
@@ -1626,6 +1921,7 @@ void uiMenuUpdate()
     }
 
     if (currentScreen == UI_SCREEN_TIMER_SETTINGS_MENU ||
+        currentScreen == UI_SCREEN_24H_TIMER_MENU ||
         currentScreen == UI_SCREEN_SYSTEM_SETTINGS_MENU ||
         currentScreen == UI_SCREEN_PROFILE_LIST)
     {
@@ -1682,6 +1978,10 @@ void uiMenuUpdate()
 
   case UI_SCREEN_TIMER_SETTINGS_MENU:
     handleTimerSettingsMenu(encoderEvent);
+    break;
+
+  case UI_SCREEN_24H_TIMER_MENU:
+    handle24hTimerMenu(encoderEvent);
     break;
 
   case UI_SCREEN_SYSTEM_SETTINGS_MENU:

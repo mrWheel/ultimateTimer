@@ -1,10 +1,11 @@
-/*** Last Changed: 2026-05-03 - 13:35 ***/
+/*** Last Changed: 2026-05-11 - 14:53 ***/
 #include "timerEngine.h"
 #include "appConfig.h"
 
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <time.h>
 
 //--- Logging tag
 static const char* logTag = "timerEngine";
@@ -26,6 +27,18 @@ static void startOnPhase();
 
 //--- Start off phase
 static void startOffPhase();
+
+//--- Update 24h runtime snapshot
+static void update24hRuntimeState();
+
+//--- Get 24h quarter-hour index in settings storage
+static int get24hQuarterIndex(uint8_t hourIndex, uint8_t quarterIndex);
+
+//--- Get 24h quarter-hour transition seed
+static uint32_t get24hQuarterTransitionOffset(const struct tm& timeInfo, int quarterIndex, Timer24hQuarterState state);
+
+//--- Build 24h runtime segments for current day
+static void build24hRuntimeSegments(const struct tm& timeInfo, uint32_t nowSeconds, bool& outputActive, uint32_t& phaseStartSeconds, uint32_t& phaseEndSeconds, uint32_t& cycleIndex);
 
 //--- Apply common settings constraints
 static void sanitizeSettings(AppSettings& settings, bool enforceMsMinimum);
@@ -84,6 +97,21 @@ void timerInit()
 void timerUpdate()
 {
   lockTimerState();
+
+  if (appSettings.timerType == TIMER_TYPE_24H)
+  {
+    if (runtimeStatus.state != TIMER_STATE_RUNNING)
+    {
+      unlockTimerState();
+
+      return;
+    }
+
+    update24hRuntimeState();
+    unlockTimerState();
+
+    return;
+  }
 
   uint32_t nowMs = millis();
 
@@ -154,6 +182,16 @@ void timerStart()
 
   sanitizeSettings(appSettings, true);
   runtimeStatus.totalCycles = appSettings.repeatCount;
+
+  if (appSettings.timerType == TIMER_TYPE_24H)
+  {
+    runtimeStatus.state = TIMER_STATE_RUNNING;
+    update24hRuntimeState();
+    unlockTimerState();
+    ESP_LOGI(logTag, "24h timer started");
+
+    return;
+  }
 
   if (runtimeStatus.totalCycles > 0 && runtimeStatus.currentCycle >= runtimeStatus.totalCycles)
   {
@@ -244,6 +282,12 @@ void timerReset()
   runtimeStatus.currentPhaseElapsedMs = 0;
   runtimeStatus.inOnPhase = true;
 
+  if (appSettings.timerType == TIMER_TYPE_24H)
+  {
+    runtimeStatus.state = TIMER_STATE_RUNNING;
+    update24hRuntimeState();
+  }
+
   unlockTimerState();
   ESP_LOGI(logTag, "Timer reset");
 
@@ -286,6 +330,12 @@ void timerSetSettings(const AppSettings& settings)
 
   appSettings = sanitizedSettings;
   runtimeStatus.totalCycles = appSettings.repeatCount;
+
+  if (appSettings.timerType == TIMER_TYPE_24H)
+  {
+    runtimeStatus.state = TIMER_STATE_RUNNING;
+    update24hRuntimeState();
+  }
 
   if (!timerIsBusyLocked())
   {
@@ -383,6 +433,7 @@ uint32_t timerConvertToMs(uint32_t value, TimeUnit unit)
 //--- Copy defaults into settings
 void timerLoadDefaultSettings(AppSettings& settings)
 {
+  settings.timerType = TIMER_TYPE_CYCLIC;
   settings.onTimeValue = DEFAULT_ON_TIME;
   settings.offTimeValue = DEFAULT_OFF_TIME;
   settings.onTimeUnit = static_cast<TimeUnit>(DEFAULT_ON_UNIT);
@@ -390,12 +441,111 @@ void timerLoadDefaultSettings(AppSettings& settings)
   settings.repeatCount = DEFAULT_REPEAT_COUNT;
   settings.triggerMode = static_cast<TriggerMode>(DEFAULT_TRIGGER_MODE);
   settings.triggerEdge = static_cast<TriggerEdge>(DEFAULT_TRIGGER_EDGE);
+  for (size_t index = 0; index < sizeof(settings.timer24hQuarterStates); index++)
+  {
+    settings.timer24hQuarterStates[index] = static_cast<uint8_t>(TIMER_24H_QUARTER_OFF);
+  }
   settings.outputPolarityHigh = DEFAULT_OUTPUT_POLARITY != 0;
   settings.lockInputDuringRun = DEFAULT_LOCK_INPUT_DURING_RUN != 0;
   settings.autoSaveLastProfile = DEFAULT_AUTO_SAVE_LAST_PROFILE != 0;
   settings.profileName = "default";
 
 } //   timerLoadDefaultSettings()
+
+//--- Get timer type label
+const char* timerGetTimerTypeLabel(TimerType type)
+{
+  switch (type)
+  {
+  case TIMER_TYPE_CYCLIC:
+    return "Cyclic";
+
+  case TIMER_TYPE_24H:
+    return "24h";
+
+  default:
+    return "?";
+  }
+
+} //   timerGetTimerTypeLabel()
+
+//--- Get 24h quarter-hour state label
+const char* timerGet24hQuarterStateLabel(Timer24hQuarterState state)
+{
+  switch (state)
+  {
+  case TIMER_24H_QUARTER_OFF:
+    return "-";
+
+  case TIMER_24H_QUARTER_ON:
+    return "+";
+
+  case TIMER_24H_QUARTER_RANDOM_ON:
+    return "R";
+
+  case TIMER_24H_QUARTER_RANDOM_OFF:
+    return "r";
+
+  default:
+    return "?";
+  }
+
+} //   timerGet24hQuarterStateLabel()
+
+//--- Get 24h quarter-hour state
+Timer24hQuarterState timerGet24hQuarterState(const AppSettings& settings, uint8_t hourIndex, uint8_t quarterIndex)
+{
+  int storageIndex = get24hQuarterIndex(hourIndex, quarterIndex);
+
+  if (storageIndex < 0 || storageIndex >= static_cast<int>(sizeof(settings.timer24hQuarterStates)))
+  {
+    return TIMER_24H_QUARTER_OFF;
+  }
+
+  return static_cast<Timer24hQuarterState>(settings.timer24hQuarterStates[storageIndex]);
+
+} //   timerGet24hQuarterState()
+
+//--- Set 24h quarter-hour state
+void timerSet24hQuarterState(AppSettings& settings, uint8_t hourIndex, uint8_t quarterIndex, Timer24hQuarterState state)
+{
+  int storageIndex = get24hQuarterIndex(hourIndex, quarterIndex);
+
+  if (storageIndex < 0 || storageIndex >= static_cast<int>(sizeof(settings.timer24hQuarterStates)))
+  {
+    return;
+  }
+
+  settings.timer24hQuarterStates[storageIndex] = static_cast<uint8_t>(state);
+
+} //   timerSet24hQuarterState()
+
+//--- Set all 24h quarter-hour states for one hour
+void timerSet24hHourState(AppSettings& settings, uint8_t hourIndex, Timer24hQuarterState state)
+{
+  for (uint8_t quarterIndex = 0; quarterIndex < 4; quarterIndex++)
+  {
+    timerSet24hQuarterState(settings, hourIndex, quarterIndex, state);
+  }
+
+} //   timerSet24hHourState()
+
+//--- Get 24h hour label derived from quarter-hour states
+const char* timerGet24hHourLabel(const AppSettings& settings, uint8_t hourIndex)
+{
+  Timer24hQuarterState firstState = timerGet24hQuarterState(settings, hourIndex, 0);
+
+  for (uint8_t quarterIndex = 1; quarterIndex < 4; quarterIndex++)
+  {
+    if (timerGet24hQuarterState(settings, hourIndex, quarterIndex) != firstState)
+    {
+      return "S";
+    }
+  }
+
+  return timerGet24hQuarterStateLabel(firstState);
+
+} //   timerGet24hHourLabel()
 
 //--- Get time unit label
 const char* timerGetTimeUnitLabel(TimeUnit unit)
@@ -416,6 +566,190 @@ const char* timerGetTimeUnitLabel(TimeUnit unit)
   }
 
 } //   timerGetTimeUnitLabel()
+
+//--- Get 24h quarter-hour state index
+static int get24hQuarterIndex(uint8_t hourIndex, uint8_t quarterIndex)
+{
+  if (hourIndex >= 24 || quarterIndex >= 4)
+  {
+    return -1;
+  }
+
+  return static_cast<int>(hourIndex) * 4 + static_cast<int>(quarterIndex);
+
+} //   get24hQuarterIndex()
+
+//--- Get 24h quarter-hour random transition offset in seconds
+static uint32_t get24hQuarterTransitionOffset(const struct tm& timeInfo, int quarterIndex, Timer24hQuarterState state)
+{
+  uint32_t seed = static_cast<uint32_t>(timeInfo.tm_year + 1900) * 1000UL;
+  seed += static_cast<uint32_t>(timeInfo.tm_yday) * 97UL;
+  seed += static_cast<uint32_t>(quarterIndex) * 31UL;
+  seed += static_cast<uint32_t>(state) * 17UL;
+  seed ^= 0xA5A5A5A5UL;
+  seed = seed * 1664525UL + 1013904223UL;
+
+  return seed % 900UL;
+
+} //   get24hQuarterTransitionOffset()
+
+//--- Build 24h runtime segments for current day
+static void build24hRuntimeSegments(const struct tm& timeInfo, uint32_t nowSeconds, bool& outputActive, uint32_t& phaseStartSeconds, uint32_t& phaseEndSeconds, uint32_t& cycleIndex)
+{
+  uint32_t quarterIndex = nowSeconds / 900UL;
+  uint32_t quarterStartSeconds = 0;
+  uint32_t quarterEndSeconds = 0;
+  bool currentState = false;
+  uint32_t segmentStartSeconds = 0;
+  uint32_t currentSegmentEndSeconds = 86400UL;
+  bool foundCurrentSegment = false;
+
+  outputActive = false;
+  phaseStartSeconds = 0;
+  phaseEndSeconds = 86400UL;
+  cycleIndex = quarterIndex;
+
+  for (uint32_t currentQuarter = 0; currentQuarter < 96UL; currentQuarter++)
+  {
+    quarterStartSeconds = currentQuarter * 900UL;
+    quarterEndSeconds = quarterStartSeconds + 900UL;
+
+    if (quarterEndSeconds > 86400UL)
+    {
+      quarterEndSeconds = 86400UL;
+    }
+
+    Timer24hQuarterState quarterState = timerGet24hQuarterState(appSettings, static_cast<uint8_t>(currentQuarter / 4UL), static_cast<uint8_t>(currentQuarter % 4UL));
+
+    if (quarterState == TIMER_24H_QUARTER_OFF)
+    {
+      if (currentState)
+      {
+        if (segmentStartSeconds < quarterStartSeconds && nowSeconds >= segmentStartSeconds && nowSeconds < quarterStartSeconds)
+        {
+          outputActive = true;
+          phaseStartSeconds = segmentStartSeconds;
+          phaseEndSeconds = quarterStartSeconds;
+          foundCurrentSegment = true;
+        }
+
+        currentState = false;
+        segmentStartSeconds = quarterStartSeconds;
+      }
+
+      if (nowSeconds >= quarterStartSeconds && nowSeconds < quarterEndSeconds)
+      {
+        currentSegmentEndSeconds = quarterEndSeconds;
+        foundCurrentSegment = true;
+      }
+    }
+    else if (quarterState == TIMER_24H_QUARTER_ON)
+    {
+      if (!currentState)
+      {
+        if (segmentStartSeconds < quarterStartSeconds && nowSeconds >= segmentStartSeconds && nowSeconds < quarterStartSeconds)
+        {
+          outputActive = false;
+          phaseStartSeconds = segmentStartSeconds;
+          phaseEndSeconds = quarterStartSeconds;
+          foundCurrentSegment = true;
+        }
+
+        currentState = true;
+        segmentStartSeconds = quarterStartSeconds;
+      }
+
+      if (nowSeconds >= quarterStartSeconds && nowSeconds < quarterEndSeconds)
+      {
+        currentSegmentEndSeconds = quarterEndSeconds;
+        foundCurrentSegment = true;
+      }
+    }
+    else
+    {
+      bool desiredState = (quarterState == TIMER_24H_QUARTER_RANDOM_ON);
+      uint32_t transitionOffsetSeconds = get24hQuarterTransitionOffset(timeInfo, static_cast<int>(currentQuarter), quarterState);
+      uint32_t transitionSeconds = quarterStartSeconds + transitionOffsetSeconds;
+
+      if (transitionSeconds > quarterEndSeconds)
+      {
+        transitionSeconds = quarterEndSeconds;
+      }
+
+      if (currentState != desiredState)
+      {
+        if (segmentStartSeconds < transitionSeconds)
+        {
+          if (nowSeconds >= segmentStartSeconds && nowSeconds < transitionSeconds)
+          {
+            outputActive = currentState;
+            phaseStartSeconds = segmentStartSeconds;
+            phaseEndSeconds = transitionSeconds;
+            foundCurrentSegment = true;
+          }
+        }
+
+        currentState = desiredState;
+        segmentStartSeconds = transitionSeconds;
+      }
+
+      if (nowSeconds >= transitionSeconds && nowSeconds < quarterEndSeconds)
+      {
+        currentSegmentEndSeconds = quarterEndSeconds;
+        foundCurrentSegment = true;
+      }
+    }
+
+    if (foundCurrentSegment)
+    {
+      break;
+    }
+  }
+
+  if (!foundCurrentSegment)
+  {
+    outputActive = currentState;
+    phaseStartSeconds = segmentStartSeconds;
+    phaseEndSeconds = currentSegmentEndSeconds;
+  }
+
+} //   build24hRuntimeSegments()
+
+//--- Update 24h runtime snapshot
+static void update24hRuntimeState()
+{
+  time_t now = time(nullptr);
+  struct tm localTimeInfo;
+  uint32_t nowSeconds;
+  bool outputActive;
+  uint32_t phaseStartSeconds;
+  uint32_t phaseEndSeconds;
+  uint32_t cycleIndex;
+
+  if (now <= 0 || localtime_r(&now, &localTimeInfo) == nullptr)
+  {
+    runtimeStatus.outputActive = false;
+    runtimeStatus.currentCycle = 0;
+    runtimeStatus.totalCycles = 96;
+    runtimeStatus.currentPhaseDurationMs = 0;
+    runtimeStatus.currentPhaseElapsedMs = 0;
+    runtimeStatus.inOnPhase = false;
+
+    return;
+  }
+
+  nowSeconds = static_cast<uint32_t>(localTimeInfo.tm_hour) * 3600UL + static_cast<uint32_t>(localTimeInfo.tm_min) * 60UL + static_cast<uint32_t>(localTimeInfo.tm_sec);
+
+  build24hRuntimeSegments(localTimeInfo, nowSeconds, outputActive, phaseStartSeconds, phaseEndSeconds, cycleIndex);
+
+  runtimeStatus.outputActive = outputActive;
+  runtimeStatus.currentCycle = cycleIndex;
+  runtimeStatus.totalCycles = 96;
+  runtimeStatus.currentPhaseDurationMs = (phaseEndSeconds > phaseStartSeconds) ? (phaseEndSeconds - phaseStartSeconds) * 1000UL : 0;
+  runtimeStatus.currentPhaseElapsedMs = (nowSeconds > phaseStartSeconds) ? (nowSeconds - phaseStartSeconds) * 1000UL : 0;
+  runtimeStatus.inOnPhase = outputActive;
+
+} //   update24hRuntimeState()
 
 //--- Get trigger mode label
 const char* timerGetTriggerModeLabel(TriggerMode mode)

@@ -48,7 +48,9 @@
 </div>
 
 ```
-- Timer Settings -> [Timer Settings Menu]
+- Cyclic Timer Settings -> [Timer Settings Menu]
+- Cyclic Timer Settings -> [Cyclic Timer Settings Menu]
+- 24h Timer Settings -> [24h Timer Settings Menu]
 - Save Profile -> [Save Profile Menu]
 - Load Profile -> [Load Profile Menu]
 - New Profile -> [New Profile Menu]
@@ -56,7 +58,7 @@
 - System Settings -> [System Settings Menu]
 - Exit -> return to [Timer Screen]
 
-[Timer Settings Menu]
+[Cyclic Timer Settings Menu]
 ```
 <div align="center">
 <img src="assets/TimerSettingsMenu.png" width="300" align="center">
@@ -73,6 +75,14 @@
 - Exit -> return to [Timer Screen]
 - PIN_KEY0 MEDIUM or LONG press -> return to [Edit Timer Menu]
 ```
+
+[24h Timer Settings Menu]
+- Hour selection (0..23)
+- Hour state: `-`, `+`, `R`, `r`, or `S`
+- When the hour is `S`, the quarter-hour values become visible and editable
+- SHORT press changes the selected hour state or quarter-hour state
+- MEDIUM or LONG press saves and returns to [Edit Timer Menu]
+- PIN_KEY0 MEDIUM or LONG press saves and returns to [Edit Timer Menu]
 ### Timer Settings persistence rule (source: `DEFAULT_AUTO_SAVE_LAST_PROFILE`)
 - `DEFAULT_AUTO_SAVE_LAST_PROFILE=1`:
   - Every change in `Timer Settings Menu` is applied immediately to the active runtime timer state.

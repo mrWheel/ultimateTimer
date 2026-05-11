@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-03 - 13:35 ***/
+/*** Last Changed: 2026-05-11 - 14:53 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
@@ -32,6 +32,9 @@ void displayDrawEnumEditor(const char* label, const char* valueLabel);
 
 //--- Draw text input editor
 void displayDrawTextInput(const char* title, const std::string& textValue, const std::string& currentToken);
+
+//--- Draw 24h timer editor
+void displayDraw24hTimerEditor(uint8_t hourIndex, bool hourIsCursor, const char* typeLabel, bool typeIsCursor, bool showQuarters, const char* quarterStateLabels[4], int quarterCursorSlot, bool quarterSlotHasCursor, const char* quarterTypeCursorLabel, bool quarterTypeIsCursor);
 
 //--- Draw generic field input screen
 void displayDrawFieldInput(const char* title, const char* fieldName, const std::string& fieldValue, int cursorIndex, const std::string& prevToken, const std::string& currentToken, const std::string& nextToken,

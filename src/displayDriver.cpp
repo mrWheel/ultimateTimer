@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-03 - 13:35 ***/
+/*** Last Changed: 2026-05-11 - 14:53 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -165,6 +165,11 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
   if (profileValue.empty())
   {
     profileValue = "-";
+  }
+
+  if (settings.timerType == TIMER_TYPE_24H)
+  {
+    stateValue = std::string(timerGetTimerTypeLabel(settings.timerType)) + " " + stateValue;
   }
 
   nextStatusLines[0] = stateValue + "|" + profileValue;
@@ -451,6 +456,165 @@ void displayDrawTextInput(const char* title, const std::string& textValue, const
   tft.print("Hold=Save  K0=Back");
 
 } //   displayDrawTextInput()
+
+//--- Draw 24h timer editor
+//--- hourIsCursor:         true = <HH>, false = [HH]
+//--- typeLabel:            nullptr = hide type section; else show type
+//--- typeIsCursor:         true = <X>, false = [X]
+//--- showQuarters:         true = show 4 quarter tiles below
+//--- quarterCursorSlot:    -1 = no active slot cursor, 0-3 = cursor on this slot
+//--- quarterSlotHasCursor: true = slot label is cursor; false = slot is locked, type label may be cursor
+//--- quarterTypeCursorLabel: nullptr = no separate type cursor; else override active slot's state label
+//--- quarterTypeIsCursor:  true = type label shown as cursor <X>, false as locked [X]
+void displayDraw24hTimerEditor(uint8_t hourIndex, bool hourIsCursor, const char* typeLabel, bool typeIsCursor, bool showQuarters, const char* quarterStateLabels[4], int quarterCursorSlot, bool quarterSlotHasCursor, const char* quarterTypeCursorLabel, bool quarterTypeIsCursor)
+{
+  static const char* const slotNames[4] = {"00-15", "16-30", "31-45", "46-59"};
+  const int tileX = 3;
+  const int tileW = 314;
+  const int topTileY = 32;
+  const int topTileH = 78;
+  const int quarterAreaY = 120;
+  const int buttonWidth = 68;
+  const int buttonHeight = 52;
+  const int buttonSpacing = 6;
+  const int totalButtonWidth = (4 * buttonWidth) + (3 * buttonSpacing);
+  const int buttonAreaX = (tft.width() - totalButtonWidth) / 2;
+  char labelBuf[24];
+  int16_t textX1;
+  int16_t textY1;
+  uint16_t textW;
+  uint16_t textH;
+  int centerX;
+
+  invalidateStatusScreenCache();
+  tft.fillScreen(ST77XX_BLACK);
+  drawHeader("24h Timer");
+
+  //-- Top tile
+  tft.fillRoundRect(tileX, topTileY, tileW, topTileH, 5, getUiSelectedFillColor());
+  tft.drawRoundRect(tileX, topTileY, tileW, topTileH, 5, getUiSelectedBorderColor());
+
+  //-- Hour label
+  tft.setTextColor(getUiSelectedTextColor(), getUiSelectedFillColor());
+  tft.setTextSize(2);
+  tft.setCursor(tileX + 8, topTileY + 6);
+  tft.print("Hour");
+
+  //-- Hour value with cursor or lock brackets
+  snprintf(labelBuf, sizeof(labelBuf), hourIsCursor ? "<%02u>" : "[%02u]", static_cast<unsigned>(hourIndex));
+  tft.setTextSize(3);
+  tft.setCursor(tileX + 12, topTileY + 32);
+  tft.print(labelBuf);
+
+  //-- Type section (only when typeLabel is provided)
+  if (typeLabel != nullptr)
+  {
+    tft.setTextColor(getUiSelectedTextColor(), getUiSelectedFillColor());
+    tft.setTextSize(2);
+    tft.setCursor(tileX + 180, topTileY + 6);
+    tft.print("Type");
+
+    snprintf(labelBuf, sizeof(labelBuf), typeIsCursor ? "<%s>" : "[%s]", typeLabel);
+    tft.setTextSize(3);
+    tft.setCursor(tileX + 180, topTileY + 32);
+    tft.print(labelBuf);
+  }
+
+  //-- Quarter tiles (visible when showQuarters is true)
+  if (showQuarters)
+  {
+    for (int q = 0; q < 4; q++)
+    {
+      int buttonX = buttonAreaX + (q * (buttonWidth + buttonSpacing));
+      bool isActive = (q == quarterCursorSlot);
+      uint16_t buttonFill = isActive ? getUiSelectedFillColor() : getUiInactiveFillColor();
+      uint16_t buttonBorder = isActive ? getUiSelectedBorderColor() : getUiInactiveBorderColor();
+      uint16_t buttonText = isActive ? getUiSelectedTextColor() : getUiInactiveTextColor();
+
+      tft.fillRoundRect(buttonX, quarterAreaY, buttonWidth, buttonHeight, 5, buttonFill);
+      tft.drawRoundRect(buttonX, quarterAreaY, buttonWidth, buttonHeight, 5, buttonBorder);
+
+      //-- Slot name row (textSize 1: 6x8 px per char)
+      bool slotHasCursor = isActive && quarterSlotHasCursor;
+      snprintf(labelBuf, sizeof(labelBuf), slotHasCursor ? "<%s>" : "[%s]", slotNames[q]);
+      tft.setTextSize(1);
+      tft.getTextBounds(labelBuf, 0, 0, &textX1, &textY1, &textW, &textH);
+      centerX = buttonX + ((buttonWidth - static_cast<int>(textW)) / 2);
+      tft.setTextColor(buttonText, buttonFill);
+      tft.setCursor(centerX, quarterAreaY + 6);
+      tft.print(labelBuf);
+
+      //-- State label row (textSize 2: 12x16 px per char)
+      const char* stateLabel;
+      bool stateHasCursor = false;
+
+      if (isActive && !quarterSlotHasCursor && quarterTypeCursorLabel != nullptr)
+      {
+        stateLabel = quarterTypeCursorLabel;
+        stateHasCursor = quarterTypeIsCursor;
+      }
+      else
+      {
+        stateLabel = quarterStateLabels[q];
+      }
+
+      snprintf(labelBuf, sizeof(labelBuf), stateHasCursor ? "<%s>" : "[%s]", stateLabel);
+      tft.setTextSize(2);
+      tft.getTextBounds(labelBuf, 0, 0, &textX1, &textY1, &textW, &textH);
+      centerX = buttonX + ((buttonWidth - static_cast<int>(textW)) / 2);
+
+      if (centerX < buttonX + 2)
+      {
+        centerX = buttonX + 2;
+      }
+
+      tft.setTextColor(buttonText, buttonFill);
+      tft.setCursor(centerX, quarterAreaY + 24);
+      tft.print(labelBuf);
+    }
+
+    //-- Hint rows for quarter modes
+    tft.setTextColor(ST77XX_WHITE);
+    tft.setTextSize(1);
+    tft.setCursor(6, 184);
+
+    if (quarterCursorSlot < 0)
+    {
+      tft.print("Turn=Type  Short=Edit quarters");
+    }
+    else if (quarterSlotHasCursor)
+    {
+      tft.print("Turn=Quarter  Short=Edit type");
+    }
+    else
+    {
+      tft.print("Turn=Type  Short=Set type");
+    }
+
+    tft.setCursor(6, 196);
+    tft.print("Hold=Save+Back  K0=Back");
+  }
+  else
+  {
+    //-- Hint rows for hour/type modes
+    tft.setTextColor(ST77XX_WHITE);
+    tft.setTextSize(1);
+    tft.setCursor(6, 170);
+
+    if (hourIsCursor)
+    {
+      tft.print("Turn=Select hour  Short=Lock");
+    }
+    else
+    {
+      tft.print("Turn=Select type  Short=Set");
+    }
+
+    tft.setCursor(6, 182);
+    tft.print("Hold=Save+Back  K0=Back");
+  }
+
+} //   displayDraw24hTimerEditor()
 
 //--- Draw generic field input screen
 void displayDrawFieldInput(const char* title, const char* fieldName, const std::string& fieldValue, int cursorIndex, const std::string& prevToken, const std::string& currentToken, const std::string& nextToken,

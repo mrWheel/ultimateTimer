@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-15 - 14:23 ***/
+/*** Last Changed: 2026-05-11 - 14:53 ***/
 #ifndef TIMER_TYPES_H
 #define TIMER_TYPES_H
 
@@ -10,6 +10,22 @@ enum TimeUnit
   TIME_UNIT_MS = 0,
   TIME_UNIT_SECONDS = 1,
   TIME_UNIT_MINUTES = 2
+};
+
+//--- Timer types
+enum TimerType
+{
+  TIMER_TYPE_CYCLIC = 0,
+  TIMER_TYPE_24H = 1
+};
+
+//--- 24h quarter-hour states
+enum Timer24hQuarterState
+{
+  TIMER_24H_QUARTER_OFF = 0,
+  TIMER_24H_QUARTER_ON = 1,
+  TIMER_24H_QUARTER_RANDOM_ON = 2,
+  TIMER_24H_QUARTER_RANDOM_OFF = 3
 };
 
 //--- Trigger modes
@@ -44,12 +60,14 @@ enum UiScreen
   UI_SCREEN_SYSTEM_SETTINGS_MENU = 3,
   UI_SCREEN_PROFILE_LIST = 4,
   UI_SCREEN_FIELD_INPUT = 5,
-  UI_SCREEN_WIFI_MANAGER_PORTAL = 6
+  UI_SCREEN_WIFI_MANAGER_PORTAL = 6,
+  UI_SCREEN_24H_TIMER_MENU = 7
 };
 
 //--- Application settings
 struct AppSettings
 {
+  TimerType timerType;
   uint32_t onTimeValue;
   uint32_t offTimeValue;
   TimeUnit onTimeUnit;
@@ -57,6 +75,7 @@ struct AppSettings
   uint32_t repeatCount;
   TriggerMode triggerMode;
   TriggerEdge triggerEdge;
+  uint8_t timer24hQuarterStates[96];
   bool outputPolarityHigh;
   bool lockInputDuringRun;
   bool autoSaveLastProfile;

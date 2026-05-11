@@ -57,6 +57,7 @@
   - `Off Time`
   - `Off Time Unit`
   - `Cycles`
+  - `Timer Type`
   - `Trigger Mode`
   - `Trigger Edge`
   - `Lock Input While Running`
@@ -174,6 +175,8 @@
 
 ## Status JSON Fields Used by Web UI
 ### settings
+- `timerType`
+- `timerTypeLabel`
 - `onTimeValue`
 - `offTimeValue`
 - `onTimeUnit`
@@ -190,6 +193,7 @@
 - `themeColorIndex`
 - `themeColorName`
 - `encoderOrderLabel`
+- `timer24hQuarterStates`
 
 ### runtime
 - `state`

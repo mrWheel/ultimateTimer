@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-03 - 13:35 ***/
+/*** Last Changed: 2026-05-11 - 14:53 ***/
 #include "profileManager.h"
 
 #include <ArduinoJson.h>
@@ -223,6 +223,7 @@ static String sanitizeProfileName(const String& profileName)
 //--- Read settings from JSON document
 static void loadSettingsFromJson(const JsonDocument& doc, AppSettings& settings)
 {
+  settings.timerType = static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
   settings.onTimeValue = doc["onTimeValue"] | settings.onTimeValue;
   settings.offTimeValue = doc["offTimeValue"] | settings.offTimeValue;
   settings.onTimeUnit = static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
@@ -231,11 +232,22 @@ static void loadSettingsFromJson(const JsonDocument& doc, AppSettings& settings)
   settings.triggerMode = static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
   settings.triggerEdge = static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
 
+  JsonArrayConst quarterStates = doc["timer24hQuarterStates"].as<JsonArrayConst>();
+
+  if (!quarterStates.isNull())
+  {
+    for (size_t stateIndex = 0; stateIndex < quarterStates.size() && stateIndex < sizeof(settings.timer24hQuarterStates); stateIndex++)
+    {
+      settings.timer24hQuarterStates[stateIndex] = quarterStates[stateIndex] | static_cast<uint8_t>(TIMER_24H_QUARTER_OFF);
+    }
+  }
+
 } //   loadSettingsFromJson()
 
 //--- Write settings into JSON document
 static void saveSettingsToJson(JsonDocument& doc, const AppSettings& settings)
 {
+  doc["timerType"] = static_cast<int>(settings.timerType);
   doc["onTimeValue"] = settings.onTimeValue;
   doc["offTimeValue"] = settings.offTimeValue;
   doc["onTimeUnit"] = static_cast<int>(settings.onTimeUnit);
@@ -243,5 +255,12 @@ static void saveSettingsToJson(JsonDocument& doc, const AppSettings& settings)
   doc["repeatCount"] = settings.repeatCount;
   doc["triggerMode"] = static_cast<int>(settings.triggerMode);
   doc["triggerEdge"] = static_cast<int>(settings.triggerEdge);
+
+  JsonArray quarterStates = doc["timer24hQuarterStates"].to<JsonArray>();
+
+  for (size_t stateIndex = 0; stateIndex < sizeof(settings.timer24hQuarterStates); stateIndex++)
+  {
+    quarterStates.add(settings.timer24hQuarterStates[stateIndex]);
+  }
 
 } //   saveSettingsToJson()

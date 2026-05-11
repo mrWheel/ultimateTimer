@@ -38,7 +38,7 @@ no guarantees, no warranties, and absolutely no assurance that this design
 is correct, safe, or suitable for any purpose whatsoever.
 
 ## What it is
-ESP32 cyclic timer for a 2.4 inch SPI TFT + EC11 rotary encoder module.
+ESP32 cyclic and 24h timer for a 2.4 inch SPI TFT + EC11 rotary encoder module.
 
 <div align="center">
 <img src="assets/TFT_LCD_RotaryModule1.png" width="300" align="center">
@@ -55,6 +55,7 @@ read `colorSettings.md`
 
 ## Implemented structure
 - Local TFT menu
+- Main menu splits timer editing into `Cyclic Timer Settings` and `24h Timer Settings`
 - Rotary encoder editing
 - Save Profile confirmation via [No] [Yes] buttons for the active profile
 - New Profile name entry with character-by-character editing
@@ -88,7 +89,8 @@ read `colorSettings.md`
 - Menu list items are rendered left-aligned with a two-character prefix area: selected item is shown as `> Item <`, unselected items use leading spaces so text starts at the same position.
 
 ### Main menu options
-- `Timer Settings`
+- `Cyclic Timer Settings`
+- `24h Timer Settings`
 - `Save Profile`
 - `Load Profile`
 - `New Profile`
@@ -115,7 +117,7 @@ Current configured values in this repository:
 
 ## Notes
 - Profile files are stored as `/<profileName>.json`
-- Profile files store: `onTimeValue`, `offTimeValue`, `onTimeUnit`, `offTimeUnit`, `repeatCount`, `triggerMode`, and `triggerEdge`
+- Profile files store: `timerType`, `onTimeValue`, `offTimeValue`, `onTimeUnit`, `offTimeUnit`, `repeatCount`, `triggerMode`, `triggerEdge`, and the 24h quarter-hour states
 - System-level settings such as output polarity, lock input during run, auto-save profile, theme color, and encoder direction are stored separately in Preferences/NVS
 - Built-in profile `default` is always available in the Load Profile list
 - Built-in profile `default` cannot be deleted and is hidden from the Delete Profile list
