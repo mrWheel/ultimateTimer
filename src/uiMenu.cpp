@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 15:08 ***/
+/*** Last Changed: 2026-05-11 - 16:24 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -1167,10 +1167,11 @@ static void handleStatusScreen(EncoderEvent encoderEvent)
   bool redrawRequired = false;
   AppSettings settings = timerGetSettings();
   bool externalTriggerMode = (settings.triggerMode == TRIGGER_MODE_EXTERNAL);
+  bool actionsDisabled = externalTriggerMode || (settings.timerType == TIMER_TYPE_24H);
 
   if (encoderEvent == ENCODER_EVENT_LEFT)
   {
-    if (!externalTriggerMode && statusActionIndex > 0)
+    if (!actionsDisabled && statusActionIndex > 0)
     {
       statusActionIndex--;
       redrawRequired = true;
@@ -1178,7 +1179,7 @@ static void handleStatusScreen(EncoderEvent encoderEvent)
   }
   else if (encoderEvent == ENCODER_EVENT_RIGHT)
   {
-    if (!externalTriggerMode && statusActionIndex < 2)
+    if (!actionsDisabled && statusActionIndex < 2)
     {
       statusActionIndex++;
       redrawRequired = true;
@@ -1186,7 +1187,7 @@ static void handleStatusScreen(EncoderEvent encoderEvent)
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
-    if (externalTriggerMode)
+    if (actionsDisabled)
     {
       return;
     }

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 14:53 ***/
+/*** Last Changed: 2026-05-11 - 16:24 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -41,10 +41,16 @@ static std::string lastHeaderRightText = "";
 static void drawStatusTile(int x, int y, int w, int h, const char* label, const std::string& value);
 
 //--- Draw status action row (buttons or external trigger label)
-static void drawStatusActionButtons(int statusActionIndex, bool externalTriggerMode);
+static void drawStatusActionButtons(int statusActionIndex, bool externalTriggerMode, bool hideActionsFor24h);
 
 //--- Format remaining duration text from milliseconds
 static std::string formatRemainingMs(uint32_t remainingMs);
+
+//--- Format seconds-of-day as HH:MM:SS
+static std::string formatHhMmSsFromSecondsOfDay(uint32_t secondsOfDay);
+
+//--- Format duration in seconds as HH:MM:SS
+static std::string formatDurationHhMmSs(uint32_t totalSeconds);
 
 //--- Invalidate status screen cache
 static void invalidateStatusScreenCache();
@@ -134,6 +140,7 @@ int displayGetThemeColorIndex()
 void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& runtimeStatus, bool wifiConnected, int statusActionIndex)
 {
   (void)wifiConnected;
+  Timer24hStatusInfo status24h = timerGet24hStatusInfo();
 
   const int tileGap = 3;
   const int tileH = 36;
@@ -161,6 +168,7 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
   std::string stateValue = timerGetStateLabel(runtimeStatus.state);
   std::string profileValue = settings.profileName.c_str();
   std::array<std::string, statusLineCount> nextStatusLines;
+  bool is24hTimer = (settings.timerType == TIMER_TYPE_24H);
 
   if (profileValue.empty())
   {
@@ -169,38 +177,61 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
 
   if (settings.timerType == TIMER_TYPE_24H)
   {
-    stateValue = std::string(timerGetTimerTypeLabel(settings.timerType)) + " " + stateValue;
+    stateValue = timerGetTimerTypeLabel(settings.timerType);
   }
 
   nextStatusLines[0] = stateValue + "|" + profileValue;
-  snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.onTimeValue), timerGetTimeUnitLabel(settings.onTimeUnit));
-  nextStatusLines[1] = buffer;
-  snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.offTimeValue), timerGetTimeUnitLabel(settings.offTimeUnit));
-  nextStatusLines[2] = buffer;
-
-  uint32_t remainingMs = 0;
-
-  if (runtimeStatus.currentPhaseDurationMs > runtimeStatus.currentPhaseElapsedMs)
+  if (is24hTimer)
   {
-    remainingMs = runtimeStatus.currentPhaseDurationMs - runtimeStatus.currentPhaseElapsedMs;
-  }
-
-  std::string outputValue = runtimeStatus.outputActive ? "ON" : "OFF";
-
-  if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
-  {
-    if (runtimeStatus.currentPhaseDurationMs >= minimumCountdownDisplayMs)
+    if (status24h.timeValid)
     {
-      outputValue += "  ";
-      outputValue += formatRemainingMs(remainingMs);
+      std::string nextSwitchClock = status24h.hasNextSwitch ? formatHhMmSsFromSecondsOfDay(status24h.nextSwitchSecondsOfDay) : "--:--:--";
+      std::string nextOffClock = status24h.hasNextOff ? formatHhMmSsFromSecondsOfDay(status24h.nextOffSecondsOfDay) : "--:--:--";
+      std::string lastOnClock = status24h.hasLastOn ? formatHhMmSsFromSecondsOfDay(status24h.lastOnSecondsOfDay) : "--:--:--";
+      std::string lastOffClock = status24h.hasLastOff ? formatHhMmSsFromSecondsOfDay(status24h.lastOffSecondsOfDay) : "--:--:--";
+
+      nextStatusLines[1] = status24h.outputActive ? lastOnClock : nextSwitchClock;
+      nextStatusLines[2] = status24h.outputActive ? nextOffClock : lastOffClock;
+      nextStatusLines[3] = std::string(status24h.outputActive ? "ON  " : "OFF ") + (status24h.hasNextSwitch ? formatDurationHhMmSs(status24h.nextSwitchInSeconds) : "--:--:--");
+    }
+    else
+    {
+      nextStatusLines[1] = "--:--:--";
+      nextStatusLines[2] = "--:--:--";
+      nextStatusLines[3] = std::string(runtimeStatus.outputActive ? "ON  " : "OFF ") + "--:--:--";
     }
   }
   else
   {
-    outputValue += "  ---:--";
-  }
+    snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.onTimeValue), timerGetTimeUnitLabel(settings.onTimeUnit));
+    nextStatusLines[1] = buffer;
+    snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.offTimeValue), timerGetTimeUnitLabel(settings.offTimeUnit));
+    nextStatusLines[2] = buffer;
 
-  nextStatusLines[3] = outputValue;
+    uint32_t remainingMs = 0;
+
+    if (runtimeStatus.currentPhaseDurationMs > runtimeStatus.currentPhaseElapsedMs)
+    {
+      remainingMs = runtimeStatus.currentPhaseDurationMs - runtimeStatus.currentPhaseElapsedMs;
+    }
+
+    std::string outputValue = runtimeStatus.outputActive ? "ON" : "OFF";
+
+    if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
+    {
+      if (runtimeStatus.currentPhaseDurationMs >= minimumCountdownDisplayMs)
+      {
+        outputValue += "  ";
+        outputValue += formatRemainingMs(remainingMs);
+      }
+    }
+    else
+    {
+      outputValue += "  ---:--";
+    }
+
+    nextStatusLines[3] = outputValue;
+  }
 
   uint32_t displayCycle = runtimeStatus.currentCycle;
 
@@ -222,15 +253,15 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
   if (runtimeStatus.totalCycles == 0)
   {
     snprintf(buffer, sizeof(buffer), "%lu / Inv.", static_cast<unsigned long>(displayCycle));
-    nextStatusLines[4] = buffer;
+    nextStatusLines[4] = is24hTimer ? "" : buffer;
   }
   else
   {
     snprintf(buffer, sizeof(buffer), "%lu/%lu", static_cast<unsigned long>(displayCycle), static_cast<unsigned long>(runtimeStatus.totalCycles));
-    nextStatusLines[4] = buffer;
+    nextStatusLines[4] = is24hTimer ? "" : buffer;
   }
 
-  snprintf(buffer, sizeof(buffer), "A:%d|T:%d", statusActionIndex, static_cast<int>(settings.triggerMode));
+  snprintf(buffer, sizeof(buffer), "A:%d|T:%d|Y:%d", statusActionIndex, static_cast<int>(settings.triggerMode), static_cast<int>(settings.timerType));
   nextStatusLines[5] = buffer;
 
   for (int lineIndex = 0; lineIndex < statusLineCount; lineIndex++)
@@ -280,11 +311,18 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
       break;
 
     case 4:
-      drawStatusTile(col1X, tileStartY + 3 * (tileH + tileGap), fullW, tileH, "CYCLES", nextStatusLines[4]);
+      if (is24hTimer)
+      {
+        tft.fillRect(col1X, tileStartY + 3 * (tileH + tileGap), fullW, tileH, ST77XX_BLACK);
+      }
+      else
+      {
+        drawStatusTile(col1X, tileStartY + 3 * (tileH + tileGap), fullW, tileH, "CYCLES", nextStatusLines[4]);
+      }
       break;
 
     case 5:
-      drawStatusActionButtons(statusActionIndex, settings.triggerMode == TRIGGER_MODE_EXTERNAL);
+      drawStatusActionButtons(statusActionIndex, settings.triggerMode == TRIGGER_MODE_EXTERNAL, is24hTimer);
       break;
     }
 
@@ -1173,7 +1211,7 @@ static void drawStatusTile(int x, int y, int w, int h, const char* label, const 
 } //   drawStatusTile()
 
 //--- Draw status action row (buttons or external trigger label)
-static void drawStatusActionButtons(int statusActionIndex, bool externalTriggerMode)
+static void drawStatusActionButtons(int statusActionIndex, bool externalTriggerMode, bool hideActionsFor24h)
 {
   static const char* labels[] =
       {
@@ -1188,6 +1226,33 @@ static void drawStatusActionButtons(int statusActionIndex, bool externalTriggerM
   const int firstButtonX = 11;
 
   tft.fillRect(0, 182, tft.width(), 58, ST77XX_BLACK);
+
+  if (hideActionsFor24h)
+  {
+    const char* message = "24h auto mode";
+    int16_t textX1;
+    int16_t textY1;
+    uint16_t textWidth;
+    uint16_t textHeight;
+    int textX;
+    int textY;
+
+    tft.setTextSize(2);
+    tft.getTextBounds(message, 0, 0, &textX1, &textY1, &textWidth, &textHeight);
+    textX = (tft.width() - static_cast<int>(textWidth)) / 2;
+    textY = buttonY + ((buttonHeight - static_cast<int>(textHeight)) / 2);
+
+    if (textX < 0)
+    {
+      textX = 0;
+    }
+
+    tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+    tft.setCursor(textX, textY);
+    tft.print(message);
+
+    return;
+  }
 
   if (externalTriggerMode)
   {
@@ -1280,6 +1345,40 @@ static std::string formatRemainingMs(uint32_t remainingMs)
   return std::string(buffer);
 
 } //   formatRemainingMs()
+
+//--- Format seconds-of-day as HH:MM:SS
+static std::string formatHhMmSsFromSecondsOfDay(uint32_t secondsOfDay)
+{
+  uint32_t normalized = secondsOfDay % 86400UL;
+  uint32_t hours = normalized / 3600UL;
+  uint32_t minutes = (normalized % 3600UL) / 60UL;
+  uint32_t seconds = normalized % 60UL;
+  char buffer[16];
+
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+
+  return std::string(buffer);
+
+} //   formatHhMmSsFromSecondsOfDay()
+
+//--- Format duration in seconds as HH:MM:SS
+static std::string formatDurationHhMmSs(uint32_t totalSeconds)
+{
+  uint32_t hours = totalSeconds / 3600UL;
+  uint32_t minutes = (totalSeconds % 3600UL) / 60UL;
+  uint32_t seconds = totalSeconds % 60UL;
+  char buffer[16];
+
+  if (hours > 99UL)
+  {
+    hours = 99UL;
+  }
+
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+
+  return std::string(buffer);
+
+} //   formatDurationHhMmSs()
 
 //--- Blend two RGB565 colors by 8-bit factor
 static uint16_t blendRgb565(uint16_t darkColor, uint16_t lightColor, uint8_t blendFactor)

@@ -11,8 +11,11 @@
 ## Top Menu Structure
 - Top-level order:
   - `System`
-  - `Timer Settings`
-  - `Profiles`
+  - `Timer Settings` (submenu)
+  - `Profiles` (submenu)
+- `Timer Settings` opens a submenu with:
+  - `Cyclic Timer Settings`
+  - `24h Timer Settings`
 - `Profiles` opens a submenu with:
   - `Load Profile`
   - `Save Profile`
@@ -26,11 +29,12 @@
   - `On Time`
   - `Off Time`
   - `Output` (including countdown)
-  - `Cycles` (`current/INF` when repeat count is `0`)
+  - `Cycles` (`current/INF` when repeat count is `0`) for cyclic timers only
 - Action buttons:
   - `Start`
   - `Stop`
   - `Reset`
+  - only visible for cyclic timers (hidden for 24h timers)
 
 ## System Tile
 - Read-only fields:
@@ -50,7 +54,7 @@
   - `Cancel`
   - `Save`
 
-## Timer Settings Tile
+## Cyclic Timer Settings Tile
 - Fields:
   - `On Time`
   - `On Time Unit`
@@ -65,6 +69,17 @@
   - `Cancel`
   - `Save Settings`
 
+## 24h Timer Settings Tile
+- Fields:
+  - `Timer Type` (display only, set to 24h)
+  - `Trigger Mode`
+  - `Trigger Edge`
+  - `Lock Input While Running`
+  - quarter-hour editor table: 24 rows (`00`..`23`) × 4 quarter slots (`00-15`, `16-30`, `31-45`, `46-59`)
+  - quarter state values: `-`, `+`, `R`, `r`
+- Buttons:
+  - `Cancel`
+  - `Save Settings`
 ## Profile Tiles
 ### Save Profile
 - Shows active profile.
@@ -103,13 +118,14 @@
 - Only one menu tile is visible at a time below the Timer Screen tile.
 - Every popup/menu tile can show the note:
   - `Only mutable when Timer is Stopped.`
-- While timer state is `Idle`, form controls are editable and the note is hidden.
-- While timer state is `Running`, form controls are disabled and the note is shown in bold with a larger font.
+- Opening any menu tile auto-stops the timer; closing all menu tiles auto-starts the timer again.
+- While any menu tile is open, form controls are editable (timer is auto-stopped).
 - All `Cancel` buttons remain enabled, also while timer state is `Running`.
 - In `Save Profile`, the `Save Profile` button remains enabled, also while timer state is `Running`.
 - Clicking `Cancel` always closes the current tile without saving changes.
 - After pressing `Save Profile`, `Load Profile`, `New Profile`, or `Delete Profile`, the tile closes automatically.
 - After pressing `Save Settings`, the Timer Settings tile closes automatically.
+- If `Auto Save Profile` is `No`, pressing `Save Settings` in cyclic or 24h tile shows a warning toast that changes are active but not saved to profile file.
 
 ## Theme Behavior
 - Web UI accent colors follow the selected system theme.
@@ -155,6 +171,8 @@
   - `repeatCount`
   - `triggerMode`
   - `triggerEdge`
+  - `timerType`
+  - `timer24hQuarterStates` (96 values)
 - System-scoped fields are stored separately in Preferences/NVS:
   - `outputPolarityHigh`
   - `lockInputDuringRun`

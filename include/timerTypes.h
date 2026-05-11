@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 14:53 ***/
+/*** Last Changed: 2026-05-11 - 16:24 ***/
 #ifndef TIMER_TYPES_H
 #define TIMER_TYPES_H
 
@@ -92,6 +92,22 @@ struct RuntimeStatus
   uint32_t currentPhaseDurationMs;
   uint32_t currentPhaseElapsedMs;
   bool inOnPhase;
+};
+
+//--- Derived 24h status timing info for Universal Timer views
+struct Timer24hStatusInfo
+{
+  bool timeValid;
+  bool outputActive;
+  bool hasLastOn;
+  bool hasLastOff;
+  bool hasNextSwitch;
+  bool hasNextOff;
+  uint32_t lastOnSecondsOfDay;
+  uint32_t lastOffSecondsOfDay;
+  uint32_t nextSwitchSecondsOfDay;
+  uint32_t nextOffSecondsOfDay;
+  uint32_t nextSwitchInSeconds;
 };
 
 //--- WiFi settings

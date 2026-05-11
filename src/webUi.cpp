@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 14:53 ***/
+/*** Last Changed: 2026-05-11 - 16:24 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -413,6 +413,54 @@ body {
   color: var(--inkMuted);
 }
 
+.timer24hEditorWrap {
+  margin-top: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panelStrong);
+  overflow: auto;
+  max-height: 380px;
+}
+
+.timer24hEditorTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+}
+
+.timer24hEditorTable th,
+.timer24hEditorTable td {
+  border-bottom: 1px solid var(--line);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.timer24hEditorTable th {
+  position: sticky;
+  top: 0;
+  background: #f4f8fc;
+  z-index: 1;
+  font-size: 12px;
+  color: var(--inkMuted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.timer24hEditorHour {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.timer24hQuarterSelect {
+  width: 100%;
+  border: 1px solid #bac8d7;
+  border-radius: 6px;
+  background: #f9fbfd;
+  padding: 6px 8px;
+  color: var(--ink);
+  font-size: 14px;
+}
+
 .menuDivider {
   width: 1px;
   height: 18px;
@@ -475,6 +523,31 @@ body {
   color: var(--ink);
 }
 
+.saveNotice {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 40;
+  max-width: min(92vw, 460px);
+  border: 1px solid var(--themeAccent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--themeTint);
+  color: var(--themeAccentStrong);
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.saveNotice.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 @keyframes tileEnter {
   from {
     opacity: 0;
@@ -522,7 +595,13 @@ body {
 <header class="menuBar">
   <nav class="menuLeft" aria-label="Main menu">
     <button class="menuButton" data-menu="systemCard">System</button>
-    <button class="menuButton" data-menu="timerSettingsCard">Timer Settings</button>
+    <div class="menuGroup" id="timerSettingsMenuGroup">
+      <button class="menuButton" id="timerSettingsMenuToggle" type="button">Timer Settings</button>
+      <div class="subMenu" id="timerSettingsSubMenu">
+        <button class="menuButton menuSubButton" data-menu="cyclicTimerSettingsCard" type="button">Cyclic Timer Settings</button>
+        <button class="menuButton menuSubButton" data-menu="twentyFourHTimerSettingsCard" type="button">24h Timer Settings</button>
+      </div>
+    </div>
     <div class="menuDivider" aria-hidden="true"></div>
     <div class="menuGroup" id="profileMenuGroup">
       <button class="menuButton" id="profileMenuToggle" type="button">Profiles</button>
@@ -539,6 +618,8 @@ body {
     <div class="clockValue"><span id="headerClock" class="headerValue">00:00:00</span></div>
   </div>
 </header>
+
+<div id="saveNotice" class="saveNotice" role="status" aria-live="polite"></div>
 
 <main class="appShell">
   <section class="tile">
@@ -564,7 +645,7 @@ body {
           <div class="statusLabel">Output</div>
           <div id="statusOutput" class="statusValue statusOutputValue">-</div>
         </div>
-        <div class="statusItem">
+        <div class="statusItem" id="statusCyclesItem">
           <div class="statusLabel">Cycles</div>
           <div id="statusCycles" class="statusValue">-</div>
         </div>
@@ -578,9 +659,9 @@ body {
     </div>
   </section>
 
-  <section id="timerSettingsCard" class="tile menuTile" aria-hidden="true">
+  <section id="cyclicTimerSettingsCard" class="tile menuTile" aria-hidden="true">
     <div class="tileHeader">
-      <div class="tileTitle">Timer Settings</div>
+      <div class="tileTitle">Cyclic Timer Settings</div>
     </div>
     <div class="tileBody">
       <p class="tileNotice">Only mutable when Timer is Stopped.</p>
@@ -599,6 +680,41 @@ body {
       <div class="footerActions">
         <button id="cancelSettingsButton" class="secondaryButton" type="button">Cancel</button>
         <button id="saveSettingsButton" class="primaryButton" type="button">Save Settings</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="twentyFourHTimerSettingsCard" class="tile menuTile" aria-hidden="true">
+    <div class="tileHeader">
+      <div class="tileTitle">24h Timer Settings</div>
+    </div>
+    <div class="tileBody">
+      <p class="tileNotice">Only mutable when Timer is Stopped.</p>
+      <div class="formGrid">
+        <div class="fieldRow"><label for="timerType24h">Timer Type</label><select id="timerType24h"><option value="1">24h</option></select></div>
+        <div class="fieldRow"><label for="triggerMode24h">Trigger Mode</label><select id="triggerMode24h"><option value="0">Manual</option><option value="1">External</option></select></div>
+        <div class="fieldRow"><label for="triggerEdge24h">Trigger Edge</label><select id="triggerEdge24h"><option value="0">Falling</option><option value="1">Rising</option></select></div>
+        <div class="fieldRow"><label for="lockInputDuringRun24h">Lock Input While Running</label><select id="lockInputDuringRun24h"><option value="0">No</option><option value="1">Yes</option></select></div>
+      </div>
+
+      <div class="timer24hEditorWrap">
+        <table class="timer24hEditorTable" aria-label="24h quarter-hour editor">
+          <thead>
+            <tr>
+              <th>Hour</th>
+              <th>00-15</th>
+              <th>16-30</th>
+              <th>31-45</th>
+              <th>46-59</th>
+            </tr>
+          </thead>
+          <tbody id="timer24hEditorBody"></tbody>
+        </table>
+      </div>
+
+      <div class="footerActions">
+        <button id="cancel24hSettingsButton" class="secondaryButton" type="button">Cancel</button>
+        <button id="save24hSettingsButton" class="primaryButton" type="button">Save Settings</button>
       </div>
     </div>
   </section>
@@ -718,6 +834,51 @@ let applySettingsTimer = null;
 let savedProfileName = '';
 let savedProfileSignature = '';
 let profileDirtyResetPending = false;
+let activeMenuId = '';
+let saveNoticeTimeoutId = null;
+
+async function syncTimerForMenuState(previousMenuId, nextMenuId)
+{
+  const hadOpenMenu = previousMenuId !== '';
+  const hasOpenMenu = nextMenuId !== '';
+
+  if (hadOpenMenu === hasOpenMenu)
+  {
+    return;
+  }
+
+  await callPost(hasOpenMenu ? '/api/stop' : '/api/start');
+}
+
+function showSaveNotice(message)
+{
+  const saveNotice = document.getElementById('saveNotice');
+
+  if (!saveNotice)
+  {
+    return;
+  }
+
+  saveNotice.textContent = message;
+  saveNotice.classList.add('show');
+
+  if (saveNoticeTimeoutId !== null)
+  {
+    clearTimeout(saveNoticeTimeoutId);
+  }
+
+  saveNoticeTimeoutId = setTimeout(() =>
+  {
+    saveNotice.classList.remove('show');
+  }, 2800);
+}
+
+function shouldWarnAutoSaveDisabled()
+{
+  const autoSaveControl = document.getElementById('systemAutoSaveLastProfile');
+
+  return !!autoSaveControl && autoSaveControl.value === '0';
+}
 
 function buildProfileSettingsSignature(settings)
 {
@@ -803,11 +964,113 @@ function formatCountdown(durationMs, elapsedMs)
   return minutes + ':' + seconds;
 }
 
+function formatHhMmSsFromSeconds(totalSeconds)
+{
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0)
+  {
+    return '--:--:--';
+  }
+
+  const normalized = Math.floor(totalSeconds) % 86400;
+  const hours = String(Math.floor(normalized / 3600)).padStart(2, '0');
+  const minutes = String(Math.floor((normalized % 3600) / 60)).padStart(2, '0');
+  const seconds = String(normalized % 60).padStart(2, '0');
+
+  return hours + ':' + minutes + ':' + seconds;
+}
+
+function get24hQuarterStateLabel(state)
+{
+  switch (Number(state))
+  {
+    case 0: return '-';
+    case 1: return '+';
+    case 2: return 'R';
+    case 3: return 'r';
+    default: return '-';
+  }
+}
+
+function build24hQuarterSelectHtml(hourIndex, quarterIndex, selectedState)
+{
+  const selected = Number(selectedState);
+  let html = '<select class="timer24hQuarterSelect" data-hour="' + String(hourIndex) + '" data-quarter="' + String(quarterIndex) + '">';
+
+  for (let state = 0; state <= 3; state++)
+  {
+    const isSelected = state === selected ? ' selected' : '';
+    html += '<option value="' + String(state) + '"' + isSelected + '>' + get24hQuarterStateLabel(state) + '</option>';
+  }
+
+  html += '</select>';
+
+  return html;
+}
+
+function render24hEditorFromArray(quarterStates)
+{
+  const body = document.getElementById('timer24hEditorBody');
+
+  if (!body)
+  {
+    return;
+  }
+
+  const states = Array.isArray(quarterStates) ? quarterStates : [];
+  let rowsHtml = '';
+
+  for (let hour = 0; hour < 24; hour++)
+  {
+    const hourLabel = String(hour).padStart(2, '0');
+    rowsHtml += '<tr>';
+    rowsHtml += '<td class="timer24hEditorHour">' + hourLabel + '</td>';
+
+    for (let quarter = 0; quarter < 4; quarter++)
+    {
+      const index = (hour * 4) + quarter;
+      const value = Number(states[index] ?? 0);
+      const normalized = (Number.isFinite(value) && value >= 0 && value <= 3) ? value : 0;
+      rowsHtml += '<td>' + build24hQuarterSelectHtml(hour, quarter, normalized) + '</td>';
+    }
+
+    rowsHtml += '</tr>';
+  }
+
+  body.innerHTML = rowsHtml;
+}
+
+function read24hQuarterStatesFromEditor()
+{
+  const values = new Array(96).fill(0);
+  const selects = document.querySelectorAll('#timer24hEditorBody select.timer24hQuarterSelect');
+
+  for (const select of selects)
+  {
+    const hour = Number(select.dataset.hour);
+    const quarter = Number(select.dataset.quarter);
+
+    if (!Number.isInteger(hour) || !Number.isInteger(quarter) || hour < 0 || hour > 23 || quarter < 0 || quarter > 3)
+    {
+      continue;
+    }
+
+    const index = (hour * 4) + quarter;
+    const rawValue = Number(select.value);
+    values[index] = (Number.isFinite(rawValue) && rawValue >= 0 && rawValue <= 3) ? rawValue : 0;
+  }
+
+  return values;
+}
+
 function setActiveMenu(menuId)
 {
+  const previousMenuId = activeMenuId;
+  activeMenuId = menuId;
+
   const menuButtons = document.querySelectorAll('.menuButton');
   const menuTiles = document.querySelectorAll('.menuTile');
   const profileMenuIds = ['loadProfileCard', 'saveProfileCard', 'newProfileCard', 'deleteProfileCard'];
+  const timerSettingsMenuIds = ['cyclicTimerSettingsCard', 'twentyFourHTimerSettingsCard'];
 
   for (const button of menuButtons)
   {
@@ -816,10 +1079,16 @@ function setActiveMenu(menuId)
   }
 
   const profileMenuToggle = document.getElementById('profileMenuToggle');
+  const timerSettingsMenuToggle = document.getElementById('timerSettingsMenuToggle');
 
   if (profileMenuToggle)
   {
     profileMenuToggle.classList.toggle('active', profileMenuIds.includes(menuId));
+  }
+
+  if (timerSettingsMenuToggle)
+  {
+    timerSettingsMenuToggle.classList.toggle('active', timerSettingsMenuIds.includes(menuId));
   }
 
   for (const tile of menuTiles)
@@ -828,6 +1097,8 @@ function setActiveMenu(menuId)
     tile.classList.toggle('active', isActive);
     tile.setAttribute('aria-hidden', isActive ? 'false' : 'true');
   }
+
+  void syncTimerForMenuState(previousMenuId, menuId);
 }
 
 function closeProfileSubMenu()
@@ -840,11 +1111,23 @@ function closeProfileSubMenu()
   }
 }
 
+function closeTimerSettingsSubMenu()
+{
+  const timerSettingsSubMenu = document.getElementById('timerSettingsSubMenu');
+
+  if (timerSettingsSubMenu)
+  {
+    timerSettingsSubMenu.classList.remove('open');
+  }
+}
+
 function bindMenu()
 {
   const menuButtons = document.querySelectorAll('.menuButton');
   const profileMenuToggle = document.getElementById('profileMenuToggle');
+  const timerSettingsMenuToggle = document.getElementById('timerSettingsMenuToggle');
   const profileMenuGroup = document.getElementById('profileMenuGroup');
+  const timerSettingsMenuGroup = document.getElementById('timerSettingsMenuGroup');
 
   for (const button of menuButtons)
   {
@@ -863,12 +1146,14 @@ function bindMenu()
       {
         setActiveMenu('');
         closeProfileSubMenu();
+        closeTimerSettingsSubMenu();
 
         return;
       }
 
       setActiveMenu(targetMenuId);
       closeProfileSubMenu();
+      closeTimerSettingsSubMenu();
     });
   }
 
@@ -885,6 +1170,24 @@ function bindMenu()
       }
 
       profileSubMenu.classList.toggle('open');
+      closeTimerSettingsSubMenu();
+    });
+  }
+
+  if (timerSettingsMenuToggle)
+  {
+    timerSettingsMenuToggle.addEventListener('click', (event) =>
+    {
+      event.stopPropagation();
+      const timerSettingsSubMenu = document.getElementById('timerSettingsSubMenu');
+
+      if (!timerSettingsSubMenu)
+      {
+        return;
+      }
+
+      timerSettingsSubMenu.classList.toggle('open');
+      closeProfileSubMenu();
     });
   }
 
@@ -893,6 +1196,11 @@ function bindMenu()
     if (profileMenuGroup && !profileMenuGroup.contains(event.target))
     {
       closeProfileSubMenu();
+    }
+
+    if (timerSettingsMenuGroup && !timerSettingsMenuGroup.contains(event.target))
+    {
+      closeTimerSettingsSubMenu();
     }
   });
 }
@@ -909,7 +1217,7 @@ function setStatusAutoRefresh(enabled)
 
 function setEditControlsEnabled(enabled)
 {
-  const cardIds = ['timerSettingsCard', 'systemCard', 'saveProfileCard', 'loadProfileCard', 'deleteProfileCard', 'newProfileCard'];
+  const cardIds = ['cyclicTimerSettingsCard', 'twentyFourHTimerSettingsCard', 'systemCard', 'saveProfileCard', 'loadProfileCard', 'deleteProfileCard', 'newProfileCard'];
   const cancelButtonIds = new Set([
     'cancelSettingsButton',
     'systemCancelButton',
@@ -976,13 +1284,47 @@ async function refreshStatus()
   setStatusAutoRefresh(data.runtime.state !== 0);
   setEditControlsEnabled(data.runtime.state === 0);
 
+  const is24hTimer = data.settings.timerType === 1;
   const countdown = data.runtime.state === 0
     ? '---:--'
     : formatCountdown(data.runtime.currentPhaseDurationMs, data.runtime.currentPhaseElapsedMs);
   const nextPhase = data.runtime.inOnPhase ? 'OFF' : 'ON';
-  const outputLabel = data.runtime.state === 0
+  const outputLabelCyclic = data.runtime.state === 0
     ? 'OFF [---:--]'
     : (data.runtime.outputActive ? 'ON' : 'OFF') + ' [' + countdown + ' to ' + nextPhase + ']';
+
+  let statusOnText = data.settings.onTimeValue + ' ' + data.settings.onTimeUnitLabel;
+  let statusOffText = data.settings.offTimeValue + ' ' + data.settings.offTimeUnitLabel;
+  let statusOutputText = outputLabelCyclic;
+
+  if (is24hTimer)
+  {
+    const status24h = data.runtime.twentyFourH || {};
+    const outputActive24h = !!status24h.outputActive;
+    const hasNextSwitch = !!status24h.hasNextSwitch;
+    const hasNextOff = !!status24h.hasNextOff;
+    const hasLastOn = !!status24h.hasLastOn;
+    const hasLastOff = !!status24h.hasLastOff;
+    const nextSwitchClock = hasNextSwitch
+      ? formatHhMmSsFromSeconds(Number(status24h.nextSwitchSeconds || 0))
+      : '--:--:--';
+    const nextOffClock = hasNextOff
+      ? formatHhMmSsFromSeconds(Number(status24h.nextOffSeconds || 0))
+      : '--:--:--';
+    const lastOnClock = hasLastOn
+      ? formatHhMmSsFromSeconds(Number(status24h.lastOnSeconds || 0))
+      : '--:--:--';
+    const lastOffClock = hasLastOff
+      ? formatHhMmSsFromSeconds(Number(status24h.lastOffSeconds || 0))
+      : '--:--:--';
+    const nextSwitchIn = hasNextSwitch
+      ? formatHhMmSsFromSeconds(Number(status24h.nextSwitchInSeconds || 0))
+      : '--:--:--';
+
+    statusOnText = outputActive24h ? lastOnClock : nextSwitchClock;
+    statusOffText = outputActive24h ? nextOffClock : lastOffClock;
+    statusOutputText = (outputActive24h ? 'ON' : 'OFF') + ' [' + nextSwitchIn + ']';
+  }
 
   let displayCycle = data.runtime.currentCycle;
 
@@ -1003,15 +1345,41 @@ async function refreshStatus()
 
   // === Always update Timer Screen display ===
   document.getElementById('statusState').textContent = data.runtime.stateLabel;
-  document.getElementById('statusOn').textContent = data.settings.onTimeValue + ' ' + data.settings.onTimeUnitLabel;
-  document.getElementById('statusOff').textContent = data.settings.offTimeValue + ' ' + data.settings.offTimeUnitLabel;
-  document.getElementById('statusOutput').textContent = outputLabel;
-  document.getElementById('statusCycles').textContent =
-    data.runtime.totalCycles === 0
-      ? String(displayCycle) + '/INF'
-      : String(displayCycle) + '/' + String(data.runtime.totalCycles);
+  document.getElementById('statusOn').textContent = statusOnText;
+  document.getElementById('statusOff').textContent = statusOffText;
+  document.getElementById('statusOutput').textContent = statusOutputText;
+  const statusCyclesItem = document.getElementById('statusCyclesItem');
+  if (statusCyclesItem)
+  {
+    statusCyclesItem.style.display = is24hTimer ? 'none' : '';
+  }
+
+  if (!is24hTimer)
+  {
+    document.getElementById('statusCycles').textContent =
+      data.runtime.totalCycles === 0
+        ? String(displayCycle) + '/INF'
+        : String(displayCycle) + '/' + String(data.runtime.totalCycles);
+  }
   document.getElementById('networkStatus').textContent =
     'Network: ' + (data.network.connected ? 'Connected' : 'Not connected') + ' | IP: ' + data.network.address;
+
+  //-- Hide action buttons for 24h timer (timerType === 1)
+  const startButton = document.getElementById('startButton');
+  const stopButton = document.getElementById('stopButton');
+  const resetButton = document.getElementById('resetButton');
+  if (is24hTimer)
+  {
+    startButton.style.display = 'none';
+    stopButton.style.display = 'none';
+    resetButton.style.display = 'none';
+  }
+  else
+  {
+    startButton.style.display = '';
+    stopButton.style.display = '';
+    resetButton.style.display = '';
+  }
 
   // === Update System read-only fields (always) ===
   document.getElementById('systemNetworkState').textContent = data.network.connected ? 'Connected' : 'Disconnected';
@@ -1033,9 +1401,9 @@ async function refreshStatus()
   // === Only update editable form fields when their menus are CLOSED ===
   // This prevents form values from being reset while user is editing
 
-  // Update Timer Settings fields only if menu is NOT open
-  const timerSettingsCard = document.getElementById('timerSettingsCard');
-  if (timerSettingsCard && timerSettingsCard.getAttribute('aria-hidden') === 'true')
+  // Update Cyclic Timer Settings fields only if menu is NOT open
+  const cyclicTimerSettingsCard = document.getElementById('cyclicTimerSettingsCard');
+  if (cyclicTimerSettingsCard && cyclicTimerSettingsCard.getAttribute('aria-hidden') === 'true')
   {
     document.getElementById('onTimeValue').value = data.settings.onTimeValue;
     document.getElementById('offTimeValue').value = data.settings.offTimeValue;
@@ -1046,6 +1414,16 @@ async function refreshStatus()
     document.getElementById('triggerMode').value = data.settings.triggerMode;
     document.getElementById('triggerEdge').value = data.settings.triggerEdge;
     document.getElementById('lockInputDuringRun').value = data.settings.lockInputDuringRun ? '1' : '0';
+  }
+
+  // Update 24h Timer Settings fields only if menu is NOT open
+  const twentyFourHTimerSettingsCard = document.getElementById('twentyFourHTimerSettingsCard');
+  if (twentyFourHTimerSettingsCard && twentyFourHTimerSettingsCard.getAttribute('aria-hidden') === 'true')
+  {
+    document.getElementById('triggerMode24h').value = data.settings.triggerMode;
+    document.getElementById('triggerEdge24h').value = data.settings.triggerEdge;
+    document.getElementById('lockInputDuringRun24h').value = data.settings.lockInputDuringRun ? '1' : '0';
+    render24hEditorFromArray(data.settings.timer24hQuarterStates || []);
   }
 
   // Update System Settings fields only if menu is NOT open
@@ -1139,6 +1517,12 @@ async function callPost(url, body)
 async function saveSettings()
 {
   await callPost('/api/settings', readSettingsFromForm());
+
+  if (shouldWarnAutoSaveDisabled())
+  {
+    showSaveNotice('Auto Save Profile is NO: wijzigingen zijn actief, maar niet opgeslagen in het profielbestand.');
+  }
+
   setActiveMenu('');
 }
 
@@ -1312,6 +1696,29 @@ function bindActionButtons()
     setActiveMenu('');
   });
   document.getElementById('saveSettingsButton').addEventListener('click', saveSettings);
+  document.getElementById('cancel24hSettingsButton').addEventListener('click', () =>
+  {
+    setActiveMenu('');
+  });
+  document.getElementById('save24hSettingsButton').addEventListener('click', async () =>
+  {
+    const settings = {
+      timerType: 1,
+      triggerMode: Number(document.getElementById('triggerMode24h').value),
+      triggerEdge: Number(document.getElementById('triggerEdge24h').value),
+      lockInputDuringRun: document.getElementById('lockInputDuringRun24h').value === '1',
+      timer24hQuarterStates: read24hQuarterStatesFromEditor()
+    };
+
+    await callPost('/api/settings', settings);
+
+    if (shouldWarnAutoSaveDisabled())
+    {
+      showSaveNotice('Auto Save Profile is NO: wijzigingen zijn actief, maar niet opgeslagen in het profielbestand.');
+    }
+
+    setActiveMenu('');
+  });
   document.getElementById('systemCancelButton').addEventListener('click', () =>
   {
     setActiveMenu('');
@@ -1342,6 +1749,7 @@ function bindActionButtons()
 setInterval(refreshProfiles, 3000);
 setInterval(updateHeaderClock, 1000);
 updateHeaderClock();
+render24hEditorFromArray(new Array(96).fill(0));
 bindMenu();
 bindActionButtons();
 bindLiveApplySettings();
@@ -1384,6 +1792,9 @@ static void fillStatusDocument(JsonDocument& doc);
 
 //--- Enforce minimum ON/OFF value for ms units
 static void enforceMsMinimum(AppSettings& settings);
+
+//--- Format seconds-of-day as HH:MM:SS
+static String formatHhMmSsFromSecondsOfDay(uint32_t secondsOfDay);
 
 //--- Active state
 static bool serverRunning = false;
@@ -1497,6 +1908,31 @@ static void handleSaveSettings()
   settings.repeatCount = static_cast<uint32_t>(doc["repeatCount"] | settings.repeatCount);
   settings.triggerMode = static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
   settings.triggerEdge = static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
+  {
+    JsonArrayConst quarterStates = doc["timer24hQuarterStates"].as<JsonArrayConst>();
+
+    if (!quarterStates.isNull())
+    {
+      for (size_t stateIndex = 0; stateIndex < sizeof(settings.timer24hQuarterStates); stateIndex++)
+      {
+        if (stateIndex < quarterStates.size())
+        {
+          int rawState = quarterStates[stateIndex] | static_cast<int>(settings.timer24hQuarterStates[stateIndex]);
+
+          if (rawState < static_cast<int>(TIMER_24H_QUARTER_OFF))
+          {
+            rawState = static_cast<int>(TIMER_24H_QUARTER_OFF);
+          }
+          else if (rawState > static_cast<int>(TIMER_24H_QUARTER_RANDOM_OFF))
+          {
+            rawState = static_cast<int>(TIMER_24H_QUARTER_RANDOM_OFF);
+          }
+
+          settings.timer24hQuarterStates[stateIndex] = static_cast<uint8_t>(rawState);
+        }
+      }
+    }
+  }
   settings.outputPolarityHigh = doc["outputPolarityHigh"] | settings.outputPolarityHigh;
   settings.lockInputDuringRun = doc["lockInputDuringRun"] | settings.lockInputDuringRun;
   settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
@@ -1538,6 +1974,31 @@ static void handleApplySettings()
   settings.repeatCount = static_cast<uint32_t>(doc["repeatCount"] | settings.repeatCount);
   settings.triggerMode = static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
   settings.triggerEdge = static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
+  {
+    JsonArrayConst quarterStates = doc["timer24hQuarterStates"].as<JsonArrayConst>();
+
+    if (!quarterStates.isNull())
+    {
+      for (size_t stateIndex = 0; stateIndex < sizeof(settings.timer24hQuarterStates); stateIndex++)
+      {
+        if (stateIndex < quarterStates.size())
+        {
+          int rawState = quarterStates[stateIndex] | static_cast<int>(settings.timer24hQuarterStates[stateIndex]);
+
+          if (rawState < static_cast<int>(TIMER_24H_QUARTER_OFF))
+          {
+            rawState = static_cast<int>(TIMER_24H_QUARTER_OFF);
+          }
+          else if (rawState > static_cast<int>(TIMER_24H_QUARTER_RANDOM_OFF))
+          {
+            rawState = static_cast<int>(TIMER_24H_QUARTER_RANDOM_OFF);
+          }
+
+          settings.timer24hQuarterStates[stateIndex] = static_cast<uint8_t>(rawState);
+        }
+      }
+    }
+  }
   settings.outputPolarityHigh = doc["outputPolarityHigh"] | settings.outputPolarityHigh;
   settings.lockInputDuringRun = doc["lockInputDuringRun"] | settings.lockInputDuringRun;
   settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
@@ -1712,6 +2173,7 @@ static void fillStatusDocument(JsonDocument& doc)
 {
   const AppSettings& settings = timerGetSettings();
   RuntimeStatus runtimeStatus = timerGetRuntimeStatus();
+  Timer24hStatusInfo status24h = timerGet24hStatusInfo();
   uint8_t themeColorIndex = settingsStoreLoadThemeColorIndex();
 
   if (themeColorIndex >= static_cast<uint8_t>(colorProfileCount))
@@ -1754,6 +2216,21 @@ static void fillStatusDocument(JsonDocument& doc)
   doc["runtime"]["currentPhaseDurationMs"] = runtimeStatus.currentPhaseDurationMs;
   doc["runtime"]["currentPhaseElapsedMs"] = runtimeStatus.currentPhaseElapsedMs;
   doc["runtime"]["inOnPhase"] = runtimeStatus.inOnPhase;
+  doc["runtime"]["twentyFourH"]["timeValid"] = status24h.timeValid;
+  doc["runtime"]["twentyFourH"]["outputActive"] = status24h.outputActive;
+  doc["runtime"]["twentyFourH"]["hasLastOn"] = status24h.hasLastOn;
+  doc["runtime"]["twentyFourH"]["hasLastOff"] = status24h.hasLastOff;
+  doc["runtime"]["twentyFourH"]["hasNextSwitch"] = status24h.hasNextSwitch;
+  doc["runtime"]["twentyFourH"]["hasNextOff"] = status24h.hasNextOff;
+  doc["runtime"]["twentyFourH"]["lastOnSeconds"] = status24h.lastOnSecondsOfDay;
+  doc["runtime"]["twentyFourH"]["lastOffSeconds"] = status24h.lastOffSecondsOfDay;
+  doc["runtime"]["twentyFourH"]["nextSwitchSeconds"] = status24h.nextSwitchSecondsOfDay;
+  doc["runtime"]["twentyFourH"]["nextOffSeconds"] = status24h.nextOffSecondsOfDay;
+  doc["runtime"]["twentyFourH"]["nextSwitchInSeconds"] = status24h.nextSwitchInSeconds;
+  doc["runtime"]["twentyFourH"]["lastOnLabel"] = status24h.hasLastOn ? formatHhMmSsFromSecondsOfDay(status24h.lastOnSecondsOfDay) : "--:--:--";
+  doc["runtime"]["twentyFourH"]["lastOffLabel"] = status24h.hasLastOff ? formatHhMmSsFromSecondsOfDay(status24h.lastOffSecondsOfDay) : "--:--:--";
+  doc["runtime"]["twentyFourH"]["nextSwitchLabel"] = status24h.hasNextSwitch ? formatHhMmSsFromSecondsOfDay(status24h.nextSwitchSecondsOfDay) : "--:--:--";
+  doc["runtime"]["twentyFourH"]["nextOffLabel"] = status24h.hasNextOff ? formatHhMmSsFromSecondsOfDay(status24h.nextOffSecondsOfDay) : "--:--:--";
 
   doc["network"]["connected"] = wifiManagerIsStaConnected();
   doc["network"]["address"] = wifiManagerGetAddressString();
@@ -1761,6 +2238,21 @@ static void fillStatusDocument(JsonDocument& doc)
   doc["network"]["macAddress"] = WiFi.macAddress();
 
 } //   fillStatusDocument()
+
+//--- Format seconds-of-day as HH:MM:SS
+static String formatHhMmSsFromSecondsOfDay(uint32_t secondsOfDay)
+{
+  uint32_t normalized = secondsOfDay % 86400UL;
+  uint32_t hours = normalized / 3600UL;
+  uint32_t minutes = (normalized % 3600UL) / 60UL;
+  uint32_t seconds = normalized % 60UL;
+  char buffer[16];
+
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+
+  return String(buffer);
+
+} //   formatHhMmSsFromSecondsOfDay()
 
 //--- Enforce minimum ON/OFF value for ms units
 static void enforceMsMinimum(AppSettings& settings)

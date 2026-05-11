@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 14:53 ***/
+/*** Last Changed: 2026-05-11 - 16:24 ***/
 #include "profileManager.h"
 
 #include <ArduinoJson.h>
@@ -16,7 +16,7 @@ static String buildProfilePath(const String& profileName);
 static String sanitizeProfileName(const String& profileName);
 
 //--- Read settings from JSON document
-static void loadSettingsFromJson(const JsonDocument& doc, AppSettings& settings);
+static void loadSettingsFromJson(const JsonDocument& doc, const String& profileName, AppSettings& settings);
 
 //--- Write settings into JSON document
 static void saveSettingsToJson(JsonDocument& doc, const AppSettings& settings);
@@ -49,6 +49,12 @@ bool profileManagerSaveProfile(const String& profileName, const AppSettings& set
     ESP_LOGE(logTag, "Error: Empty profile name");
 
     return false;
+  }
+
+  //-- Add "24h" suffix for 24h timer profiles
+  if (settings.timerType == TIMER_TYPE_24H && !safeName.endsWith("24h"))
+  {
+    safeName += "24h";
   }
 
   String path = buildProfilePath(safeName);
@@ -105,7 +111,7 @@ bool profileManagerLoadProfile(const String& profileName, AppSettings& settings)
     return false;
   }
 
-  loadSettingsFromJson(doc, settings);
+  loadSettingsFromJson(doc, safeName, settings);
   settings.profileName = safeName;
 
   ESP_LOGI(logTag, "Profile loaded: %s", safeName.c_str());
@@ -119,7 +125,7 @@ bool profileManagerDeleteProfile(const String& profileName)
 {
   String safeName = sanitizeProfileName(profileName);
 
-  if (safeName.equalsIgnoreCase(profileManagerDefaultProfileName))
+  if (safeName.equalsIgnoreCase(profileManagerDefaultProfileName) || safeName.equalsIgnoreCase("default24h"))
   {
     ESP_LOGW(logTag, "Refused to delete default profile: %s", safeName.c_str());
 
@@ -221,9 +227,18 @@ static String sanitizeProfileName(const String& profileName)
 } //   sanitizeProfileName()
 
 //--- Read settings from JSON document
-static void loadSettingsFromJson(const JsonDocument& doc, AppSettings& settings)
+static void loadSettingsFromJson(const JsonDocument& doc, const String& profileName, AppSettings& settings)
 {
-  settings.timerType = static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
+  //-- Explicit timerType from JSON takes priority; otherwise infer from profile naming convention.
+  if (!doc["timerType"].isNull())
+  {
+    settings.timerType = static_cast<TimerType>(doc["timerType"].as<int>());
+  }
+  else
+  {
+    settings.timerType = profileName.endsWith("24h") ? TIMER_TYPE_24H : TIMER_TYPE_CYCLIC;
+  }
+
   settings.onTimeValue = doc["onTimeValue"] | settings.onTimeValue;
   settings.offTimeValue = doc["offTimeValue"] | settings.offTimeValue;
   settings.onTimeUnit = static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));

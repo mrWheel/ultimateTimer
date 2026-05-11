@@ -175,11 +175,30 @@ Profile data must include:
 - `timer24hQuarterStates` as a 96-element integer array (values 0–3)
 - all existing cyclic timer fields must remain supported
 
+### Profile Naming and File Storage
+- 24h profiles are automatically stored with a "24h" suffix in the filename
+- File naming: `<profileName>24h.json`
+- The built-in default 24h profile is `default24h.json` (protected, cannot be deleted)
+
+### Built-in Profile Protection
+- The built-in profile `default24h` cannot be deleted from the local TFT menu or Web UI
+- The built-in profile `default24h` is hidden from the Delete Profile list
+- If a user deletes the active 24h profile, the firmware automatically loads `default24h`
 System-level settings remain separate from profile-scoped timer data.
 
 When a 24h profile is loaded, the runtime engine must **immediately seek to the current wall clock position** rather than starting evaluation from hour 0. This ensures the output state is correct the moment the profile is active.
 
 ## UI and API Expectations
+### Local TFT UI
+- The 24h Timer Settings menu is a separate menu item from Cyclic Timer Settings
+- Users edit the 24-hour schedule directly on the TFT display
+
+### Web UI
+- Timer Settings menu splits into two submenu items: Cyclic Timer Settings and 24h Timer Settings
+- Action buttons (Start/Stop/Reset) are hidden for 24h profiles
+- The Web UI includes a full 24h quarter-hour editor (24x4 table) and can save all 96 quarter states
+- Opening any Web UI menu tile auto-stops the timer; closing all menu tiles auto-starts the timer again
+- If Auto Save Profile is `No`, saving settings shows a warning that runtime changes are active but not yet written to profile file
 Both the local UI and Web UI must be able to distinguish timer types.
 
 The following must be visible in status data and editable forms:
@@ -188,7 +207,7 @@ The following must be visible in status data and editable forms:
 - current timer type
 - 24h quarter-hour data
 
-The Web UI does not need to implement the full 24h editor immediately, but it must be prepared to transport and preserve the data correctly.
+The Web UI transports and preserves the full 24h quarter-hour data in status and save/apply payloads.
 
 ## Implementation Guidance
 For a correct implementation, the developer should ensure:

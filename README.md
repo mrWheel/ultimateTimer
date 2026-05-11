@@ -61,7 +61,16 @@ read `colorSettings.md`
 - Save Profile confirmation via [No] [Yes] buttons for the active profile
 - New Profile name entry with character-by-character editing
 - JSON profiles in LittleFS
+- JSON cyclic profiles in LittleFS (stored as `<name>.json`)
+- JSON 24h profiles in LittleFS (stored as `<name>24h.json`)
 - Trigger and reset inputs
+- Output control with selectable polarity
+- Web UI Timer Settings split into two submenu items:
+	- `Cyclic Timer Settings` for cyclic timer editing
+	- `24h Timer Settings` for full 24h timer configuration (including quarter-hour editing)
+- Web UI action buttons (Start/Stop/Reset) hidden for 24h timer profiles
+- Web UI automatically stops timer when a menu tile opens and automatically starts it again when all menu tiles are closed
+- Web UI shows a save warning when `Auto Save Profile` is `No` and settings are saved
 - Output control with selectable polarity
 - Web UI with matching timer settings
 - Web UI live-apply only for Timer Settings (apply immediately, save only on explicit save)
@@ -80,13 +89,16 @@ read `colorSettings.md`
 - Optional color test mode through `TEST_COLOR_PATERN`
 
 ## Local TFT controls
-- Timer screen shows: `State`, `On time`, `Off time`, `Output`, and `Cycles`.
+- Timer screen shows:
+	- cyclic timer: `State`, `On time`, `Off time`, `Output`, and `Cycles`
+	- 24h timer: `State`, `On time`, `Off time`, `Output` (no `Cycles` tile)
 - `Output` line includes a live countdown timer (`MMM:SS`) to the next ON/OFF switch while running/paused.
 - Open the local menu with a **long press on the rotary encoder**.
 - Select menu options with a **short press on the rotary encoder**.
 - Menu navigation is clamped (no wrap-around).
 - In `Manual` trigger mode, timer action row includes `Start`, `Stop`, `Reset`.
 - In `External` trigger mode, the action row is replaced by `External Trigger` text (no local start/stop/reset actions).
+- For 24h timer profiles, local `Start`, `Stop`, and `Reset` actions are hidden.
 - Menu list items are rendered left-aligned with a two-character prefix area: selected item is shown as `> Item <`, unselected items use leading spaces so text starts at the same position.
 
 ### Main menu options
@@ -117,12 +129,13 @@ Current configured values in this repository:
 - `BUTTON_LONG_PRESS_MS=2000`
 
 ## Notes
-- Profile files are stored as `/<profileName>.json`
+	- Cyclic profile files are stored as `/<profileName>.json` (no suffix)
+	- 24h profile files are stored as `/<profileName>24h.json` (automatic "24h" suffix)
 - Profile files store: `timerType`, `onTimeValue`, `offTimeValue`, `onTimeUnit`, `offTimeUnit`, `repeatCount`, `triggerMode`, `triggerEdge`, and the 24h quarter-hour states
 - System-level settings such as output polarity, lock input during run, auto-save profile, theme color, and encoder direction are stored separately in Preferences/NVS
-- Built-in profile `default` is always available in the Load Profile list
-- Built-in profile `default` cannot be deleted and is hidden from the Delete Profile list
-- If the active profile is deleted, firmware automatically loads `default`
+	- Built-in profiles `default` (cyclic) and `default24h` (24h) are always available in the Load Profile list
+	- Built-in profiles `default` and `default24h` cannot be deleted and are hidden from the Delete Profile list
+	- If the active profile is deleted, firmware automatically loads the corresponding default profile based on timer type
 - The fallback access point is open (no password)
 - If no WiFi credentials are found (or STA connection fails), use the local `WiFi Setup` menu: scan nearby APs, select SSID with the rotary encoder, then enter the WiFi password via rotary text input and save/apply.
 - The local UI currently includes timer and profile management

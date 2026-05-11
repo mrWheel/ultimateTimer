@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 14:53 ***/
+/*** Last Changed: 2026-05-11 - 16:24 ***/
 #include "timerEngine.h"
 #include "appConfig.h"
 
@@ -40,11 +40,20 @@ static uint32_t get24hQuarterTransitionOffset(const struct tm& timeInfo, int qua
 //--- Build 24h runtime segments for current day
 static void build24hRuntimeSegments(const struct tm& timeInfo, uint32_t nowSeconds, bool& outputActive, uint32_t& phaseStartSeconds, uint32_t& phaseEndSeconds, uint32_t& cycleIndex);
 
+//--- Build 24h day transitions (seconds-of-day where output changes)
+static void build24hDayTransitions(const struct tm& dayInfo, uint32_t transitionSeconds[96], bool transitionStates[96], size_t& transitionCount);
+
 //--- Apply common settings constraints
 static void sanitizeSettings(AppSettings& settings, bool enforceMsMinimum);
 
 //--- Check whether timer is busy while timer mutex is held
 static bool timerIsBusyLocked();
+
+//--- Find last transition at or before second-of-day
+static bool findLastTransition(const uint32_t transitionSeconds[], const bool transitionStates[], size_t transitionCount, uint32_t nowSeconds, bool targetState, uint32_t& foundSeconds);
+
+//--- Find next transition after second-of-day
+static bool findNextTransition(const uint32_t transitionSeconds[], const bool transitionStates[], size_t transitionCount, uint32_t nowSeconds, bool targetStateOnly, bool targetState, uint32_t& foundSeconds);
 
 //--- Lock timer state
 static inline void lockTimerState()
@@ -390,6 +399,134 @@ RuntimeStatus timerGetRuntimeStatus()
 
 } //   timerGetRuntimeStatus()
 
+//--- Get derived 24h status timing info
+Timer24hStatusInfo timerGet24hStatusInfo()
+{
+  Timer24hStatusInfo info;
+  time_t now = time(nullptr);
+  struct tm localTimeInfo;
+  struct tm tomorrowInfo;
+  struct tm yesterdayInfo;
+  uint32_t transitionsTodaySeconds[96];
+  bool transitionsTodayStates[96];
+  size_t transitionsTodayCount = 0;
+  uint32_t transitionsTomorrowSeconds[96];
+  bool transitionsTomorrowStates[96];
+  size_t transitionsTomorrowCount = 0;
+  uint32_t transitionsYesterdaySeconds[96];
+  bool transitionsYesterdayStates[96];
+  size_t transitionsYesterdayCount = 0;
+  uint32_t nowSeconds = 0;
+  uint32_t transitionSeconds = 0;
+
+  info.timeValid = false;
+  info.outputActive = false;
+  info.hasLastOn = false;
+  info.hasLastOff = false;
+  info.hasNextSwitch = false;
+  info.hasNextOff = false;
+  info.lastOnSecondsOfDay = 0;
+  info.lastOffSecondsOfDay = 0;
+  info.nextSwitchSecondsOfDay = 0;
+  info.nextOffSecondsOfDay = 0;
+  info.nextSwitchInSeconds = 0;
+
+  lockTimerState();
+
+  if (appSettings.timerType != TIMER_TYPE_24H)
+  {
+    unlockTimerState();
+
+    return info;
+  }
+
+  if (now <= 0 || localtime_r(&now, &localTimeInfo) == nullptr)
+  {
+    unlockTimerState();
+
+    return info;
+  }
+
+  nowSeconds = static_cast<uint32_t>(localTimeInfo.tm_hour) * 3600UL + static_cast<uint32_t>(localTimeInfo.tm_min) * 60UL + static_cast<uint32_t>(localTimeInfo.tm_sec);
+
+  tomorrowInfo = localTimeInfo;
+  tomorrowInfo.tm_mday += 1;
+  mktime(&tomorrowInfo);
+
+  yesterdayInfo = localTimeInfo;
+  yesterdayInfo.tm_mday -= 1;
+  mktime(&yesterdayInfo);
+
+  build24hDayTransitions(localTimeInfo, transitionsTodaySeconds, transitionsTodayStates, transitionsTodayCount);
+  build24hDayTransitions(tomorrowInfo, transitionsTomorrowSeconds, transitionsTomorrowStates, transitionsTomorrowCount);
+  build24hDayTransitions(yesterdayInfo, transitionsYesterdaySeconds, transitionsYesterdayStates, transitionsYesterdayCount);
+
+  for (size_t transitionIndex = 0; transitionIndex < transitionsTodayCount; transitionIndex++)
+  {
+    if (transitionsTodaySeconds[transitionIndex] <= nowSeconds)
+    {
+      info.outputActive = transitionsTodayStates[transitionIndex];
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  if (findLastTransition(transitionsTodaySeconds, transitionsTodayStates, transitionsTodayCount, nowSeconds, true, transitionSeconds))
+  {
+    info.hasLastOn = true;
+    info.lastOnSecondsOfDay = transitionSeconds;
+  }
+  else if (findLastTransition(transitionsYesterdaySeconds, transitionsYesterdayStates, transitionsYesterdayCount, 86400UL, true, transitionSeconds))
+  {
+    info.hasLastOn = true;
+    info.lastOnSecondsOfDay = transitionSeconds;
+  }
+
+  if (findLastTransition(transitionsTodaySeconds, transitionsTodayStates, transitionsTodayCount, nowSeconds, false, transitionSeconds))
+  {
+    info.hasLastOff = true;
+    info.lastOffSecondsOfDay = transitionSeconds;
+  }
+  else if (findLastTransition(transitionsYesterdaySeconds, transitionsYesterdayStates, transitionsYesterdayCount, 86400UL, false, transitionSeconds))
+  {
+    info.hasLastOff = true;
+    info.lastOffSecondsOfDay = transitionSeconds;
+  }
+
+  if (findNextTransition(transitionsTodaySeconds, transitionsTodayStates, transitionsTodayCount, nowSeconds, false, false, transitionSeconds))
+  {
+    info.hasNextSwitch = true;
+    info.nextSwitchSecondsOfDay = transitionSeconds;
+    info.nextSwitchInSeconds = transitionSeconds - nowSeconds;
+  }
+  else if (findNextTransition(transitionsTomorrowSeconds, transitionsTomorrowStates, transitionsTomorrowCount, 0, false, false, transitionSeconds))
+  {
+    info.hasNextSwitch = true;
+    info.nextSwitchSecondsOfDay = transitionSeconds;
+    info.nextSwitchInSeconds = (86400UL - nowSeconds) + transitionSeconds;
+  }
+
+  if (findNextTransition(transitionsTodaySeconds, transitionsTodayStates, transitionsTodayCount, nowSeconds, true, false, transitionSeconds))
+  {
+    info.hasNextOff = true;
+    info.nextOffSecondsOfDay = transitionSeconds;
+  }
+  else if (findNextTransition(transitionsTomorrowSeconds, transitionsTomorrowStates, transitionsTomorrowCount, 0, true, false, transitionSeconds))
+  {
+    info.hasNextOff = true;
+    info.nextOffSecondsOfDay = transitionSeconds;
+  }
+
+  info.timeValid = true;
+
+  unlockTimerState();
+
+  return info;
+
+} //   timerGet24hStatusInfo()
+
 //--- Check whether timer is busy
 bool timerIsBusy()
 {
@@ -592,6 +729,123 @@ static uint32_t get24hQuarterTransitionOffset(const struct tm& timeInfo, int qua
   return seed % 900UL;
 
 } //   get24hQuarterTransitionOffset()
+
+//--- Build 24h day transitions (seconds-of-day where output changes)
+static void build24hDayTransitions(const struct tm& dayInfo, uint32_t transitionSeconds[96], bool transitionStates[96], size_t& transitionCount)
+{
+  bool currentState = false;
+
+  transitionCount = 0;
+
+  for (uint32_t currentQuarter = 0; currentQuarter < 96UL; currentQuarter++)
+  {
+    uint32_t quarterStartSeconds = currentQuarter * 900UL;
+    uint32_t quarterEndSeconds = quarterStartSeconds + 900UL;
+
+    if (quarterEndSeconds > 86400UL)
+    {
+      quarterEndSeconds = 86400UL;
+    }
+
+    Timer24hQuarterState quarterState = timerGet24hQuarterState(appSettings, static_cast<uint8_t>(currentQuarter / 4UL), static_cast<uint8_t>(currentQuarter % 4UL));
+
+    if (quarterState == TIMER_24H_QUARTER_OFF)
+    {
+      if (currentState && transitionCount < 96)
+      {
+        transitionSeconds[transitionCount] = quarterStartSeconds;
+        transitionStates[transitionCount] = false;
+        transitionCount++;
+      }
+
+      currentState = false;
+      continue;
+    }
+
+    if (quarterState == TIMER_24H_QUARTER_ON)
+    {
+      if (!currentState && transitionCount < 96)
+      {
+        transitionSeconds[transitionCount] = quarterStartSeconds;
+        transitionStates[transitionCount] = true;
+        transitionCount++;
+      }
+
+      currentState = true;
+      continue;
+    }
+
+    bool desiredState = (quarterState == TIMER_24H_QUARTER_RANDOM_ON);
+
+    if (currentState != desiredState)
+    {
+      uint32_t transitionSecondsOfDay = quarterStartSeconds + get24hQuarterTransitionOffset(dayInfo, static_cast<int>(currentQuarter), quarterState);
+
+      if (transitionSecondsOfDay > quarterEndSeconds)
+      {
+        transitionSecondsOfDay = quarterEndSeconds;
+      }
+
+      if (transitionCount < 96)
+      {
+        transitionSeconds[transitionCount] = transitionSecondsOfDay;
+        transitionStates[transitionCount] = desiredState;
+        transitionCount++;
+      }
+
+      currentState = desiredState;
+    }
+  }
+
+} //   build24hDayTransitions()
+
+//--- Find last transition at or before second-of-day
+static bool findLastTransition(const uint32_t transitionSeconds[], const bool transitionStates[], size_t transitionCount, uint32_t nowSeconds, bool targetState, uint32_t& foundSeconds)
+{
+  if (nowSeconds > 86400UL)
+  {
+    nowSeconds = 86400UL;
+  }
+
+  for (size_t transitionIndex = transitionCount; transitionIndex > 0; transitionIndex--)
+  {
+    size_t index = transitionIndex - 1;
+
+    if (transitionSeconds[index] <= nowSeconds && transitionStates[index] == targetState)
+    {
+      foundSeconds = transitionSeconds[index];
+
+      return true;
+    }
+  }
+
+  return false;
+
+} //   findLastTransition()
+
+//--- Find next transition after second-of-day
+static bool findNextTransition(const uint32_t transitionSeconds[], const bool transitionStates[], size_t transitionCount, uint32_t nowSeconds, bool targetStateOnly, bool targetState, uint32_t& foundSeconds)
+{
+  for (size_t transitionIndex = 0; transitionIndex < transitionCount; transitionIndex++)
+  {
+    if (transitionSeconds[transitionIndex] <= nowSeconds)
+    {
+      continue;
+    }
+
+    if (targetStateOnly && transitionStates[transitionIndex] != targetState)
+    {
+      continue;
+    }
+
+    foundSeconds = transitionSeconds[transitionIndex];
+
+    return true;
+  }
+
+  return false;
+
+} //   findNextTransition()
 
 //--- Build 24h runtime segments for current day
 static void build24hRuntimeSegments(const struct tm& timeInfo, uint32_t nowSeconds, bool& outputActive, uint32_t& phaseStartSeconds, uint32_t& phaseEndSeconds, uint32_t& cycleIndex)

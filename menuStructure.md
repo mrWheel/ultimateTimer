@@ -37,6 +37,10 @@
 - Trigger Mode = External:
   - Action row buttons are hidden
   - Text `External Trigger` is shown near the bottom of the screen
+- Timer Type = 24h:
+  - Action row buttons are hidden
+  - Text `24h auto mode` is shown near the bottom of the screen
+  - `Cycles` tile is hidden in the status screen
   |
 "Encoder Long Press"
   |
@@ -48,8 +52,6 @@
 </div>
 
 ```
-- Cyclic Timer Settings -> [Timer Settings Menu]
-- Cyclic Timer Settings -> [Cyclic Timer Settings Menu]
 - 24h Timer Settings -> [24h Timer Settings Menu]
 - Save Profile -> [Save Profile Menu]
 - Load Profile -> [Load Profile Menu]
@@ -84,7 +86,20 @@
 - SHORT press changes the selected hour or quarter-hour state
 - MEDIUM or LONG press saves and returns to [Edit Timer Menu]
 - PIN_KEY0 MEDIUM or LONG press saves and returns to [Edit Timer Menu]
+
+[Cyclic Timer Settings Menu]
+- On Time
+- On Time Unit
+- Off Time
+- Off Time Unit
+- Number of Cycles
+- Trigger Mode (Manual/External)
+- Trigger Edge (Rise/Fall)
+- Lock Input During Run
+- Exit -> return to [Timer Screen]
+- PIN_KEY0 MEDIUM or LONG press -> return to [Edit Timer Menu]
 ### Timer Settings persistence rule (source: `DEFAULT_AUTO_SAVE_LAST_PROFILE`)
+This rule applies to both Cyclic and 24h Timer Settings.
 - `DEFAULT_AUTO_SAVE_LAST_PROFILE=1`:
   - Every change in `Timer Settings Menu` is applied immediately to the active runtime timer state.
   - The same changed state is also written immediately to the active profile.
@@ -92,6 +107,11 @@
   - Every change in `Timer Settings Menu` is applied immediately to the active runtime timer state.
   - The changed state is **not** written to the active profile automatically.
   - Profile write only happens on explicit profile save action.
+
+### Web UI behavior
+- Opening any Web UI menu tile auto-stops the timer.
+- Closing all Web UI menu tiles auto-starts the timer.
+- In Web UI, if `Auto Save Profile` is `No`, pressing `Save Settings` in `Cyclic Timer Settings` or `24h Timer Settings` shows a warning that changes are active but not saved to profile file.
 
 [Save Profile Menu]
 - Confirmation buttons: [No] [Yes]
@@ -101,7 +121,7 @@
 - [No] cancels and returns to [Edit Timer Menu]
 
 [Load Profile Menu]
-- Profile list (always includes built-in `default`)
+  - Profile list (always includes built-in `default` and `default24h`)
 - Loading a profile resets executed cycles to 0
 - Exit (last item) -> return to [Edit Timer Menu]
 
@@ -111,10 +131,10 @@
 
 [Delete Profile Menu]
 - Profile list
-- Default profile is never shown in this list
+  - Default profiles `default` and `default24h` are never shown in this list
 - Selecting a profile opens confirmation buttons: [No] [Yes]
 - Default selection is [No] (least destructive first)
-- Deleting the active profile immediately loads [default]
+  - Deleting the active profile immediately loads the corresponding default profile (`default` for cyclic, `default24h` for 24h)
 - Exit (last item) -> return to [Edit Timer Menu]
 
 [System Settings Menu]

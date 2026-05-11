@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 14:53 ***/
+/*** Last Changed: 2026-05-11 - 16:24 ***/
 #ifndef TIMER_ENGINE_H
 #define TIMER_ENGINE_H
 
@@ -40,6 +40,9 @@ AppSettings timerGetSettings();
 
 //--- Get runtime status
 RuntimeStatus timerGetRuntimeStatus();
+
+//--- Get derived 24h status timing info
+Timer24hStatusInfo timerGet24hStatusInfo();
 
 //--- Check whether timer is busy
 bool timerIsBusy();
