@@ -146,15 +146,15 @@
   - Saves system mutable values (`Output`, `Auto Save Profile`, `Theme`, optional `Restart`).
 
 ## Persistence Model
-- Profile files store only profile-scoped timer fields:
+- Profile files store profile-scoped timer fields:
   - `onTimeValue`
   - `offTimeValue`
   - `onTimeUnit`
   - `offTimeUnit`
   - `repeatCount`
-- System-scoped fields are stored separately in Preferences/NVS:
   - `triggerMode`
   - `triggerEdge`
+- System-scoped fields are stored separately in Preferences/NVS:
   - `outputPolarityHigh`
   - `lockInputDuringRun`
   - `autoSaveLastProfile`

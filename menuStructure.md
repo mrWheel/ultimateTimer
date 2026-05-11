@@ -30,10 +30,13 @@
 </div>
 
 ```
-- Start (SHORT press when selected)
-- Stop (SHORT press when selected)
-- Reset (SHORT press when selected)
-- Action row is shown near the bottom of the screen.
+- Trigger Mode = Manual:
+  - Start (SHORT press when selected)
+  - Stop (SHORT press when selected)
+  - Reset (SHORT press when selected)
+- Trigger Mode = External:
+  - Action row buttons are hidden
+  - Text `External Trigger` is shown near the bottom of the screen
   |
 "Encoder Long Press"
   |
@@ -65,6 +68,7 @@
 - Off Time
 - Off Time Unit
 - Number of Cycles
+- Trigger Mode (Manual/External)
 - Trigger (Rise/Fall)
 - Exit -> return to [Timer Screen]
 - PIN_KEY0 MEDIUM or LONG press -> return to [Edit Timer Menu]
@@ -86,7 +90,7 @@
 - [No] cancels and returns to [Edit Timer Menu]
 
 [Load Profile Menu]
-- Profile list
+- Profile list (always includes built-in `default`)
 - Loading a profile resets executed cycles to 0
 - Exit (last item) -> return to [Edit Timer Menu]
 
@@ -117,15 +121,15 @@
 - Exit -> return to [Edit Timer Menu]
 
 ### Persistence model
-- Profile files store only profile-scoped timer fields:
+- Profile files store profile-scoped timer fields:
   - `onTimeValue`
   - `offTimeValue`
   - `onTimeUnit`
   - `offTimeUnit`
   - `repeatCount`
-- System-scoped settings are stored separately in Preferences/NVS:
   - `triggerMode`
   - `triggerEdge`
+- System-scoped settings are stored separately in Preferences/NVS:
   - `outputPolarityHigh`
   - `lockInputDuringRun`
   - `autoSaveLastProfile`

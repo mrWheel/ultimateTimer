@@ -83,7 +83,8 @@ read `colorSettings.md`
 - Open the local menu with a **long press on the rotary encoder**.
 - Select menu options with a **short press on the rotary encoder**.
 - Menu navigation is clamped (no wrap-around).
-- Timer action row includes `Start`, `Stop`, `Reset`.
+- In `Manual` trigger mode, timer action row includes `Start`, `Stop`, `Reset`.
+- In `External` trigger mode, the action row is replaced by `External Trigger` text (no local start/stop/reset actions).
 - Menu list items are rendered left-aligned with a two-character prefix area: selected item is shown as `> Item <`, unselected items use leading spaces so text starts at the same position.
 
 ### Main menu options
@@ -114,14 +115,16 @@ Current configured values in this repository:
 
 ## Notes
 - Profile files are stored as `/<profileName>.json`
-- Profile files store only: `onTimeValue`, `offTimeValue`, `onTimeUnit`, `offTimeUnit`, and `repeatCount`
-- System-level settings such as trigger mode/edge, output polarity, lock input during run, auto-save profile, theme color, and encoder direction are stored separately in Preferences/NVS
+- Profile files store: `onTimeValue`, `offTimeValue`, `onTimeUnit`, `offTimeUnit`, `repeatCount`, `triggerMode`, and `triggerEdge`
+- System-level settings such as output polarity, lock input during run, auto-save profile, theme color, and encoder direction are stored separately in Preferences/NVS
+- Built-in profile `default` is always available in the Load Profile list
 - Built-in profile `default` cannot be deleted and is hidden from the Delete Profile list
 - If the active profile is deleted, firmware automatically loads `default`
 - The fallback access point is open (no password)
 - If no WiFi credentials are found (or STA connection fails), use the local `WiFi Setup` menu: scan nearby APs, select SSID with the rotary encoder, then enter the WiFi password via rotary text input and save/apply.
 - The local UI currently includes timer and profile management
 - Local TFT WiFi credential editing is available through the rotary menu
+- If LittleFS marker file `/firstBoot` exists at startup, firmware skips WiFi startup for that boot, erases stored STA credentials, shows `firstBoot / WiFi init skipped`, and removes the marker file
 
 ## TFT display behavior
 - All TFT text is rendered with the built-in monospaced font.
