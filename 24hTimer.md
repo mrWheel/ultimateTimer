@@ -72,7 +72,7 @@ Examples:
 ## Local TFT Editor Behaviour
 The local editor presents one hour at a time using a **cursor / locked** display convention:
 
-- `<XX>` — value is under the cursor; rotating the encoder changes it
+- `>XX<` — value is under the cursor; rotating the encoder changes it
 - `[XX]` — value is locked (confirmed by a short press)
 
 On entering the 24h timer menu, the cursor is placed at the **current clock hour**.
@@ -82,10 +82,10 @@ The editor uses four sequential focus levels:
 
 | Level | Focus | Encoder rotates | Short press |
 |---|---|---|---|
-| 0 | **Hour** `<HH>` with derived **Type** `[X]` | Hour 00–23 (wraps) | Lock hour → move to Type |
-| 1 | **Type** `<X>` | Type: `+`, `-`, `R`, `r`, `S` (wraps) | If `S` → move to Quarter Slot; else apply to all 4 quarters and return to Hour |
-| 2 | **Quarter Slot** `<00-15>` | Slot: 00-15, 16-30, 31-45, 46-59 (wraps) | Lock slot → move to Quarter Type |
-| 3 | **Quarter Type** `<X>` | Type: `+`, `-`, `R`, `r` (wraps) | Apply to this quarter; return to Quarter Slot |
+| 0 | **Hour** `>HH<` with derived **Type** `[X]` | Hour 00–23 (wraps) | Lock hour → move to Type |
+| 1 | **Type** `>X<` | Type: `+`, `-`, `R`, `r`, `S` (wraps) | If `S` → move to Quarter Slot; else apply to all 4 quarters and return to Hour |
+| 2 | **Quarter Slot** `>00-15<` | Slot: 00-15, 16-30, 31-45, 46-59 (wraps) | Lock slot → move to Quarter Type |
+| 3 | **Quarter Type** `>X<` | Type: `+`, `-`, `R`, `r` (wraps) | Apply to this quarter; return to Quarter Slot |
 
 **Hour focus behavior:**
 - The hour type is always shown as `[type]` (locked, not under cursor).
@@ -103,7 +103,7 @@ Hour focus (type derived from quarters and displayed, quarters shown if type is 
 24h Timer
 ┌──────────────────────────────────┐
 │ Hour              │ Type         │
-│ <05>              │ [R]          │
+│ >05<              │ [R]          │
 └──────────────────────────────────┘
 Turn=Select hour  Short=Lock
 Hold=Save+Back  K0=Back
@@ -114,7 +114,7 @@ Hour focus with type `S` — quarters are visible below:
 24h Timer
 ┌──────────────────────────────────┐
 │ Hour              │ Type         │
-│ <05>              │ [S]          │
+│ >05<              │ [S]          │
 └──────────────────────────────────┘
  [00-15] [16-30] [31-45] [46-59]
  [-]     [+]     [R]     [-]
@@ -127,18 +127,18 @@ Type focus (hour locked, type under cursor, quarters shown only if type is `S`):
 24h Timer
 ┌──────────────────────────────────┐
 │ Hour              │ Type         │
-│ [05]              │ <R>          │
+│ [05]              │ >R<          │
 └──────────────────────────────────┘
 Turn=Select type  Short=Set
 Hold=Save+Back  K0=Back
 ```
 
-Type = `S` — quarters become editable when type cursor shows `<S>`:
+Type = `S` — quarters become editable when type cursor shows `>S<`:
 ```
 24h Timer
 ┌──────────────────────────────────┐
 │ Hour              │ Type         │
-│ [05]              │ <S>          │
+│ [05]              │ >S<          │
 └──────────────────────────────────┘
  [00-15] [16-30] [31-45] [46-59]
  [-]     [+]     [R]     [-]
@@ -148,7 +148,7 @@ Hold=Save+Back  K0=Back
 
 Quarter Slot focus (type locked as `[S]`, slot under cursor):
 ```
- <00-15> [16-30] [31-45] [46-59]
+ >00-15< [16-30] [31-45] [46-59]
  [-]     [+]     [R]     [-]
 Turn=Quarter  Short=Edit type
 ```
@@ -156,7 +156,7 @@ Turn=Quarter  Short=Edit type
 Quarter Type focus (slot locked, type under cursor):
 ```
  [00-15] [16-30] [31-45] [46-59]
- <->     [+]     [R]     [-]
+ >-<     [+]     [R]     [-]
 Turn=Type  Short=Set type
 ```
 

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-12 - 11:45 ***/
+/*** Last Changed: 2026-05-12 - 12:15 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -711,6 +711,7 @@ body {
           <thead>
             <tr>
               <th>Hour</th>
+              <th>Type</th>
               <th>00-15</th>
               <th>16-30</th>
               <th>31-45</th>
@@ -1015,6 +1016,47 @@ function get24hQuarterStateLabel(state)
   }
 }
 
+function get24hHourTypeLabel(type)
+{
+  if (Number(type) === 4)
+  {
+    return 'S';
+  }
+
+  return get24hQuarterStateLabel(type);
+}
+
+function get24hHourTypeFromQuarterStates(quarterValues)
+{
+  const first = Number(quarterValues[0]);
+
+  for (let quarter = 1; quarter < 4; quarter++)
+  {
+    if (Number(quarterValues[quarter]) !== first)
+    {
+      return 4;
+    }
+  }
+
+  return (Number.isFinite(first) && first >= 0 && first <= 3) ? first : 0;
+}
+
+function build24hHourTypeSelectHtml(hourIndex, selectedType)
+{
+  const selected = Number(selectedType);
+  let html = '<select class="timer24hHourTypeSelect" data-hour="' + String(hourIndex) + '" onchange="handle24hHourTypeChange(' + String(hourIndex) + ')">';
+
+  for (let type = 0; type <= 4; type++)
+  {
+    const isSelected = type === selected ? ' selected' : '';
+    html += '<option value="' + String(type) + '"' + isSelected + '>' + get24hHourTypeLabel(type) + '</option>';
+  }
+
+  html += '</select>';
+
+  return html;
+}
+
 function build24hQuarterSelectHtml(hourIndex, quarterIndex, selectedState)
 {
   const selected = Number(selectedState);
@@ -1029,6 +1071,45 @@ function build24hQuarterSelectHtml(hourIndex, quarterIndex, selectedState)
   html += '</select>';
 
   return html;
+}
+
+function set24hHourQuarterMutability(hourIndex, splitEnabled)
+{
+  const quarterSelects = document.querySelectorAll('#timer24hEditorBody select.timer24hQuarterSelect[data-hour="' + String(hourIndex) + '"]');
+
+  for (const quarterSelect of quarterSelects)
+  {
+    quarterSelect.disabled = !splitEnabled;
+  }
+}
+
+function apply24hHourTypeToRow(hourIndex)
+{
+  const hourTypeSelect = document.querySelector('#timer24hEditorBody select.timer24hHourTypeSelect[data-hour="' + String(hourIndex) + '"]');
+
+  if (!hourTypeSelect)
+  {
+    return;
+  }
+
+  const hourType = Number(hourTypeSelect.value);
+  const splitEnabled = hourType === 4;
+  const quarterSelects = document.querySelectorAll('#timer24hEditorBody select.timer24hQuarterSelect[data-hour="' + String(hourIndex) + '"]');
+
+  if (!splitEnabled && hourType >= 0 && hourType <= 3)
+  {
+    for (const quarterSelect of quarterSelects)
+    {
+      quarterSelect.value = String(hourType);
+    }
+  }
+
+  set24hHourQuarterMutability(hourIndex, splitEnabled);
+}
+
+function handle24hHourTypeChange(hourIndex)
+{
+  apply24hHourTypeToRow(hourIndex);
 }
 
 function render24hEditorFromArray(quarterStates)
@@ -1046,6 +1127,8 @@ function render24hEditorFromArray(quarterStates)
   for (let hour = 0; hour < 24; hour++)
   {
     const hourLabel = String(hour).padStart(2, '0');
+    const rowQuarterStates = [0, 0, 0, 0];
+
     rowsHtml += '<tr>';
     rowsHtml += '<td class="timer24hEditorHour">' + hourLabel + '</td>';
 
@@ -1054,13 +1137,52 @@ function render24hEditorFromArray(quarterStates)
       const index = (hour * 4) + quarter;
       const value = Number(states[index] ?? 0);
       const normalized = (Number.isFinite(value) && value >= 0 && value <= 3) ? value : 0;
-      rowsHtml += '<td>' + build24hQuarterSelectHtml(hour, quarter, normalized) + '</td>';
+
+      rowQuarterStates[quarter] = normalized;
+    }
+
+    rowsHtml += '<td>' + build24hHourTypeSelectHtml(hour, get24hHourTypeFromQuarterStates(rowQuarterStates)) + '</td>';
+
+    for (let quarter = 0; quarter < 4; quarter++)
+    {
+      rowsHtml += '<td>' + build24hQuarterSelectHtml(hour, quarter, rowQuarterStates[quarter]) + '</td>';
     }
 
     rowsHtml += '</tr>';
   }
 
   body.innerHTML = rowsHtml;
+
+  for (let hour = 0; hour < 24; hour++)
+  {
+    apply24hHourTypeToRow(hour);
+  }
+
+  // Add change event listeners to quarter selects for reverse sync
+  const quarterSelects = document.querySelectorAll('#timer24hEditorBody select.timer24hQuarterSelect');
+  for (const select of quarterSelects)
+  {
+    select.addEventListener('change', function() {
+      const hourIndex = Number(this.dataset.hour);
+      // Get all quarters for this hour
+      const hourQuarterSelects = document.querySelectorAll('#timer24hEditorBody select.timer24hQuarterSelect[data-hour="' + String(hourIndex) + '"]');
+      const quarterStates = [];
+      for (const q of hourQuarterSelects)
+      {
+        quarterStates.push(Number(q.value));
+      }
+      // Derive new hour type from quarters
+      const newHourType = get24hHourTypeFromQuarterStates(quarterStates);
+      // Update hour type select
+      const hourTypeSelect = document.querySelector('#timer24hEditorBody select.timer24hHourTypeSelect[data-hour="' + String(hourIndex) + '"]');
+      if (hourTypeSelect)
+      {
+        hourTypeSelect.value = String(newHourType);
+      }
+      // Apply the new hour type to update disabled states
+      apply24hHourTypeToRow(hourIndex);
+    });
+  }
 }
 
 function read24hQuarterStatesFromEditor()

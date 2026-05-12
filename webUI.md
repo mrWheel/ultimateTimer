@@ -80,8 +80,12 @@ Warp Speed behavior:
   - `Trigger Mode`
   - `Trigger Edge`
   - `Lock Input While Running`
-  - quarter-hour editor table: 24 rows (`00`..`23`) × 4 quarter slots (`00-15`, `16-30`, `31-45`, `46-59`)
-  - quarter state values: `-`, `+`, `R`, `r`
+  - 24h editor table: 24 rows (`00`..`23`) with:
+    - one hour type selector (`-`, `+`, `R`, `r`, `S`)
+    - four quarter slots (`00-15`, `16-30`, `31-45`, `46-59`)
+  - hour type behavior:
+    - selecting `-`, `+`, `R`, or `r` applies that value to all 4 quarters in the row and locks quarter selectors
+    - selecting `S` enables per-quarter editing and unlocks quarter selectors
 - Buttons:
   - `Cancel`
   - `Save Settings`

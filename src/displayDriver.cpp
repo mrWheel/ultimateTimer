@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-12 - 11:43 ***/
+/*** Last Changed: 2026-05-12 - 12:15 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -553,7 +553,7 @@ void displayDraw24hTimerEditor(uint8_t hourIndex, bool hourIsCursor, const char*
   tft.print("Hour");
 
   //-- Hour value with cursor or lock brackets
-  snprintf(labelBuf, sizeof(labelBuf), hourIsCursor ? "<%02u>" : "[%02u]", static_cast<unsigned>(hourIndex));
+  snprintf(labelBuf, sizeof(labelBuf), hourIsCursor ? ">%02u<" : "[%02u]", static_cast<unsigned>(hourIndex));
   tft.setTextSize(3);
   tft.setCursor(tileX + 12, topTileY + 32);
   tft.print(labelBuf);
@@ -566,7 +566,7 @@ void displayDraw24hTimerEditor(uint8_t hourIndex, bool hourIsCursor, const char*
     tft.setCursor(tileX + 180, topTileY + 6);
     tft.print("Type");
 
-    snprintf(labelBuf, sizeof(labelBuf), typeIsCursor ? "<%s>" : "[%s]", typeLabel);
+    snprintf(labelBuf, sizeof(labelBuf), typeIsCursor ? ">%s<" : "[%s]", typeLabel);
     tft.setTextSize(3);
     tft.setCursor(tileX + 180, topTileY + 32);
     tft.print(labelBuf);
@@ -588,7 +588,7 @@ void displayDraw24hTimerEditor(uint8_t hourIndex, bool hourIsCursor, const char*
 
       //-- Slot name row (textSize 1: 6x8 px per char)
       bool slotHasCursor = isActive && quarterSlotHasCursor;
-      snprintf(labelBuf, sizeof(labelBuf), slotHasCursor ? "<%s>" : "[%s]", slotNames[q]);
+      snprintf(labelBuf, sizeof(labelBuf), slotHasCursor ? ">%s<" : "[%s]", slotNames[q]);
       tft.setTextSize(1);
       tft.getTextBounds(labelBuf, 0, 0, &textX1, &textY1, &textW, &textH);
       centerX = buttonX + ((buttonWidth - static_cast<int>(textW)) / 2);
@@ -610,7 +610,7 @@ void displayDraw24hTimerEditor(uint8_t hourIndex, bool hourIsCursor, const char*
         stateLabel = quarterStateLabels[q];
       }
 
-      snprintf(labelBuf, sizeof(labelBuf), stateHasCursor ? "<%s>" : "[%s]", stateLabel);
+      snprintf(labelBuf, sizeof(labelBuf), stateHasCursor ? ">%s<" : "[%s]", stateLabel);
       tft.setTextSize(2);
       tft.getTextBounds(labelBuf, 0, 0, &textX1, &textY1, &textW, &textH);
       centerX = buttonX + ((buttonWidth - static_cast<int>(textW)) / 2);
