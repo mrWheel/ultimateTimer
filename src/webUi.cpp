@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 16:24 ***/
+/*** Last Changed: 2026-05-12 - 10:56 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -634,11 +634,11 @@ body {
           <div id="statusState" class="statusValue">-</div>
         </div>
         <div class="statusItem">
-          <div class="statusLabel">On Time</div>
+          <div id="statusOnLabel" class="statusLabel">On Time</div>
           <div id="statusOn" class="statusValue">-</div>
         </div>
         <div class="statusItem">
-          <div class="statusLabel">Off Time</div>
+          <div id="statusOffLabel" class="statusLabel">Off Time</div>
           <div id="statusOff" class="statusValue">-</div>
         </div>
         <div class="statusItem statusWide">
@@ -979,6 +979,20 @@ function formatHhMmSsFromSeconds(totalSeconds)
   return hours + ':' + minutes + ':' + seconds;
 }
 
+function formatHhMmFromSeconds(totalSeconds)
+{
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0)
+  {
+    return '--:--';
+  }
+
+  const normalized = Math.floor(totalSeconds) % 86400;
+  const hours = String(Math.floor(normalized / 3600)).padStart(2, '0');
+  const minutes = String(Math.floor((normalized % 3600) / 60)).padStart(2, '0');
+
+  return hours + ':' + minutes;
+}
+
 function get24hQuarterStateLabel(state)
 {
   switch (Number(state))
@@ -1293,6 +1307,8 @@ async function refreshStatus()
     ? 'OFF [---:--]'
     : (data.runtime.outputActive ? 'ON' : 'OFF') + ' [' + countdown + ' to ' + nextPhase + ']';
 
+  let statusOnLabelText = 'On Time';
+  let statusOffLabelText = 'Off Time';
   let statusOnText = data.settings.onTimeValue + ' ' + data.settings.onTimeUnitLabel;
   let statusOffText = data.settings.offTimeValue + ' ' + data.settings.offTimeUnitLabel;
   let statusOutputText = outputLabelCyclic;
@@ -1306,23 +1322,25 @@ async function refreshStatus()
     const hasLastOn = !!status24h.hasLastOn;
     const hasLastOff = !!status24h.hasLastOff;
     const nextSwitchClock = hasNextSwitch
-      ? formatHhMmSsFromSeconds(Number(status24h.nextSwitchSeconds || 0))
-      : '--:--:--';
+      ? formatHhMmFromSeconds(Number(status24h.nextSwitchSeconds || 0))
+      : '--:--';
     const nextOffClock = hasNextOff
-      ? formatHhMmSsFromSeconds(Number(status24h.nextOffSeconds || 0))
-      : '--:--:--';
+      ? formatHhMmFromSeconds(Number(status24h.nextOffSeconds || 0))
+      : '--:--';
     const lastOnClock = hasLastOn
-      ? formatHhMmSsFromSeconds(Number(status24h.lastOnSeconds || 0))
-      : '--:--:--';
+      ? formatHhMmFromSeconds(Number(status24h.lastOnSeconds || 0))
+      : '--:--';
     const lastOffClock = hasLastOff
-      ? formatHhMmSsFromSeconds(Number(status24h.lastOffSeconds || 0))
-      : '--:--:--';
+      ? formatHhMmFromSeconds(Number(status24h.lastOffSeconds || 0))
+      : '--:--';
     const nextSwitchIn = hasNextSwitch
       ? formatHhMmSsFromSeconds(Number(status24h.nextSwitchInSeconds || 0))
       : '--:--:--';
 
-    statusOnText = outputActive24h ? lastOnClock : nextSwitchClock;
-    statusOffText = outputActive24h ? nextOffClock : lastOffClock;
+    statusOnLabelText = outputActive24h ? 'Last State Change ON' : 'Last State Change OFF';
+    statusOffLabelText = outputActive24h ? 'Next State Change OFF' : 'Next State Change ON';
+    statusOnText = outputActive24h ? lastOnClock : lastOffClock;
+    statusOffText = outputActive24h ? nextOffClock : nextSwitchClock;
     statusOutputText = (outputActive24h ? 'ON' : 'OFF') + ' [' + nextSwitchIn + ']';
   }
 
@@ -1344,6 +1362,8 @@ async function refreshStatus()
   }
 
   // === Always update Timer Screen display ===
+  document.getElementById('statusOnLabel').textContent = statusOnLabelText;
+  document.getElementById('statusOffLabel').textContent = statusOffLabelText;
   document.getElementById('statusState').textContent = data.runtime.stateLabel;
   document.getElementById('statusOn').textContent = statusOnText;
   document.getElementById('statusOff').textContent = statusOffText;

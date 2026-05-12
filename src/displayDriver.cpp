@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 16:24 ***/
+/*** Last Changed: 2026-05-12 - 10:56 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -46,8 +46,8 @@ static void drawStatusActionButtons(int statusActionIndex, bool externalTriggerM
 //--- Format remaining duration text from milliseconds
 static std::string formatRemainingMs(uint32_t remainingMs);
 
-//--- Format seconds-of-day as HH:MM:SS
-static std::string formatHhMmSsFromSecondsOfDay(uint32_t secondsOfDay);
+//--- Format seconds-of-day as HH:MM
+static std::string formatHhMmFromSecondsOfDay(uint32_t secondsOfDay);
 
 //--- Format duration in seconds as HH:MM:SS
 static std::string formatDurationHhMmSs(uint32_t totalSeconds);
@@ -167,6 +167,10 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
   char buffer[32];
   std::string stateValue = timerGetStateLabel(runtimeStatus.state);
   std::string profileValue = settings.profileName.c_str();
+  std::string leftTimeTileLabel = "ON TIME";
+  std::string rightTimeTileLabel = "OFF TIME";
+  std::string leftTimeTileValue = "";
+  std::string rightTimeTileValue = "";
   std::array<std::string, statusLineCount> nextStatusLines;
   bool is24hTimer = (settings.timerType == TIMER_TYPE_24H);
 
@@ -183,30 +187,35 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
   nextStatusLines[0] = stateValue + "|" + profileValue;
   if (is24hTimer)
   {
+    bool outputActive24h = status24h.timeValid ? status24h.outputActive : runtimeStatus.outputActive;
+
+    leftTimeTileLabel = outputActive24h ? "LAST STATE CHANGE ON" : "LAST STATE CHANGE OFF";
+    rightTimeTileLabel = outputActive24h ? "NEXT STATE CHANGE OFF" : "NEXT STATE CHANGE ON";
+
     if (status24h.timeValid)
     {
-      std::string nextSwitchClock = status24h.hasNextSwitch ? formatHhMmSsFromSecondsOfDay(status24h.nextSwitchSecondsOfDay) : "--:--:--";
-      std::string nextOffClock = status24h.hasNextOff ? formatHhMmSsFromSecondsOfDay(status24h.nextOffSecondsOfDay) : "--:--:--";
-      std::string lastOnClock = status24h.hasLastOn ? formatHhMmSsFromSecondsOfDay(status24h.lastOnSecondsOfDay) : "--:--:--";
-      std::string lastOffClock = status24h.hasLastOff ? formatHhMmSsFromSecondsOfDay(status24h.lastOffSecondsOfDay) : "--:--:--";
+      std::string nextSwitchClock = status24h.hasNextSwitch ? formatHhMmFromSecondsOfDay(status24h.nextSwitchSecondsOfDay) : "--:--";
+      std::string nextOffClock = status24h.hasNextOff ? formatHhMmFromSecondsOfDay(status24h.nextOffSecondsOfDay) : "--:--";
+      std::string lastOnClock = status24h.hasLastOn ? formatHhMmFromSecondsOfDay(status24h.lastOnSecondsOfDay) : "--:--";
+      std::string lastOffClock = status24h.hasLastOff ? formatHhMmFromSecondsOfDay(status24h.lastOffSecondsOfDay) : "--:--";
 
-      nextStatusLines[1] = status24h.outputActive ? lastOnClock : nextSwitchClock;
-      nextStatusLines[2] = status24h.outputActive ? nextOffClock : lastOffClock;
-      nextStatusLines[3] = std::string(status24h.outputActive ? "ON  " : "OFF ") + (status24h.hasNextSwitch ? formatDurationHhMmSs(status24h.nextSwitchInSeconds) : "--:--:--");
+      leftTimeTileValue = outputActive24h ? lastOnClock : lastOffClock;
+      rightTimeTileValue = outputActive24h ? nextOffClock : nextSwitchClock;
+      nextStatusLines[3] = std::string(outputActive24h ? "ON  " : "OFF ") + (status24h.hasNextSwitch ? formatDurationHhMmSs(status24h.nextSwitchInSeconds) : "--:--:--");
     }
     else
     {
-      nextStatusLines[1] = "--:--:--";
-      nextStatusLines[2] = "--:--:--";
-      nextStatusLines[3] = std::string(runtimeStatus.outputActive ? "ON  " : "OFF ") + "--:--:--";
+      leftTimeTileValue = "--:--";
+      rightTimeTileValue = "--:--";
+      nextStatusLines[3] = std::string(outputActive24h ? "ON  " : "OFF ") + "--:--:--";
     }
   }
   else
   {
     snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.onTimeValue), timerGetTimeUnitLabel(settings.onTimeUnit));
-    nextStatusLines[1] = buffer;
+    leftTimeTileValue = buffer;
     snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.offTimeValue), timerGetTimeUnitLabel(settings.offTimeUnit));
-    nextStatusLines[2] = buffer;
+    rightTimeTileValue = buffer;
 
     uint32_t remainingMs = 0;
 
@@ -232,6 +241,9 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
 
     nextStatusLines[3] = outputValue;
   }
+
+  nextStatusLines[1] = leftTimeTileLabel + "|" + leftTimeTileValue;
+  nextStatusLines[2] = rightTimeTileLabel + "|" + rightTimeTileValue;
 
   uint32_t displayCycle = runtimeStatus.currentCycle;
 
@@ -299,11 +311,11 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     }
 
     case 1:
-      drawStatusTile(col1X, tileStartY + tileH + tileGap, col1W, tileH, "ON TIME", nextStatusLines[1]);
+      drawStatusTile(col1X, tileStartY + tileH + tileGap, col1W, tileH, leftTimeTileLabel.c_str(), leftTimeTileValue);
       break;
 
     case 2:
-      drawStatusTile(col2X, tileStartY + tileH + tileGap, col2W, tileH, "OFF TIME", nextStatusLines[2]);
+      drawStatusTile(col2X, tileStartY + tileH + tileGap, col2W, tileH, rightTimeTileLabel.c_str(), rightTimeTileValue);
       break;
 
     case 3:
@@ -1346,20 +1358,19 @@ static std::string formatRemainingMs(uint32_t remainingMs)
 
 } //   formatRemainingMs()
 
-//--- Format seconds-of-day as HH:MM:SS
-static std::string formatHhMmSsFromSecondsOfDay(uint32_t secondsOfDay)
+//--- Format seconds-of-day as HH:MM
+static std::string formatHhMmFromSecondsOfDay(uint32_t secondsOfDay)
 {
   uint32_t normalized = secondsOfDay % 86400UL;
   uint32_t hours = normalized / 3600UL;
   uint32_t minutes = (normalized % 3600UL) / 60UL;
-  uint32_t seconds = normalized % 60UL;
   char buffer[16];
 
-  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes));
 
   return std::string(buffer);
 
-} //   formatHhMmSsFromSecondsOfDay()
+} //   formatHhMmFromSecondsOfDay()
 
 //--- Format duration in seconds as HH:MM:SS
 static std::string formatDurationHhMmSs(uint32_t totalSeconds)

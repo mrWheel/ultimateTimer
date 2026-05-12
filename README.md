@@ -91,7 +91,7 @@ read `colorSettings.md`
 ## Local TFT controls
 - Timer screen shows:
 	- cyclic timer: `State`, `On time`, `Off time`, `Output`, and `Cycles`
-	- 24h timer: `State`, `On time`, `Off time`, `Output` (no `Cycles` tile)
+	- 24h timer: `State`, `Last State Change (ON/OFF)`, `Next State Change (OFF/ON)`, `Output` (no `Cycles` tile)
 - `Output` line includes a live countdown timer (`MMM:SS`) to the next ON/OFF switch while running/paused.
 - Open the local menu with a **long press on the rotary encoder**.
 - Select menu options with a **short press on the rotary encoder**.

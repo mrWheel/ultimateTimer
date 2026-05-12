@@ -26,8 +26,8 @@
 - The `Timer Screen` tile is always visible.
 - It shows:
   - `State`
-  - `On Time`
-  - `Off Time`
+  - `On Time` and `Off Time` for cyclic timers
+  - `Last State Change (ON/OFF)` and `Next State Change (OFF/ON)` for 24h timers
   - `Output` (including countdown)
   - `Cycles` (`current/INF` when repeat count is `0`) for cyclic timers only
 - Action buttons:
