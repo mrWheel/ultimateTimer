@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 15:49 ***/
+/*** Last Changed: 2026-05-12 - 11:43 ***/
 #ifndef SETTINGS_STORE_H
 #define SETTINGS_STORE_H
 
@@ -34,6 +34,12 @@ bool settingsStoreLoadEncoderDirectionReversed();
 
 //--- Save encoder direction reversal state
 void settingsStoreSaveEncoderDirectionReversed(bool reversed);
+
+//--- Load warp speed enabled state
+bool settingsStoreLoadWarpSpeedEnabled();
+
+//--- Save warp speed enabled state
+void settingsStoreSaveWarpSpeedEnabled(bool enabled);
 
 //--- Load output polarity default state
 bool settingsStoreLoadOutputPolarityHigh();

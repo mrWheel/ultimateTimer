@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-04-18 - 15:49 ***/
+/*** Last Changed: 2026-05-12 - 11:43 ***/
 #include "settingsStore.h"
 #include "appConfig.h"
 
@@ -104,6 +104,22 @@ void settingsStoreSaveEncoderDirectionReversed(bool reversed)
   ESP_LOGI(logTag, "Encoder direction reversed saved: %s", reversed ? "true" : "false");
 
 } //   settingsStoreSaveEncoderDirectionReversed()
+
+//--- Load warp speed enabled state
+bool settingsStoreLoadWarpSpeedEnabled()
+{
+  return preferences.getBool("warpSpd", false);
+
+} //   settingsStoreLoadWarpSpeedEnabled()
+
+//--- Save warp speed enabled state
+void settingsStoreSaveWarpSpeedEnabled(bool enabled)
+{
+  preferences.putBool("warpSpd", enabled);
+
+  ESP_LOGI(logTag, "Warp speed enabled saved: %s", enabled ? "true" : "false");
+
+} //   settingsStoreSaveWarpSpeedEnabled()
 
 //--- Load output polarity default state
 bool settingsStoreLoadOutputPolarityHigh()

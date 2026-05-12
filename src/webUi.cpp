@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-12 - 11:06 ***/
+/*** Last Changed: 2026-05-12 - 11:43 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -654,6 +654,10 @@ body {
           <div class="statusLabel">Cycles</div>
           <div id="statusCycles" class="statusValue">-</div>
         </div>
+        <div class="statusItem" id="statusWarpModeItem" style="display:none;">
+          <div class="statusLabel">Warp Mode</div>
+          <div id="statusWarpMode" class="statusValue">-</div>
+        </div>
       </div>
 
       <div class="actions">
@@ -738,6 +742,7 @@ body {
         <div class="fieldRow"><label for="systemOutputPolarity">Output</label><select id="systemOutputPolarity"><option value="1">Active HIGH</option><option value="0">Active LOW</option></select></div>
         <div class="fieldRow"><label for="systemAutoSaveLastProfile">Auto Save Profile</label><select id="systemAutoSaveLastProfile"><option value="1">Yes</option><option value="0">No</option></select></div>
         <div class="fieldRow"><label for="systemThemeIndex">Theme</label><select id="systemThemeIndex"><option value="0">Red</option><option value="1">Green</option><option value="2">Blue</option><option value="3">Indigo</option><option value="4">Violet</option><option value="5">Yellow</option></select></div>
+        <div class="fieldRow"><label for="systemWarpSpeed">Warp Speed</label><select id="systemWarpSpeed"><option value="0">Disabled</option><option value="1">Enabled</option></select></div>
         <div class="fieldRow"><label for="systemRestart">Restart Ultimate Timer</label><select id="systemRestart"><option value="0">No</option><option value="1">Yes</option></select></div>
       </div>
       <div class="metaCard">
@@ -1386,6 +1391,21 @@ async function refreshStatus()
         ? String(displayCycle) + '/INF'
         : String(displayCycle) + '/' + String(data.runtime.totalCycles);
   }
+
+  //-- Update Warp Mode status (tile visible only when enabled)
+  const statusWarpModeItem = document.getElementById('statusWarpModeItem');
+  if (statusWarpModeItem)
+  {
+    const warpEnabled = !!data.settings.warpSpeedEnabled;
+
+    statusWarpModeItem.style.display = warpEnabled ? '' : 'none';
+
+    if (warpEnabled)
+    {
+      document.getElementById('statusWarpMode').textContent = 'Enabled';
+    }
+  }
+
   document.getElementById('headerNetworkInfo').textContent =
     'Network: ' + (data.network.connected ? 'Connected' : 'Not connected') + ' | IP: ' + data.network.address;
 
@@ -1458,6 +1478,7 @@ async function refreshStatus()
     document.getElementById('systemOutputPolarity').value = data.settings.outputPolarityHigh ? '1' : '0';
     document.getElementById('systemAutoSaveLastProfile').value = data.settings.autoSaveLastProfile ? '1' : '0';
     document.getElementById('systemThemeIndex').value = String(data.settings.themeColorIndex || 0);
+    document.getElementById('systemWarpSpeed').value = data.settings.warpSpeedEnabled ? '1' : '0';
   }
 
   applyTimeInputConstraints();
@@ -1574,6 +1595,7 @@ function readSystemFromForm()
     outputPolarityHigh: document.getElementById('systemOutputPolarity').value === '1',
     autoSaveLastProfile: document.getElementById('systemAutoSaveLastProfile').value === '1',
     themeColorIndex: Number(document.getElementById('systemThemeIndex').value),
+    warpSpeedEnabled: document.getElementById('systemWarpSpeed').value === '1',
     restart: document.getElementById('systemRestart').value === '1'
   };
 }
@@ -2157,6 +2179,7 @@ static void handleSaveSystem()
   }
 
   bool outputPolarityHigh = doc["outputPolarityHigh"] | settingsStoreLoadOutputPolarityHigh();
+  bool warpSpeedEnabled = doc["warpSpeedEnabled"] | settingsStoreLoadWarpSpeedEnabled();
   bool restartRequested = doc["restart"] | false;
   bool themeChanged = (displayGetThemeColorIndex() != static_cast<int>(themeColorIndex));
 
@@ -2168,6 +2191,7 @@ static void handleSaveSystem()
 
   settingsStoreSaveThemeColorIndex(themeColorIndex);
   displaySetThemeColorIndex(themeColorIndex);
+  settingsStoreSaveWarpSpeedEnabled(warpSpeedEnabled);
 
   if (themeChanged)
   {
@@ -2232,6 +2256,7 @@ static void fillStatusDocument(JsonDocument& doc)
   doc["settings"]["themeColorIndex"] = themeColorIndex;
   doc["settings"]["themeColorName"] = colorProfiles[themeColorIndex].colorName;
   doc["settings"]["encoderOrderLabel"] = settingsStoreLoadEncoderDirectionReversed() ? "B-A" : "A-B";
+  doc["settings"]["warpSpeedEnabled"] = settingsStoreLoadWarpSpeedEnabled();
 
   doc["runtime"]["state"] = static_cast<int>(runtimeStatus.state);
   doc["runtime"]["stateLabel"] = timerGetStateLabel(runtimeStatus.state);

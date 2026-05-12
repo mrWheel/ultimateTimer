@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 16:24 ***/
+/*** Last Changed: 2026-05-12 - 11:43 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -9,6 +9,7 @@
 #include "timerEngine.h"
 #include "WiFiManagerExt.h"
 #include "appConfig.h"
+#include "warpMachine.h"
 
 #include <WiFi.h>
 #include <cstdlib>
@@ -59,13 +60,14 @@ enum SystemSettingsItem
   SYSTEM_SETTINGS_ITEM_MAC_ADDRESS = 2,
   SYSTEM_SETTINGS_ITEM_WIFI_DISABLED = 3,
   SYSTEM_SETTINGS_ITEM_ENCODER_ORDER = 4,
-  SYSTEM_SETTINGS_ITEM_ERASE_WIFI = 5,
-  SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER = 6,
-  SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY = 7,
-  SYSTEM_SETTINGS_ITEM_AUTO_SAVE_PROFILE = 8,
-  SYSTEM_SETTINGS_ITEM_THEME_COLOR = 9,
-  SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER = 10,
-  SYSTEM_SETTINGS_ITEM_EXIT = 11
+  SYSTEM_SETTINGS_ITEM_WARP_SPEED = 5,
+  SYSTEM_SETTINGS_ITEM_ERASE_WIFI = 6,
+  SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER = 7,
+  SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY = 8,
+  SYSTEM_SETTINGS_ITEM_AUTO_SAVE_PROFILE = 9,
+  SYSTEM_SETTINGS_ITEM_THEME_COLOR = 10,
+  SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER = 11,
+  SYSTEM_SETTINGS_ITEM_EXIT = 12
 };
 
 //--- Profile list modes
@@ -129,6 +131,7 @@ static const String systemSettingsMenuItems[] =
         "MAC Address",
         "WiFi Disabled",
         "Encoder Order",
+        "Warp Speed",
         "Erase WiFi credentials",
         "Start WiFi Manager",
         "Output Polarity",
@@ -872,7 +875,7 @@ static void open24hTimerMenu(bool selectExitItem)
   commitSettings(settings);
 
   //-- Start editor cursor at the current clock hour
-  now = time(nullptr);
+  now = warpMachineNow();
   localtime_r(&now, &timeInfo);
   twentyFourHourEditorHourIndex = timeInfo.tm_hour;
 
@@ -1061,11 +1064,15 @@ static void drawCurrentScreen()
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[5];
-    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_ERASE_WIFI;
+    dynamicSystemSettingsItems[visibleItemCount] = String("Warp Speed: ") + String(settingsStoreLoadWarpSpeedEnabled() ? "Enabled" : "Disabled");
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_WARP_SPEED;
     visibleItemCount++;
 
     dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[6];
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_ERASE_WIFI;
+    visibleItemCount++;
+
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[7];
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER;
     visibleItemCount++;
 
@@ -1081,11 +1088,11 @@ static void drawCurrentScreen()
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_THEME_COLOR;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[10];
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[11];
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[11];
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[12];
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_EXIT;
     visibleItemCount++;
 
@@ -1575,6 +1582,16 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
 
       encoderSetDirectionReversed(reversed);
       settingsStoreSaveEncoderDirectionReversed(reversed);
+      drawCurrentScreen();
+
+      return;
+    }
+
+    if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_WARP_SPEED)
+    {
+      bool warpEnabled = !settingsStoreLoadWarpSpeedEnabled();
+
+      settingsStoreSaveWarpSpeedEnabled(warpEnabled);
       drawCurrentScreen();
 
       return;

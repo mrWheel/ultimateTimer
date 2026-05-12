@@ -1,8 +1,10 @@
-/*** Last Changed: 2026-05-12 - 10:56 ***/
+/*** Last Changed: 2026-05-12 - 11:43 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
 #include "timerEngine.h"
+#include "warpMachine.h"
+#include "settingsStore.h"
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
@@ -1124,7 +1126,7 @@ static std::string buildHeaderRightText()
 //--- Build header clock text in HH:mm format
 static std::string buildHeaderClockText()
 {
-  time_t now = time(nullptr);
+  time_t now = warpMachineNow();
 
   if (now <= 0)
   {
@@ -1153,7 +1155,7 @@ static std::string buildHeaderClockText()
 //--- Determine whether NTP time is valid
 static bool hasValidNtpTime()
 {
-  time_t now = time(nullptr);
+  time_t now = warpMachineNow();
 
   if (now <= 0)
   {
@@ -1241,7 +1243,7 @@ static void drawStatusActionButtons(int statusActionIndex, bool externalTriggerM
 
   if (hideActionsFor24h)
   {
-    const char* message = "24h auto mode";
+    const char* message = settingsStoreLoadWarpSpeedEnabled() ? "24h warp mode" : "24h auto mode";
     int16_t textX1;
     int16_t textY1;
     uint16_t textWidth;

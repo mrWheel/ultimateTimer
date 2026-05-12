@@ -1,6 +1,7 @@
-/*** Last Changed: 2026-05-11 - 16:24 ***/
+/*** Last Changed: 2026-05-12 - 11:43 ***/
 #include "timerEngine.h"
 #include "appConfig.h"
+#include "warpMachine.h"
 
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
@@ -403,7 +404,7 @@ RuntimeStatus timerGetRuntimeStatus()
 Timer24hStatusInfo timerGet24hStatusInfo()
 {
   Timer24hStatusInfo info;
-  time_t now = time(nullptr);
+  time_t now = warpMachineNow();
   struct tm localTimeInfo;
   struct tm tomorrowInfo;
   struct tm yesterdayInfo;
@@ -972,7 +973,7 @@ static void build24hRuntimeSegments(const struct tm& timeInfo, uint32_t nowSecon
 //--- Update 24h runtime snapshot
 static void update24hRuntimeState()
 {
-  time_t now = time(nullptr);
+  time_t now = warpMachineNow();
   struct tm localTimeInfo;
   uint32_t nowSeconds;
   bool outputActive;

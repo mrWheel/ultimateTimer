@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-12 - 11:05 ***/
+/*** Last Changed: 2026-05-12 - 11:43 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -23,7 +23,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v2.0.3";
+const char* PROG_VERSION = "v2.0.4";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -474,6 +474,8 @@ void setup()
 #endif
 
   settingsStoreInit();
+  //-- Warp Speed is always reset to disabled at boot
+  settingsStoreSaveWarpSpeedEnabled(false);
   profileManagerInit();
   wifiDisabled = settingsStoreLoadWifiDisabled();
 

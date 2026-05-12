@@ -49,10 +49,15 @@
   - `Output` (`Active HIGH` / `Active LOW`)
   - `Auto Save Profile` (`Yes` / `No`)
   - `Theme` (`Red`, `Green`, `Blue`, `Indigo`, `Violet`, `Yellow`)
+  - `Warp Speed` (`Disabled` / `Enabled`)
   - `Restart Ultimate Timer` (`No` / `Yes`)
 - Buttons:
   - `Cancel`
   - `Save`
+
+Warp Speed behavior:
+- `Warp Mode` tile in Timer Screen is only visible when Warp Speed is enabled.
+- On every device startup/reboot, Warp Speed is forced to `Disabled`.
 
 ## Cyclic Timer Settings Tile
 - Fields:
