@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-12 - 10:56 ***/
+/*** Last Changed: 2026-05-12 - 11:05 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -505,6 +505,11 @@ body {
   font-size: 13px;
 }
 
+.profileNameBold {
+  font-weight: 700;
+  color: var(--ink);
+}
+
 .tileNotice {
   display: none;
   margin: 0 0 12px 0;
@@ -614,7 +619,7 @@ body {
     </div>
   </nav>
   <div class="menuRight">
-    <div>Profile: <span id="headerProfileName" class="headerValue">-</span></div>
+    <div id="headerNetworkInfo">Network: Loading...</div>
     <div class="clockValue"><span id="headerClock" class="headerValue">00:00:00</span></div>
   </div>
 </header>
@@ -625,7 +630,7 @@ body {
   <section class="tile">
     <div class="tileHeader">
       <div class="tileTitle">Timer Screen</div>
-      <div class="metaLine" id="networkStatus">Network: Loading...</div>
+      <div class="metaLine">Profile: <span id="headerProfileName" class="profileNameBold">-</span></div>
     </div>
     <div class="tileBody">
       <div class="statusGrid">
@@ -910,10 +915,10 @@ function updateProfileHeaderDisplay(settings)
 
   const profileIsDirty = currentSignature !== savedProfileSignature;
 
-  document.getElementById('headerProfileName').textContent =
-    (profileIsDirty && profileName !== '-')
+  const profileDisplay = (profileIsDirty && profileName !== '-')
       ? profileName + ' (not saved)'
       : profileName;
+  document.getElementById('headerProfileName').textContent = profileDisplay;
 
   return profileName;
 }
@@ -1381,7 +1386,7 @@ async function refreshStatus()
         ? String(displayCycle) + '/INF'
         : String(displayCycle) + '/' + String(data.runtime.totalCycles);
   }
-  document.getElementById('networkStatus').textContent =
+  document.getElementById('headerNetworkInfo').textContent =
     'Network: ' + (data.network.connected ? 'Connected' : 'Not connected') + ' | IP: ' + data.network.address;
 
   //-- Hide action buttons for 24h timer (timerType === 1)
