@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-12 - 12:16 ***/
+/*** Last Changed: 2026-05-13 - 10:34 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -51,8 +51,14 @@ static std::string formatRemainingMs(uint32_t remainingMs);
 //--- Format seconds-of-day as HH:MM
 static std::string formatHhMmFromSecondsOfDay(uint32_t secondsOfDay);
 
+//--- Format next change span label text
+static std::string formatChangeWindowLabel(uint32_t startSecondsOfDay, uint32_t endSecondsOfDay);
+
 //--- Format duration in seconds as HH:MM:SS
 static std::string formatDurationHhMmSs(uint32_t totalSeconds);
+
+//--- Format running seconds counter as HH:MM
+static std::string formatHhMmFromTotalSeconds(uint32_t totalSeconds);
 
 //--- Invalidate status screen cache
 static void invalidateStatusScreenCache();
@@ -152,6 +158,7 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
   const int col2X = 161;
   const int col2W = 156;
   const int fullW = 314;
+  bool warpSpeedEnabled = settingsStoreLoadWarpSpeedEnabled();
 
   if (!statusScreenPrepared)
   {
@@ -203,13 +210,15 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
 
       leftTimeTileValue = outputActive24h ? lastOnClock : lastOffClock;
       rightTimeTileValue = outputActive24h ? nextOffClock : nextSwitchClock;
-      nextStatusLines[3] = std::string(outputActive24h ? "ON  " : "OFF ") + (status24h.hasNextSwitch ? formatDurationHhMmSs(status24h.nextSwitchInSeconds) : "--:--:--");
+      nextStatusLines[3] = status24h.hasNextSwitch ? formatChangeWindowLabel(status24h.nextSwitchWindowStartSecondsOfDay, status24h.nextSwitchWindowEndSecondsOfDay) : "--:-- - --:--";
+      nextStatusLines[4] = std::string(outputActive24h ? "ON  " : "OFF ") + (status24h.hasNextSwitch ? formatDurationHhMmSs(status24h.nextSwitchInSeconds) : "--:--:--");
     }
     else
     {
       leftTimeTileValue = "--:--";
       rightTimeTileValue = "--:--";
-      nextStatusLines[3] = std::string(outputActive24h ? "ON  " : "OFF ") + "--:--:--";
+      nextStatusLines[3] = "--:-- - --:--";
+      nextStatusLines[4] = std::string(outputActive24h ? "ON  " : "OFF ") + "--:--:--";
     }
   }
   else
@@ -242,6 +251,7 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     }
 
     nextStatusLines[3] = outputValue;
+    nextStatusLines[4] = runtimeStatus.totalCycles == 0 ? "" : "";
   }
 
   nextStatusLines[1] = leftTimeTileLabel + "|" + leftTimeTileValue;
@@ -267,15 +277,15 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
   if (runtimeStatus.totalCycles == 0)
   {
     snprintf(buffer, sizeof(buffer), "%lu / Inv.", static_cast<unsigned long>(displayCycle));
-    nextStatusLines[4] = is24hTimer ? "" : buffer;
+    nextStatusLines[4] = is24hTimer ? nextStatusLines[4] : buffer;
   }
   else
   {
     snprintf(buffer, sizeof(buffer), "%lu/%lu", static_cast<unsigned long>(displayCycle), static_cast<unsigned long>(runtimeStatus.totalCycles));
-    nextStatusLines[4] = is24hTimer ? "" : buffer;
+    nextStatusLines[4] = is24hTimer ? nextStatusLines[4] : buffer;
   }
 
-  snprintf(buffer, sizeof(buffer), "A:%d|T:%d|Y:%d", statusActionIndex, static_cast<int>(settings.triggerMode), static_cast<int>(settings.timerType));
+  snprintf(buffer, sizeof(buffer), "A:%d|T:%d|Y:%d|W:%d", statusActionIndex, static_cast<int>(settings.triggerMode), static_cast<int>(settings.timerType), static_cast<int>(warpSpeedEnabled));
   nextStatusLines[5] = buffer;
 
   for (int lineIndex = 0; lineIndex < statusLineCount; lineIndex++)
@@ -313,21 +323,42 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
     }
 
     case 1:
-      drawStatusTile(col1X, tileStartY + tileH + tileGap, col1W, tileH, leftTimeTileLabel.c_str(), leftTimeTileValue);
+      if (is24hTimer)
+      {
+        drawStatusTile(col1X, tileStartY + 2 * (tileH + tileGap), col1W, tileH, leftTimeTileLabel.c_str(), leftTimeTileValue);
+      }
+      else
+      {
+        drawStatusTile(col1X, tileStartY + tileH + tileGap, col1W, tileH, leftTimeTileLabel.c_str(), leftTimeTileValue);
+      }
       break;
 
     case 2:
-      drawStatusTile(col2X, tileStartY + tileH + tileGap, col2W, tileH, rightTimeTileLabel.c_str(), rightTimeTileValue);
+      if (is24hTimer)
+      {
+        drawStatusTile(col2X, tileStartY + 2 * (tileH + tileGap), col2W, tileH, rightTimeTileLabel.c_str(), rightTimeTileValue);
+      }
+      else
+      {
+        drawStatusTile(col2X, tileStartY + tileH + tileGap, col2W, tileH, rightTimeTileLabel.c_str(), rightTimeTileValue);
+      }
       break;
 
     case 3:
-      drawStatusTile(col1X, tileStartY + 2 * (tileH + tileGap), fullW, tileH, "OUTPUT", nextStatusLines[3]);
+      if (is24hTimer)
+      {
+        drawStatusTile(col1X, tileStartY + tileH + tileGap, fullW, tileH, "NEXT CHANGE BETWEEN", nextStatusLines[3]);
+      }
+      else
+      {
+        drawStatusTile(col1X, tileStartY + 2 * (tileH + tileGap), fullW, tileH, "OUTPUT", nextStatusLines[3]);
+      }
       break;
 
     case 4:
       if (is24hTimer)
       {
-        tft.fillRect(col1X, tileStartY + 3 * (tileH + tileGap), fullW, tileH, ST77XX_BLACK);
+        drawStatusTile(col1X, tileStartY + 3 * (tileH + tileGap), fullW, tileH, "OUTPUT", nextStatusLines[4]);
       }
       else
       {
@@ -1114,6 +1145,11 @@ static void drawHeader(const char* title)
 //--- Build right-aligned header text
 static std::string buildHeaderRightText()
 {
+  if (settingsStoreLoadWarpSpeedEnabled())
+  {
+    return buildHeaderClockText();
+  }
+
   if (WiFi.status() != WL_CONNECTED)
   {
     return "No WiFi";
@@ -1126,10 +1162,18 @@ static std::string buildHeaderRightText()
 //--- Build header clock text in HH:mm format
 static std::string buildHeaderClockText()
 {
+  bool warpSpeedEnabled = settingsStoreLoadWarpSpeedEnabled();
   time_t now = warpMachineNow();
 
   if (now <= 0)
   {
+    if (warpSpeedEnabled)
+    {
+      uint32_t elapsedWarpedSeconds = (millis() / 1000UL) * 60UL;
+
+      return formatHhMmFromTotalSeconds(elapsedWarpedSeconds);
+    }
+
     return "--:--";
   }
 
@@ -1137,10 +1181,17 @@ static std::string buildHeaderClockText()
 
   if (localtime_r(&now, &localTimeInfo) == nullptr)
   {
+    if (warpSpeedEnabled)
+    {
+      uint32_t elapsedWarpedSeconds = (millis() / 1000UL) * 60UL;
+
+      return formatHhMmFromTotalSeconds(elapsedWarpedSeconds);
+    }
+
     return "--:--";
   }
 
-  if (localTimeInfo.tm_year < (2020 - 1900))
+  if (!warpSpeedEnabled && localTimeInfo.tm_year < (2020 - 1900))
   {
     return "--:--";
   }
@@ -1151,6 +1202,20 @@ static std::string buildHeaderClockText()
   return std::string(timeBuffer);
 
 } //   buildHeaderClockText()
+
+//--- Format running seconds counter as HH:MM
+static std::string formatHhMmFromTotalSeconds(uint32_t totalSeconds)
+{
+  uint32_t secondsInDay = totalSeconds % 86400UL;
+  uint32_t hours = secondsInDay / 3600UL;
+  uint32_t minutes = (secondsInDay % 3600UL) / 60UL;
+  char timeBuffer[6];
+
+  snprintf(timeBuffer, sizeof(timeBuffer), "%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes));
+
+  return std::string(timeBuffer);
+
+} //   formatHhMmFromTotalSeconds()
 
 //--- Determine whether NTP time is valid
 static bool hasValidNtpTime()
@@ -1373,6 +1438,33 @@ static std::string formatHhMmFromSecondsOfDay(uint32_t secondsOfDay)
   return std::string(buffer);
 
 } //   formatHhMmFromSecondsOfDay()
+
+//--- Format next change span label text
+static std::string formatChangeWindowLabel(uint32_t startSecondsOfDay, uint32_t endSecondsOfDay)
+{
+  uint32_t displayStartSeconds = startSecondsOfDay;
+  uint32_t displayEndSeconds = endSecondsOfDay;
+
+  if (startSecondsOfDay != endSecondsOfDay)
+  {
+    if ((displayStartSeconds % 60UL) == 0)
+    {
+      displayStartSeconds += 60UL;
+    }
+    else
+    {
+      displayStartSeconds = ((displayStartSeconds / 60UL) + 1UL) * 60UL;
+    }
+
+    if ((displayEndSeconds % 60UL) != 0)
+    {
+      displayEndSeconds = ((displayEndSeconds / 60UL) + 1UL) * 60UL;
+    }
+  }
+
+  return formatHhMmFromSecondsOfDay(displayStartSeconds) + " - " + formatHhMmFromSecondsOfDay(displayEndSeconds);
+
+} //   formatChangeWindowLabel()
 
 //--- Format duration in seconds as HH:MM:SS
 static std::string formatDurationHhMmSs(uint32_t totalSeconds)

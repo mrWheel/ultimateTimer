@@ -91,8 +91,10 @@ read `colorSettings.md`
 ## Local TFT controls
 - Timer screen shows:
 	- cyclic timer: `State`, `On time`, `Off time`, `Output`, and `Cycles`
-	- 24h timer: `State`, `Last State Change (ON/OFF)`, `Next State Change (OFF/ON)`, `Output` (no `Cycles` tile)
+	- 24h timer: `State`, `Next Change Between`, `Last State Change (ON/OFF)`, `Next State Change (OFF/ON)`, `Output` (no `Cycles` tile)
 - `Output` line includes a live countdown timer (`MMM:SS`) to the next ON/OFF switch while running/paused.
+- For 24h timers, the `Next Change Between` tile shows `hh:mm - hh:mm` for the next possible switch span.
+- When `Warp Speed` is enabled, the TFT header keeps showing the warped clock (`HH:MM`) even if WiFi is disconnected.
 - Open the local menu with a **long press on the rotary encoder**.
 - Select menu options with a **short press on the rotary encoder**.
 - Menu navigation is clamped (no wrap-around).

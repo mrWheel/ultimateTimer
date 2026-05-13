@@ -28,6 +28,8 @@
   - `State`
   - `On Time` and `Off Time` for cyclic timers
   - `Last State Change (ON/OFF)` and `Next State Change (OFF/ON)` for 24h timers
+  - `Next Change Between` in an extra status tile for 24h timers
+  - `Next Change Between` value format: `hh:mm - hh:mm`
   - `Output` (including countdown)
   - `Cycles` (`current/INF` when repeat count is `0`) for cyclic timers only
 - Action buttons:

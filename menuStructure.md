@@ -41,6 +41,7 @@
   - Action row buttons are hidden
   - Text `24h auto mode` is shown near the bottom of the screen
   - `Cycles` tile is hidden in the status screen
+  - A `Next Change Between` tile is shown below `State` and above the `Last State Change` / `Next State Change` tiles
   |
 "Encoder Long Press"
   |

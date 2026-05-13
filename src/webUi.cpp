@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-12 - 12:16 ***/
+/*** Last Changed: 2026-05-13 - 10:34 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -214,6 +214,10 @@ body {
 
 .statusWide {
   grid-column: span 2;
+}
+
+.statusThreeWide {
+  grid-column: span 3;
 }
 
 .statusOutputValue {
@@ -574,6 +578,10 @@ body {
     grid-column: span 2;
   }
 
+  .statusThreeWide {
+    grid-column: span 2;
+  }
+
   .formGrid {
     grid-template-columns: 1fr;
   }
@@ -592,6 +600,11 @@ body {
 
   .statusGrid {
     grid-template-columns: 1fr;
+  }
+
+  .statusThreeWide,
+  .statusWide {
+    grid-column: span 1;
   }
 }
 </style>
@@ -645,6 +658,10 @@ body {
         <div class="statusItem">
           <div id="statusOffLabel" class="statusLabel">Off Time</div>
           <div id="statusOff" class="statusValue">-</div>
+        </div>
+        <div class="statusItem statusThreeWide" id="statusNextRangeItem" style="display:none;">
+          <div class="statusLabel">Next Change Between</div>
+          <div id="statusNextRange" class="statusValue statusOutputValue">--:-- - --:--</div>
         </div>
         <div class="statusItem statusWide">
           <div class="statusLabel">Output</div>
@@ -936,6 +953,31 @@ function updateHeaderClock()
   const minutes = String(now.getMinutes()).padStart(2, '0');
   const seconds = String(now.getSeconds()).padStart(2, '0');
   document.getElementById('headerClock').textContent = hours + ':' + minutes + ':' + seconds;
+}
+
+function formatChangeWindowLabel(startSeconds, endSeconds)
+{
+  let displayStartSeconds = Number(startSeconds || 0);
+  let displayEndSeconds = Number(endSeconds || 0);
+
+  if (displayStartSeconds !== displayEndSeconds)
+  {
+    if ((displayStartSeconds % 60) === 0)
+    {
+      displayStartSeconds += 60;
+    }
+    else
+    {
+      displayStartSeconds = Math.ceil(displayStartSeconds / 60) * 60;
+    }
+
+    if ((displayEndSeconds % 60) !== 0)
+    {
+      displayEndSeconds = Math.ceil(displayEndSeconds / 60) * 60;
+    }
+  }
+
+  return formatHhMmFromSeconds(displayStartSeconds) + ' - ' + formatHhMmFromSeconds(displayEndSeconds);
 }
 
 function applyTheme(themeName)
@@ -1468,12 +1510,16 @@ async function refreshStatus()
     const nextSwitchIn = hasNextSwitch
       ? formatHhMmSsFromSeconds(Number(status24h.nextSwitchInSeconds || 0))
       : '--:--:--';
+    const nextChangeWindowText = hasNextSwitch
+      ? formatChangeWindowLabel(Number(status24h.nextSwitchWindowStartSeconds || 0), Number(status24h.nextSwitchWindowEndSeconds || 0))
+      : '--:-- - --:--';
 
     statusOnLabelText = outputActive24h ? 'Last State Change ON' : 'Last State Change OFF';
     statusOffLabelText = outputActive24h ? 'Next State Change OFF' : 'Next State Change ON';
     statusOnText = outputActive24h ? lastOnClock : lastOffClock;
     statusOffText = outputActive24h ? nextOffClock : nextSwitchClock;
     statusOutputText = (outputActive24h ? 'ON' : 'OFF') + ' [' + nextSwitchIn + ']';
+    document.getElementById('statusNextRange').textContent = nextChangeWindowText;
   }
 
   let displayCycle = data.runtime.currentCycle;
@@ -1500,6 +1546,11 @@ async function refreshStatus()
   document.getElementById('statusOn').textContent = statusOnText;
   document.getElementById('statusOff').textContent = statusOffText;
   document.getElementById('statusOutput').textContent = statusOutputText;
+  const statusNextRangeItem = document.getElementById('statusNextRangeItem');
+  if (statusNextRangeItem)
+  {
+    statusNextRangeItem.style.display = is24hTimer ? '' : 'none';
+  }
   const statusCyclesItem = document.getElementById('statusCyclesItem');
   if (statusCyclesItem)
   {
@@ -2398,6 +2449,8 @@ static void fillStatusDocument(JsonDocument& doc)
   doc["runtime"]["twentyFourH"]["lastOffSeconds"] = status24h.lastOffSecondsOfDay;
   doc["runtime"]["twentyFourH"]["nextSwitchSeconds"] = status24h.nextSwitchSecondsOfDay;
   doc["runtime"]["twentyFourH"]["nextOffSeconds"] = status24h.nextOffSecondsOfDay;
+  doc["runtime"]["twentyFourH"]["nextSwitchWindowStartSeconds"] = status24h.nextSwitchWindowStartSecondsOfDay;
+  doc["runtime"]["twentyFourH"]["nextSwitchWindowEndSeconds"] = status24h.nextSwitchWindowEndSecondsOfDay;
   doc["runtime"]["twentyFourH"]["nextSwitchInSeconds"] = status24h.nextSwitchInSeconds;
   doc["runtime"]["twentyFourH"]["lastOnLabel"] = status24h.hasLastOn ? formatHhMmSsFromSecondsOfDay(status24h.lastOnSecondsOfDay) : "--:--:--";
   doc["runtime"]["twentyFourH"]["lastOffLabel"] = status24h.hasLastOff ? formatHhMmSsFromSecondsOfDay(status24h.lastOffSecondsOfDay) : "--:--:--";

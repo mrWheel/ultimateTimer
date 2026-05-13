@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 16:24 ***/
+/*** Last Changed: 2026-05-13 - 10:34 ***/
 #ifndef TIMER_TYPES_H
 #define TIMER_TYPES_H
 
@@ -107,6 +107,8 @@ struct Timer24hStatusInfo
   uint32_t lastOffSecondsOfDay;
   uint32_t nextSwitchSecondsOfDay;
   uint32_t nextOffSecondsOfDay;
+  uint32_t nextSwitchWindowStartSecondsOfDay;
+  uint32_t nextSwitchWindowEndSecondsOfDay;
   uint32_t nextSwitchInSeconds;
 };
 

@@ -63,11 +63,25 @@ Requirements:
 
 When a random block is active, the actual transition moment must be computed for that block when it becomes relevant.
 
+If multiple consecutive quarter-hour blocks use the same random transition marker and that marker still represents a real state change at the start of the run, they form one combined random span:
+
+- consecutive `R` blocks form one ON transition window
+- consecutive `r` blocks form one OFF transition window
+- the possible switch moment starts at the beginning of the first matching random quarter
+- the possible switch moment ends at the end of the last consecutive matching random quarter
+- the firmware must choose one transition moment anywhere inside that full combined span, not separately per quarter
+- if the output already has the requested state when such a random run starts, that run causes no transition
+
 Examples:
 
-- if quarter 1 is `-` and quarter 2 is `R`, the output turns ON somewhere between `hh:16` and `hh:30`
-- if quarter 1 is `-` and quarters 2, 3, and 4 are all `R`, the output turns ON somewhere between `hh:16` and `hh+1:00`
-- if quarter 1 is `-`, quarter 2 is `R`, and quarter 3 is `r`, the output turns ON somewhere between `hh:16` and `hh:30`, then turns OFF somewhere between `hh:31` and `hh:45`
+- if quarter 1 is `-` and quarter 2 is `R`, the output turns ON somewhere inside quarter 2
+- if quarter 1 is `-` and quarters 2 and 3 are both `R`, the output turns ON somewhere between the start of quarter 2 and the end of quarter 3
+- if quarter 1 is `-` and quarters 2, 3, and 4 are all `R`, the output turns ON somewhere between the start of quarter 2 and the end of quarter 4
+- if quarter 1 is `-`, quarter 2 is `R`, and quarter 3 is `r`, the output turns ON somewhere inside quarter 2, then turns OFF somewhere inside quarter 3
+
+For minute-based status displays, the transition span value is shown as `hh:mm - hh:mm`.
+That display rounds the lower bound up to the first full minute after the span start and rounds the upper bound up to the enclosing minute.
+Example: a single random quarter from `hh:15:00` up to `hh:30:00` is shown as `hh:16 - hh:30`.
 
 ## Local TFT Editor Behaviour
 The local editor presents one hour at a time using a **cursor / locked** display convention:
@@ -192,10 +206,14 @@ When a 24h profile is loaded, the runtime engine must **immediately seek to the 
 ### Local TFT UI
 - The 24h Timer Settings menu is a separate menu item from Cyclic Timer Settings
 - Users edit the 24-hour schedule directly on the TFT display
+- The Universal Timer status screen shows an extra tile labeled `Next Change Between` below `State` and above `Last State Change` / `Next State Change`
+- The `Next Change Between` tile value format is `hh:mm - hh:mm`
 
 ### Web UI
 - Timer Settings menu splits into two submenu items: Cyclic Timer Settings and 24h Timer Settings
 - Action buttons (Start/Stop/Reset) are hidden for 24h profiles
+- The Timer Screen shows an extra status tile labeled `Next Change Between`
+- The `Next Change Between` tile value format is `hh:mm - hh:mm`
 - The Web UI includes a full 24h quarter-hour editor (24x4 table) and can save all 96 quarter states
 - Opening any Web UI menu tile auto-stops the timer; closing all menu tiles auto-starts the timer again
 - If Auto Save Profile is `No`, saving settings shows a warning that runtime changes are active but not yet written to profile file
