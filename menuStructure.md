@@ -112,7 +112,7 @@ This rule applies to both Cyclic and 24h Timer Settings.
 ### Web UI behavior
 - Opening any Web UI menu tile auto-stops the timer.
 - Closing all Web UI menu tiles auto-starts the timer.
-- In Web UI, if `Auto Save Profile` is `No`, pressing `Save Settings` in `Cyclic Timer Settings` or `24h Timer Settings` shows a warning that changes are active but not saved to profile file.
+- In Web UI, if `Auto Save Profile` is `No`, pressing `Save Settings` in `Cyclic Timer Settings` or `24h Timer Settings` shows a popup warning with an `OK` button at Save-button height; the settings tile closes after `OK` is clicked.
 
 [Save Profile Menu]
 - Confirmation buttons: [No] [Yes]

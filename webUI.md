@@ -136,7 +136,7 @@ Warp Speed behavior:
 - Clicking `Cancel` always closes the current tile without saving changes.
 - After pressing `Save Profile`, `Load Profile`, `New Profile`, or `Delete Profile`, the tile closes automatically.
 - After pressing `Save Settings`, the Timer Settings tile closes automatically.
-- If `Auto Save Profile` is `No`, pressing `Save Settings` in cyclic or 24h tile shows a warning toast that changes are active but not saved to profile file.
+- If `Auto Save Profile` is `No`, pressing `Save Settings` in cyclic or 24h tile shows a warning popup at Save-button height with an `OK` button; the tile closes only after `OK` is clicked.
 
 ## Theme Behavior
 - Web UI accent colors follow the selected system theme.

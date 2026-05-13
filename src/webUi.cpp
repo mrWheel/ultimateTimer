@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 10:34 ***/
+/*** Last Changed: 2026-05-13 - 10:55 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -534,8 +534,6 @@ body {
 
 .saveNotice {
   position: fixed;
-  right: 14px;
-  bottom: 14px;
   z-index: 40;
   max-width: min(92vw, 460px);
   border: 1px solid var(--themeAccent);
@@ -547,14 +545,55 @@ body {
   color: var(--themeAccentStrong);
   box-shadow: var(--shadow);
   opacity: 0;
-  transform: translateY(8px);
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
+.saveNoticeContent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.saveNoticeMessage {
+  flex: 1;
+}
+
+.saveNoticeOkButton {
+  border: 1px solid var(--themeAccent);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--themeAccentStrong);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.saveNotice.defaultPosition {
+  right: 14px;
+  bottom: 14px;
+  transform: translateY(8px);
+}
+
+.saveNotice.anchored {
+  right: var(--saveNoticeRight, 14px);
+  top: var(--saveNoticeTop, 50vh);
+  bottom: auto;
+  transform: translateY(calc(-50% + 8px));
+}
+
 .saveNotice.show {
   opacity: 1;
+  pointer-events: auto;
+}
+
+.saveNotice.defaultPosition.show {
   transform: translateY(0);
+}
+
+.saveNotice.anchored.show {
+  transform: translateY(-50%);
 }
 
 @keyframes tileEnter {
@@ -637,7 +676,7 @@ body {
   </div>
 </header>
 
-<div id="saveNotice" class="saveNotice" role="status" aria-live="polite"></div>
+<div id="saveNotice" class="saveNotice defaultPosition" role="status" aria-live="polite"></div>
 
 <main class="appShell">
   <section class="tile">
@@ -863,7 +902,7 @@ let savedProfileName = '';
 let savedProfileSignature = '';
 let profileDirtyResetPending = false;
 let activeMenuId = '';
-let saveNoticeTimeoutId = null;
+let saveNoticeResolve = null;
 
 async function syncTimerForMenuState(previousMenuId, nextMenuId)
 {
@@ -878,27 +917,71 @@ async function syncTimerForMenuState(previousMenuId, nextMenuId)
   await callPost(hasOpenMenu ? '/api/stop' : '/api/start');
 }
 
-function showSaveNotice(message)
+function showSaveNotice(message, anchorButtonId)
 {
   const saveNotice = document.getElementById('saveNotice');
 
   if (!saveNotice)
   {
-    return;
+    return Promise.resolve();
   }
 
-  saveNotice.textContent = message;
+  if (saveNoticeResolve !== null)
+  {
+    saveNoticeResolve();
+    saveNoticeResolve = null;
+  }
+
+  const anchorButton = anchorButtonId ? document.getElementById(anchorButtonId) : null;
+  const saveNoticeContent = document.createElement('div');
+  const saveNoticeMessage = document.createElement('span');
+  const saveNoticeOkButton = document.createElement('button');
+
+  saveNoticeContent.className = 'saveNoticeContent';
+  saveNoticeMessage.className = 'saveNoticeMessage';
+  saveNoticeMessage.textContent = message;
+  saveNoticeOkButton.className = 'saveNoticeOkButton';
+  saveNoticeOkButton.type = 'button';
+  saveNoticeOkButton.textContent = 'OK';
+  saveNoticeContent.appendChild(saveNoticeMessage);
+  saveNoticeContent.appendChild(saveNoticeOkButton);
+  saveNotice.innerHTML = '';
+  saveNotice.appendChild(saveNoticeContent);
+
+  if (anchorButton)
+  {
+    const buttonRect = anchorButton.getBoundingClientRect();
+    const popupTop = Math.max(14, Math.min(window.innerHeight - 14, buttonRect.top + (buttonRect.height / 2)));
+    const popupRight = Math.max(14, window.innerWidth - buttonRect.right);
+
+    saveNotice.style.setProperty('--saveNoticeTop', String(popupTop) + 'px');
+    saveNotice.style.setProperty('--saveNoticeRight', String(popupRight) + 'px');
+    saveNotice.classList.remove('defaultPosition');
+    saveNotice.classList.add('anchored');
+  }
+  else
+  {
+    saveNotice.classList.remove('anchored');
+    saveNotice.classList.add('defaultPosition');
+  }
+
   saveNotice.classList.add('show');
 
-  if (saveNoticeTimeoutId !== null)
+  return new Promise((resolve) =>
   {
-    clearTimeout(saveNoticeTimeoutId);
-  }
+    saveNoticeResolve = resolve;
+    saveNoticeOkButton.addEventListener('click', () =>
+    {
+      saveNotice.classList.remove('show');
+      if (saveNoticeResolve !== null)
+      {
+        const pendingResolve = saveNoticeResolve;
 
-  saveNoticeTimeoutId = setTimeout(() =>
-  {
-    saveNotice.classList.remove('show');
-  }, 2800);
+        saveNoticeResolve = null;
+        pendingResolve();
+      }
+    }, { once: true });
+  });
 }
 
 function shouldWarnAutoSaveDisabled()
@@ -1739,7 +1822,7 @@ async function saveSettings()
 
   if (shouldWarnAutoSaveDisabled())
   {
-    showSaveNotice('Auto Save Profile is NO: wijzigingen zijn actief, maar niet opgeslagen in het profielbestand.');
+    await showSaveNotice('Auto Save Profile is NO: changes are active, but not saved to the profile file.', 'saveSettingsButton');
   }
 
   setActiveMenu('');
@@ -1934,7 +2017,7 @@ function bindActionButtons()
 
     if (shouldWarnAutoSaveDisabled())
     {
-      showSaveNotice('Auto Save Profile is NO: wijzigingen zijn actief, maar niet opgeslagen in het profielbestand.');
+      await showSaveNotice('Auto Save Profile is NO: changes are active, but not saved to the profile file.', 'save24hSettingsButton');
     }
 
     setActiveMenu('');
