@@ -190,14 +190,14 @@ Profile data must include:
 - all existing cyclic timer fields must remain supported
 
 ### Profile Naming and File Storage
-- 24h profiles are automatically stored with a "24h" suffix in the filename
-- File naming: `<profileName>24h.json`
-- The built-in default 24h profile is `default24h.json` (protected, cannot be deleted)
+- 24h profiles are automatically stored with a "-24h" suffix in the filename
+- File naming: `<profileName>-24h.json`
+- The built-in default 24h profile is `default-24h.json` (protected, cannot be deleted)
 
 ### Built-in Profile Protection
-- The built-in profile `default24h` cannot be deleted from the local TFT menu or Web UI
-- The built-in profile `default24h` is hidden from the Delete Profile list
-- If a user deletes the active 24h profile, the firmware automatically loads `default24h`
+- The built-in profile `default-24h` cannot be deleted from the local TFT menu or Web UI
+- The built-in profile `default-24h` is hidden from the Delete Profile list
+- If a user deletes the active 24h profile, the firmware automatically loads `default-24h`
 System-level settings remain separate from profile-scoped timer data.
 
 When a 24h profile is loaded, the runtime engine must **immediately seek to the current wall clock position** rather than starting evaluation from hour 0. This ensures the output state is correct the moment the profile is active.

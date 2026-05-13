@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-03 - 12:13 ***/
+/*** Last Changed: 2026-05-13 - 12:05 ***/
 #include "WiFiManagerExt.h"
 
 #include "appConfig.h"
@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <esp_mac.h>
 #include <esp_log.h>
+#include <esp_system.h>
 
 //--- Logging tag
 static const char* logTag = "WiFiManagerExt";
@@ -95,7 +96,9 @@ void wifiManagerUpdate()
     currentSettings = newSettings;
     settingsStoreSaveWifiSettings(currentSettings);
 
-    ESP_LOGI(logTag, "Saved new STA credentials from portal");
+    ESP_LOGI(logTag, "Saved new STA credentials from portal - restarting");
+    delay(500);
+    esp_restart();
   }
 
 } //   wifiManagerUpdate()

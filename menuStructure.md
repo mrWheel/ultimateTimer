@@ -122,7 +122,7 @@ This rule applies to both Cyclic and 24h Timer Settings.
 - [No] cancels and returns to [Edit Timer Menu]
 
 [Load Profile Menu]
-  - Profile list (always includes built-in `default` and `default24h`)
+  - Profile list (always includes built-in `default` and `default-24h`)
 - Loading a profile resets executed cycles to 0
 - Exit (last item) -> return to [Edit Timer Menu]
 
@@ -132,10 +132,10 @@ This rule applies to both Cyclic and 24h Timer Settings.
 
 [Delete Profile Menu]
 - Profile list
-  - Default profiles `default` and `default24h` are never shown in this list
+  - Default profiles `default` and `default-24h` are never shown in this list
 - Selecting a profile opens confirmation buttons: [No] [Yes]
 - Default selection is [No] (least destructive first)
-  - Deleting the active profile immediately loads the corresponding default profile (`default` for cyclic, `default24h` for 24h)
+  - Deleting the active profile immediately loads the corresponding default profile (`default` for cyclic, `default-24h` for 24h)
 - Exit (last item) -> return to [Edit Timer Menu]
 
 [System Settings Menu]

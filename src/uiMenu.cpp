@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-12 - 11:45 ***/
+/*** Last Changed: 2026-05-13 - 12:05 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -322,6 +322,12 @@ static const char* encoderEventToLabel(EncoderEvent event);
 
 //--- Convert UI screen to text
 static const char* uiScreenToLabel(UiScreen screen);
+
+//--- Check if main menu item is disabled
+static bool isMainMenuItemDisabled(int itemIndex);
+
+//--- Ensure main menu cursor is on a valid (non-disabled) item
+static void ensureMainMenuIndexIsValid();
 
 //--- Build current field input text
 static std::string buildFieldInputValue()
@@ -722,6 +728,58 @@ static void handleFieldInput(EncoderEvent encoderEvent)
 
 } //   handleFieldInput()
 
+//--- Check if main menu item is disabled
+static bool isMainMenuItemDisabled(int itemIndex)
+{
+  const AppSettings& settings = timerGetSettings();
+  bool is24hTimer = settings.timerType == TIMER_TYPE_24H;
+
+  if (itemIndex == MENU_ITEM_CYCLIC_TIMER_SETTINGS && is24hTimer)
+  {
+    return true;
+  }
+  if (itemIndex == MENU_ITEM_24H_TIMER_SETTINGS && !is24hTimer)
+  {
+    return true;
+  }
+  return false;
+
+} //   isMainMenuItemDisabled()
+
+//--- Ensure main menu cursor is on a valid (non-disabled) item
+static void ensureMainMenuIndexIsValid()
+{
+  const int itemCount = sizeof(mainMenuItems) / sizeof(mainMenuItems[0]);
+
+  //--- If current item is disabled, find the next valid item
+  if (isMainMenuItemDisabled(mainMenuIndex))
+  {
+    //--- Try forward first
+    for (int i = mainMenuIndex + 1; i < itemCount; i++)
+    {
+      if (!isMainMenuItemDisabled(i))
+      {
+        mainMenuIndex = i;
+        return;
+      }
+    }
+
+    //--- If no valid item found forward, try backward
+    for (int i = mainMenuIndex - 1; i >= 0; i--)
+    {
+      if (!isMainMenuItemDisabled(i))
+      {
+        mainMenuIndex = i;
+        return;
+      }
+    }
+
+    //--- Fallback (should never happen if at least one item is valid)
+    mainMenuIndex = 0;
+  }
+
+} //   ensureMainMenuIndexIsValid()
+
 //--- Refresh profile list and append Exit entry
 static void refreshProfileListWithExit()
 {
@@ -761,7 +819,7 @@ static void refreshProfileListWithExit()
 
     for (size_t index = 0; index < loadedProfiles; index++)
     {
-      if (profileNames[index].equalsIgnoreCase(profileManagerDefaultProfileName))
+      if (profileNames[index].equalsIgnoreCase(profileManagerDefaultProfileName) || profileNames[index].equalsIgnoreCase("default-24h"))
       {
         continue;
       }
@@ -838,6 +896,7 @@ static void openMainMenu(bool selectExitItem)
 {
   mainMenuIndex = selectExitItem ? MENU_ITEM_EXIT : 0;
   mainMenuFirstVisibleIndex = 0;
+  ensureMainMenuIndexIsValid();
   previousScreen = currentScreen;
   currentScreen = UI_SCREEN_MAIN_MENU;
   logActiveScreen("Edit Timer Menu");
@@ -946,8 +1005,18 @@ static void drawCurrentScreen()
     break;
 
   case UI_SCREEN_MAIN_MENU:
-    displayDrawListScreen("Edit Timer Menu", mainMenuItems, sizeof(mainMenuItems) / sizeof(mainMenuItems[0]), mainMenuIndex, mainMenuFirstVisibleIndex);
+  {
+    //--- Determine which menu items are disabled
+    bool disabledMainMenuItems[8] = {false, false, false, false, false, false, false, false};
+
+    for (int i = 0; i < 8; i++)
+    {
+      disabledMainMenuItems[i] = isMainMenuItemDisabled(i);
+    }
+
+    displayDrawListScreenWithDisabledItems("Edit Timer Menu", mainMenuItems, sizeof(mainMenuItems) / sizeof(mainMenuItems[0]), mainMenuIndex, mainMenuFirstVisibleIndex, disabledMainMenuItems);
     break;
+  }
 
   case UI_SCREEN_TIMER_SETTINGS_MENU:
     displayDrawListScreen("Cyclic Timer Settings Menu", timerSettingsMenuItems, sizeof(timerSettingsMenuItems) / sizeof(timerSettingsMenuItems[0]), timerSettingsIndex, timerSettingsFirstVisibleIndex);
@@ -1243,7 +1312,16 @@ static void handleMainMenu(EncoderEvent encoderEvent)
   {
     if (mainMenuIndex > 0)
     {
-      mainMenuIndex--;
+      int newIndex = mainMenuIndex - 1;
+      //--- Skip disabled items
+      while (newIndex >= 0 && isMainMenuItemDisabled(newIndex))
+      {
+        newIndex--;
+      }
+      if (newIndex >= 0)
+      {
+        mainMenuIndex = newIndex;
+      }
     }
 
     redrawRequired = true;
@@ -1252,14 +1330,29 @@ static void handleMainMenu(EncoderEvent encoderEvent)
   {
     if (mainMenuIndex < itemCount - 1)
     {
-      mainMenuIndex++;
+      int newIndex = mainMenuIndex + 1;
+      //--- Skip disabled items
+      while (newIndex < itemCount && isMainMenuItemDisabled(newIndex))
+      {
+        newIndex++;
+      }
+      if (newIndex < itemCount)
+      {
+        mainMenuIndex = newIndex;
+      }
     }
 
     redrawRequired = true;
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
-    AppSettings settings = timerGetSettings();
+    //--- Skip if current item is disabled
+    if (isMainMenuItemDisabled(mainMenuIndex))
+    {
+      return;
+    }
+
+    AppSettings currentSettings = timerGetSettings();
 
     switch (mainMenuIndex)
     {
@@ -1273,7 +1366,7 @@ static void handleMainMenu(EncoderEvent encoderEvent)
 
     case MENU_ITEM_SAVE_PROFILE:
     {
-      std::string saveLabel = "Save \"" + std::string(settings.profileName.c_str()) + "\"?";
+      std::string saveLabel = "Save \"" + std::string(currentSettings.profileName.c_str()) + "\"?";
       openFieldInput("Save Profile", saveLabel, 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_SAVE_PROFILE, UI_SCREEN_MAIN_MENU, "No");
       return;
     }

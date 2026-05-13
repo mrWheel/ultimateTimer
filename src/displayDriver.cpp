@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 10:34 ***/
+/*** Last Changed: 2026-05-13 - 12:05 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -303,17 +303,22 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
       int16_t textY1;
       uint16_t textWidth;
       uint16_t textHeight;
+      uint16_t stateTextWidth;
+      uint16_t stateTextHeight;
+      int minimumProfileX;
       int profileX;
 
       drawStatusTile(col1X, tileStartY, fullW, tileH, "STATE", stateValue);
 
       tft.setTextSize(2);
+      tft.getTextBounds(stateValue.c_str(), 0, 0, &textX1, &textY1, &stateTextWidth, &stateTextHeight);
       tft.getTextBounds(profileValue.c_str(), 0, 0, &textX1, &textY1, &textWidth, &textHeight);
       profileX = col1X + fullW - static_cast<int>(textWidth) - 6;
+      minimumProfileX = col1X + 4 + static_cast<int>(stateTextWidth) + 12;
 
-      if (profileX < col1X + 100)
+      if (profileX < minimumProfileX)
       {
-        profileX = col1X + 100;
+        profileX = minimumProfileX;
       }
 
       tft.setTextColor(getUiSelectedTextColor(), getUiSelectedFillColor());
@@ -427,6 +432,62 @@ void displayDrawListScreen(const char* title, const String items[], size_t itemC
   }
 
 } //   displayDrawListScreen()
+
+//--- Draw text list with disabled items support
+void displayDrawListScreenWithDisabledItems(const char* title, const String items[], size_t itemCount, int selectedIndex, int firstVisibleIndex, const bool disabledItems[])
+{
+  invalidateStatusScreenCache();
+  tft.fillScreen(ST77XX_BLACK);
+  drawHeader(title);
+
+  tft.setTextSize(2);
+
+  const int visibleLines = 9;
+
+  for (int line = 0; line < visibleLines; line++)
+  {
+    int itemIndex = firstVisibleIndex + line;
+
+    if (itemIndex >= static_cast<int>(itemCount))
+    {
+      break;
+    }
+
+    int y = 30 + (line * 22);
+    bool isDisabled = disabledItems && disabledItems[itemIndex];
+
+    if (itemIndex == selectedIndex)
+    {
+      uint16_t selectedFillColor = getUiSelectedFillColor();
+
+      tft.fillRect(0, y, tft.width(), 22, selectedFillColor);
+      tft.setTextColor(getUiSelectedTextColor(), selectedFillColor);
+      tft.setCursor(6, y);
+      tft.print("> ");
+      tft.print(items[itemIndex]);
+      tft.print(" <");
+    }
+    else
+    {
+      tft.fillRect(0, y, tft.width(), 22, ST77XX_BLACK);
+
+      if (isDisabled)
+      {
+        //--- Grayed out text for disabled items
+        tft.setTextColor(0x4208, ST77XX_BLACK); // Darker gray
+      }
+      else
+      {
+        tft.setTextColor(ST77XX_WHITE, ST77XX_BLACK);
+      }
+
+      tft.setCursor(6, y);
+      tft.print("  ");
+      tft.print(items[itemIndex]);
+    }
+  }
+
+} //   displayDrawListScreenWithDisabledItems()
 
 //--- Refresh current header line when time/WiFi text changes
 void displayRefreshHeaderIfNeeded(uint32_t minimumIntervalMs)

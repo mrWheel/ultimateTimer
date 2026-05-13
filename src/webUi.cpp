@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 10:55 ***/
+/*** Last Changed: 2026-05-13 - 12:05 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -122,6 +122,16 @@ body {
 
 .menuButton:hover {
   background: rgba(20, 35, 54, 0.09);
+}
+
+.menuButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.menuButton:disabled:hover {
+  background: transparent;
 }
 
 .menuButton.active {
@@ -1682,6 +1692,19 @@ async function refreshStatus()
     resetButton.style.display = '';
   }
 
+  //-- Disable Timer Settings submenu buttons based on active timer type
+  const cyclicTimerButton = document.querySelector('[data-menu="cyclicTimerSettingsCard"]');
+  const twentyFourHTimerButton = document.querySelector('[data-menu="twentyFourHTimerSettingsCard"]');
+  
+  if (cyclicTimerButton)
+  {
+    cyclicTimerButton.disabled = is24hTimer;
+  }
+  if (twentyFourHTimerButton)
+  {
+    twentyFourHTimerButton.disabled = !is24hTimer;
+  }
+
   // === Update System read-only fields (always) ===
   document.getElementById('systemNetworkState').textContent = data.network.connected ? 'Connected' : 'Disconnected';
   document.getElementById('systemSsid').value = data.network.ssid || '(not connected)';
@@ -1754,45 +1777,44 @@ async function refreshProfiles()
     return;
   }
 
-  const selects = [
-    document.getElementById('profilesForLoad'),
-    document.getElementById('profilesForDelete')
-  ];
-  const selectedValues = selects.map((select) => select ? select.value : '');
+  const loadSelect = document.getElementById('profilesForLoad');
+  const deleteSelect = document.getElementById('profilesForDelete');
+  const selectedLoadValue = loadSelect ? loadSelect.value : '';
+  const selectedDeleteValue = deleteSelect ? deleteSelect.value : '';
 
-  for (const select of selects)
+  if (loadSelect)
   {
-    if (!select)
+    loadSelect.innerHTML = '';
+    for (const name of data.profiles)
     {
-      continue;
-    }
-
-    select.innerHTML = '';
-  }
-
-  for (const name of data.profiles)
-  {
-    for (const select of selects)
-    {
-      if (!select)
-      {
-        continue;
-      }
-
       const option = document.createElement('option');
       option.value = name;
       option.textContent = name;
-      select.appendChild(option);
+      loadSelect.appendChild(option);
+    }
+    if (selectedLoadValue)
+    {
+      loadSelect.value = selectedLoadValue;
     }
   }
 
-  selects.forEach((select, index) =>
+  if (deleteSelect)
   {
-    if (select && selectedValues[index])
+    deleteSelect.innerHTML = '';
+    //--- Use deletable profiles list if available, otherwise filter default profiles
+    const deletableList = data.deletableProfiles || data.profiles.filter(name => name !== 'default' && name !== 'default-24h');
+    for (const name of deletableList)
     {
-      select.value = selectedValues[index];
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      deleteSelect.appendChild(option);
     }
-  });
+    if (selectedDeleteValue && deletableList.includes(selectedDeleteValue))
+    {
+      deleteSelect.value = selectedDeleteValue;
+    }
+  }
 
   document.getElementById('profileCountValue').textContent = String(data.profiles.length);
 }
@@ -2328,10 +2350,17 @@ static void handleProfiles()
 
   JsonDocument doc;
   JsonArray array = doc["profiles"].to<JsonArray>();
+  JsonArray deletableArray = doc["deletableProfiles"].to<JsonArray>();
 
   for (size_t i = 0; i < count; i++)
   {
     array.add(names[i]);
+
+    //--- Only add to deletable list if it's not a default profile
+    if (!names[i].equalsIgnoreCase("default") && !names[i].equalsIgnoreCase("default-24h"))
+    {
+      deletableArray.add(names[i]);
+    }
   }
 
   String response;

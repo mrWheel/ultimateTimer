@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 10:34 ***/
+/*** Last Changed: 2026-05-13 - 12:05 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
@@ -20,6 +20,9 @@ void displayForceStatusScreenRebuild();
 
 //--- Draw text list
 void displayDrawListScreen(const char* title, const String items[], size_t itemCount, int selectedIndex, int firstVisibleIndex);
+
+//--- Draw text list with disabled items support
+void displayDrawListScreenWithDisabledItems(const char* title, const String items[], size_t itemCount, int selectedIndex, int firstVisibleIndex, const bool disabledItems[]);
 
 //--- Refresh current header line when time/WiFi text changes
 void displayRefreshHeaderIfNeeded(uint32_t minimumIntervalMs);

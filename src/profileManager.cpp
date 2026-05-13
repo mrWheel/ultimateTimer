@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 16:24 ***/
+/*** Last Changed: 2026-05-13 - 12:05 ***/
 #include "profileManager.h"
 
 #include <ArduinoJson.h>
@@ -51,10 +51,10 @@ bool profileManagerSaveProfile(const String& profileName, const AppSettings& set
     return false;
   }
 
-  //-- Add "24h" suffix for 24h timer profiles
-  if (settings.timerType == TIMER_TYPE_24H && !safeName.endsWith("24h"))
+  //-- Add "-24h" suffix for 24h timer profiles
+  if (settings.timerType == TIMER_TYPE_24H && !safeName.endsWith("-24h"))
   {
-    safeName += "24h";
+    safeName += "-24h";
   }
 
   String path = buildProfilePath(safeName);
@@ -125,7 +125,7 @@ bool profileManagerDeleteProfile(const String& profileName)
 {
   String safeName = sanitizeProfileName(profileName);
 
-  if (safeName.equalsIgnoreCase(profileManagerDefaultProfileName) || safeName.equalsIgnoreCase("default24h"))
+  if (safeName.equalsIgnoreCase(profileManagerDefaultProfileName) || safeName.equalsIgnoreCase("default-24h"))
   {
     ESP_LOGW(logTag, "Refused to delete default profile: %s", safeName.c_str());
 
@@ -236,7 +236,7 @@ static void loadSettingsFromJson(const JsonDocument& doc, const String& profileN
   }
   else
   {
-    settings.timerType = profileName.endsWith("24h") ? TIMER_TYPE_24H : TIMER_TYPE_CYCLIC;
+    settings.timerType = profileName.endsWith("-24h") ? TIMER_TYPE_24H : TIMER_TYPE_CYCLIC;
   }
 
   settings.onTimeValue = doc["onTimeValue"] | settings.onTimeValue;

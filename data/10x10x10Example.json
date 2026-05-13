@@ -1,0 +1,9 @@
+{
+  "onTimeValue": 11,
+  "offTimeValue": 9,
+  "onTimeUnit": 2,
+  "offTimeUnit": 2,
+  "repeatCount": 10,
+  "triggerMode": 0,
+  "triggerEdge": 1
+}
