@@ -1,7 +1,8 @@
-/*** Last Changed: 2026-05-13 - 10:34 ***/
+/*** Last Changed: 2026-05-13 - 12:37 ***/
 #include "timerEngine.h"
 #include "appConfig.h"
 #include "warpMachine.h"
+#include "settingsStore.h"
 
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
@@ -152,7 +153,19 @@ void timerUpdate()
     return;
   }
 
-  runtimeStatus.currentPhaseElapsedMs = nowMs - phaseStartMs;
+  //-- Calculate elapsed time with optional warp speed factor
+  uint32_t elapsedRealMs = nowMs - phaseStartMs;
+
+  //-- In warp mode, apply 60x acceleration only for time-based units (seconds/minutes)
+  if ((appSettings.onTimeUnit == TIME_UNIT_SECONDS || appSettings.onTimeUnit == TIME_UNIT_MINUTES) &&
+      settingsStoreLoadWarpSpeedEnabled())
+  {
+    runtimeStatus.currentPhaseElapsedMs = elapsedRealMs * 60UL;
+  }
+  else
+  {
+    runtimeStatus.currentPhaseElapsedMs = elapsedRealMs;
+  }
 
   if (runtimeStatus.currentPhaseElapsedMs < runtimeStatus.currentPhaseDurationMs)
   {
@@ -291,7 +304,17 @@ void timerResume()
   }
 
   runtimeStatus.state = TIMER_STATE_RUNNING;
-  phaseStartMs = millis() - runtimeStatus.currentPhaseElapsedMs;
+
+  //-- Calculate real elapsed time, accounting for warp speed factor
+  uint32_t elapsedRealMs = runtimeStatus.currentPhaseElapsedMs;
+  if ((appSettings.onTimeUnit == TIME_UNIT_SECONDS || appSettings.onTimeUnit == TIME_UNIT_MINUTES) &&
+      settingsStoreLoadWarpSpeedEnabled())
+  {
+    //-- In warp mode, currentPhaseElapsedMs was multiplied by 60, so divide back
+    elapsedRealMs = runtimeStatus.currentPhaseElapsedMs / 60UL;
+  }
+
+  phaseStartMs = millis() - elapsedRealMs;
   runtimeStatus.outputActive = runtimeStatus.inOnPhase;
 
   unlockTimerState();

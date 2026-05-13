@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 12:05 ***/
+/*** Last Changed: 2026-05-13 - 12:37 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -276,13 +276,19 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
 
   if (runtimeStatus.totalCycles == 0)
   {
-    snprintf(buffer, sizeof(buffer), "%lu / Inv.", static_cast<unsigned long>(displayCycle));
+    snprintf(buffer, sizeof(buffer), "%lu / Inf.", static_cast<unsigned long>(displayCycle));
     nextStatusLines[4] = is24hTimer ? nextStatusLines[4] : buffer;
   }
   else
   {
     snprintf(buffer, sizeof(buffer), "%lu/%lu", static_cast<unsigned long>(displayCycle), static_cast<unsigned long>(runtimeStatus.totalCycles));
     nextStatusLines[4] = is24hTimer ? nextStatusLines[4] : buffer;
+  }
+
+  //-- Force line-4 cache invalidation on warp toggle while keeping visible cycle text unchanged
+  if (!is24hTimer && warpSpeedEnabled)
+  {
+    nextStatusLines[4] += "|warp";
   }
 
   snprintf(buffer, sizeof(buffer), "A:%d|T:%d|Y:%d|W:%d", statusActionIndex, static_cast<int>(settings.triggerMode), static_cast<int>(settings.timerType), static_cast<int>(warpSpeedEnabled));
@@ -367,7 +373,41 @@ void displayDrawStatusScreen(const AppSettings& settings, const RuntimeStatus& r
       }
       else
       {
-        drawStatusTile(col1X, tileStartY + 3 * (tileH + tileGap), fullW, tileH, "CYCLES", nextStatusLines[4]);
+        //-- Split internal warp marker from visible cycle value
+        std::string cycleTileValue = nextStatusLines[4];
+        size_t warpMarkerPos = cycleTileValue.find("|warp");
+        bool showWarpMode = warpMarkerPos != std::string::npos;
+
+        if (showWarpMode)
+        {
+          cycleTileValue = cycleTileValue.substr(0, warpMarkerPos);
+        }
+
+        drawStatusTile(col1X, tileStartY + 3 * (tileH + tileGap), fullW, tileH, "CYCLES", cycleTileValue);
+
+        if (showWarpMode)
+        {
+          int16_t textX1;
+          int16_t textY1;
+          uint16_t charWidth;
+          uint16_t charHeight;
+          int warpModeX;
+          int tileY = tileStartY + 3 * (tileH + tileGap);
+
+          tft.setTextSize(2);
+          tft.getTextBounds("0", 0, 0, &textX1, &textY1, &charWidth, &charHeight);
+
+          //-- Start "Warp mode" exactly 10 character positions from right tile edge
+          warpModeX = col1X + fullW - 4 - static_cast<int>(charWidth) * 10;
+          if (warpModeX < col1X + 4)
+          {
+            warpModeX = col1X + 4;
+          }
+
+          tft.setTextColor(getUiSelectedTextColor(), getUiSelectedFillColor());
+          tft.setCursor(warpModeX, tileY + 14);
+          tft.print("Warp mode");
+        }
       }
       break;
 
