@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 12:37 ***/
+/*** Last Changed: 2026-05-16 - 15:35 ***/
 #ifndef DISPLAY_DRIVER_H
 #define DISPLAY_DRIVER_H
 
@@ -9,6 +9,8 @@
 
 //--- Initialize display
 void displayInit();
+void displaySetRotation(int rotation);
+int displayGetRotation();
 void displaySetThemeColorIndex(int index);
 int displayGetThemeColorIndex();
 

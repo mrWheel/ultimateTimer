@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-11 - 15:08 ***/
+/*** Last Changed: 2026-05-16 - 15:35 ***/
 #ifndef APP_CONFIG_H
 #define APP_CONFIG_H
 
@@ -65,8 +65,8 @@
 #define TFT_HEIGHT 240
 #endif
 
-#ifndef TFT_ROTATION
-#define TFT_ROTATION 1
+#ifndef DEFAULT_DISPLAY_ROTATION
+#define DEFAULT_DISPLAY_ROTATION 3
 #endif
 
 #ifndef ENCODER_LONG_PRESS_MS

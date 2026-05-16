@@ -146,9 +146,11 @@ This rule applies to both Cyclic and 24h Timer Settings.
 - WiFi SSID (RO display only, cursor skips this item, only shown if WiFi enabled)
 - IP Address (RO display only, cursor skips this item, only shown if WiFi enabled)
 - MAC Address (RO display only, cursor skips this item)
+- Firmware (RO display only, cursor skips this item)
 - WiFi Disabled: Yes (RO display only, cursor skips this item, only shown if WiFi disabled)
 - Encoder Order (A-B / B-A) — SHORT press toggles directly in the list
 - Warp Speed (Disabled / Enabled) — SHORT press toggles directly in the list
+- Display Rotation (1 / 3) — SHORT press toggles directly in the list
 - Erase WiFi credentials — opens button screen [No] [Yes]
 - Start WiFi Manager — opens button screen [No] [Yes]; Yes clears WiFi Disabled flag and restarts
 - Output Polarity — opens button screen [High] [Low]
@@ -171,6 +173,7 @@ This rule applies to both Cyclic and 24h Timer Settings.
   - `lockInputDuringRun`
   - `autoSaveLastProfile`
   - `warpSpeedEnabled` (always forced to `Disabled` on every startup/reboot)
+  - `displayRotation` (values `1` or `3`)
 
 [WiFi Manager Started]
 - Connect to AP (centered, wrapped if needed)

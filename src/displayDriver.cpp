@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 12:37 ***/
+/*** Last Changed: 2026-05-16 - 15:35 ***/
 #include "displayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -25,6 +25,9 @@ static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
 
 //--- Active UI color index (0-based index into colorProfiles[])
 static int activeUiColorIndex = 2;
+
+//--- Active TFT rotation (valid values: 1 or 3)
+static int activeDisplayRotation = DEFAULT_DISPLAY_ROTATION;
 
 //--- Status screen tile count (4 data tiles + 1 action row)
 static const int statusLineCount = 6;
@@ -116,8 +119,15 @@ void displayInit()
 
   SPI.begin(PIN_TFT_SCL, -1, PIN_TFT_SDA, PIN_TFT_CS);
 
+  activeDisplayRotation = static_cast<int>(settingsStoreLoadDisplayRotation());
+
+  if (activeDisplayRotation != 1 && activeDisplayRotation != 3)
+  {
+    activeDisplayRotation = DEFAULT_DISPLAY_ROTATION;
+  }
+
   tft.init(TFT_HEIGHT, TFT_WIDTH);
-  tft.setRotation(TFT_ROTATION);
+  tft.setRotation(activeDisplayRotation);
   tft.fillScreen(ST77XX_BLACK);
   tft.setTextWrap(false);
   tft.setFont(nullptr);
@@ -126,6 +136,35 @@ void displayInit()
   ESP_LOGI("displayDriver", "Display initialized");
 
 } //   displayInit()
+
+//--- Set active TFT rotation (valid values: 1 or 3)
+void displaySetRotation(int rotation)
+{
+  int newRotation = rotation;
+
+  if (newRotation != 1 && newRotation != 3)
+  {
+    newRotation = DEFAULT_DISPLAY_ROTATION;
+  }
+
+  if (newRotation == activeDisplayRotation)
+  {
+    return;
+  }
+
+  activeDisplayRotation = newRotation;
+  tft.setRotation(activeDisplayRotation);
+  tft.fillScreen(ST77XX_BLACK);
+  invalidateStatusScreenCache();
+
+} //   displaySetRotation()
+
+//--- Get active TFT rotation (1 or 3)
+int displayGetRotation()
+{
+  return activeDisplayRotation;
+
+} //   displayGetRotation()
 
 //--- Set active UI theme color index
 void displaySetThemeColorIndex(int index)

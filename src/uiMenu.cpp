@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 12:05 ***/
+/*** Last Changed: 2026-05-16 - 15:35 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -9,6 +9,7 @@
 #include "timerEngine.h"
 #include "WiFiManagerExt.h"
 #include "appConfig.h"
+#include "progVersion.h"
 #include "warpMachine.h"
 
 #include <WiFi.h>
@@ -58,16 +59,18 @@ enum SystemSettingsItem
   SYSTEM_SETTINGS_ITEM_WIFI_SSID = 0,
   SYSTEM_SETTINGS_ITEM_IP_ADDRESS = 1,
   SYSTEM_SETTINGS_ITEM_MAC_ADDRESS = 2,
-  SYSTEM_SETTINGS_ITEM_WIFI_DISABLED = 3,
-  SYSTEM_SETTINGS_ITEM_ENCODER_ORDER = 4,
-  SYSTEM_SETTINGS_ITEM_WARP_SPEED = 5,
-  SYSTEM_SETTINGS_ITEM_ERASE_WIFI = 6,
-  SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER = 7,
-  SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY = 8,
-  SYSTEM_SETTINGS_ITEM_AUTO_SAVE_PROFILE = 9,
-  SYSTEM_SETTINGS_ITEM_THEME_COLOR = 10,
-  SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER = 11,
-  SYSTEM_SETTINGS_ITEM_EXIT = 12
+  SYSTEM_SETTINGS_ITEM_FIRMWARE = 3,
+  SYSTEM_SETTINGS_ITEM_WIFI_DISABLED = 4,
+  SYSTEM_SETTINGS_ITEM_ENCODER_ORDER = 5,
+  SYSTEM_SETTINGS_ITEM_WARP_SPEED = 6,
+  SYSTEM_SETTINGS_ITEM_DISPLAY_ROTATION = 7,
+  SYSTEM_SETTINGS_ITEM_ERASE_WIFI = 8,
+  SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER = 9,
+  SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY = 10,
+  SYSTEM_SETTINGS_ITEM_AUTO_SAVE_PROFILE = 11,
+  SYSTEM_SETTINGS_ITEM_THEME_COLOR = 12,
+  SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER = 13,
+  SYSTEM_SETTINGS_ITEM_EXIT = 14
 };
 
 //--- Profile list modes
@@ -129,9 +132,11 @@ static const String systemSettingsMenuItems[] =
         "WiFi SSID",
         "IP Address",
         "MAC Address",
+        "Firmware",
         "WiFi Disabled",
         "Encoder Order",
         "Warp Speed",
+        "Display Rotation",
         "Erase WiFi credentials",
         "Start WiFi Manager",
         "Output Polarity",
@@ -1094,8 +1099,8 @@ static void drawCurrentScreen()
 
   case UI_SCREEN_SYSTEM_SETTINGS_MENU:
   {
-    String dynamicSystemSettingsItems[12];
-    int visibleItemLogicalIndexes[12];
+    String dynamicSystemSettingsItems[14];
+    int visibleItemLogicalIndexes[14];
     int visibleItemCount = 0;
     int selectedVisibleIndex = 0;
     int firstVisibleIndex = 0;
@@ -1122,6 +1127,10 @@ static void drawCurrentScreen()
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_MAC_ADDRESS;
     visibleItemCount++;
 
+    dynamicSystemSettingsItems[visibleItemCount] = String("Firmware: ") + String(PROG_VERSION);
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_FIRMWARE;
+    visibleItemCount++;
+
     if (wifiDisabled)
     {
       dynamicSystemSettingsItems[visibleItemCount] = "WiFi Disabled: Yes";
@@ -1137,11 +1146,15 @@ static void drawCurrentScreen()
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_WARP_SPEED;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[6];
+    dynamicSystemSettingsItems[visibleItemCount] = String("Display Rotation: ") + String(displayGetRotation());
+    visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_DISPLAY_ROTATION;
+    visibleItemCount++;
+
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[8];
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_ERASE_WIFI;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[7];
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[9];
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER;
     visibleItemCount++;
 
@@ -1157,11 +1170,11 @@ static void drawCurrentScreen()
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_THEME_COLOR;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[11];
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[13];
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[12];
+    dynamicSystemSettingsItems[visibleItemCount] = systemSettingsMenuItems[14];
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_EXIT;
     visibleItemCount++;
 
@@ -1685,6 +1698,17 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
       bool warpEnabled = !settingsStoreLoadWarpSpeedEnabled();
 
       settingsStoreSaveWarpSpeedEnabled(warpEnabled);
+      drawCurrentScreen();
+
+      return;
+    }
+
+    if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_DISPLAY_ROTATION)
+    {
+      int nextRotation = (displayGetRotation() == 1) ? 3 : 1;
+
+      displaySetRotation(nextRotation);
+      settingsStoreSaveDisplayRotation(static_cast<uint8_t>(nextRotation));
       drawCurrentScreen();
 
       return;

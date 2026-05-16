@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-12 - 11:43 ***/
+/*** Last Changed: 2026-05-16 - 15:35 ***/
 #ifndef SETTINGS_STORE_H
 #define SETTINGS_STORE_H
 
@@ -58,5 +58,11 @@ uint8_t settingsStoreLoadThemeColorIndex();
 
 //--- Save theme color index
 void settingsStoreSaveThemeColorIndex(uint8_t index);
+
+//--- Load TFT display rotation (valid values: 1 or 3)
+uint8_t settingsStoreLoadDisplayRotation();
+
+//--- Save TFT display rotation (valid values: 1 or 3)
+void settingsStoreSaveDisplayRotation(uint8_t rotation);
 
 #endif

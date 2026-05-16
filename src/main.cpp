@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 12:37 ***/
+/*** Last Changed: 2026-05-16 - 15:35 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
@@ -13,6 +13,7 @@
 #include "webUi.h"
 #include "WiFiManagerExt.h"
 #include "appConfig.h"
+#include "progVersion.h"
 
 #include <LittleFS.h>
 #include <WiFi.h>
@@ -23,7 +24,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v2.1.1";
+const char* PROG_VERSION = "v2.1.2";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -42,6 +43,11 @@ static bool wifiWasConnected = false;
 
 //--- Track whether NTP has already been configured in current session
 static bool ntpConfigured = false;
+
+//--- Startup WiFi serial status reporting state
+static bool startupWifiStatusPrinted = false;
+static uint32_t startupWifiStartMs = 0;
+static const uint32_t startupWifiReportTimeoutMs = 15000UL;
 
 //--- Task handles
 static TaskHandle_t timerTaskHandle = nullptr;
@@ -73,6 +79,12 @@ static void showStartupWifiConnectionMessage();
 
 //--- Configure NTP when WiFi STA becomes connected
 static void syncNtpTimeIfNeeded();
+
+//--- Print startup WiFi status to serial monitor
+static void reportStartupWifiStatusToSerial();
+
+//--- Log whether NTP service is reachable and time fetch succeeded
+static void logNtpSyncResult();
 
 //--- Handle first-boot marker file in LittleFS
 static bool handleFirstBootMarker();
@@ -230,8 +242,53 @@ static void syncNtpTimeIfNeeded()
   ntpConfigured = true;
   wifiWasConnected = true;
   ESP_LOGI(logTag, "NTP sync configured (servers: %s, %s)", ntpServer1, ntpServer2);
+  logNtpSyncResult();
 
 } //   syncNtpTimeIfNeeded()
+
+//--- Log whether NTP service is reachable and time fetch succeeded
+static void logNtpSyncResult()
+{
+  struct tm timeInfo;
+  char timeBuffer[32];
+
+  if (getLocalTime(&timeInfo, 2000))
+  {
+    strftime(timeBuffer, sizeof(timeBuffer), "%Y-%m-%d %H:%M:%S", &timeInfo);
+    ESP_LOGI(logTag, "NTP time sync successful: %s", timeBuffer);
+  }
+  else
+  {
+    ESP_LOGW(logTag, "NTP service not reachable");
+  }
+
+} //   logNtpSyncResult()
+
+//--- Print startup WiFi status to serial monitor
+static void reportStartupWifiStatusToSerial()
+{
+  if (wifiDisabled || startupWifiStatusPrinted)
+  {
+    return;
+  }
+
+  if (wifiManagerIsStaConnected())
+  {
+    Serial.println("===================================================");
+    Serial.printf("WiFi connected. IP address: %s\n", wifiManagerGetAddressString().c_str());
+    Serial.println("===================================================");
+    startupWifiStatusPrinted = true;
+
+    return;
+  }
+
+  if (startupWifiStartMs != 0 && (millis() - startupWifiStartMs) >= startupWifiReportTimeoutMs)
+  {
+    Serial.println("No WiFi Connection");
+    startupWifiStatusPrinted = true;
+  }
+
+} //   reportStartupWifiStatusToSerial()
 
 //--- Handle first-boot marker in LittleFS
 static bool handleFirstBootMarker()
@@ -502,11 +559,14 @@ void setup()
     showStartupWifiConnectionMessage();
     delay(600);
     wifiManagerInit();
+    startupWifiStartMs = millis();
+    startupWifiStatusPrinted = false;
     webUiInit();
   }
   else
   {
     WiFi.mode(WIFI_OFF);
+    startupWifiStatusPrinted = true;
     ESP_LOGI(logTag, "WiFi stack disabled by user indicator");
   }
 
@@ -537,6 +597,7 @@ void loop()
   if (!wifiDisabled)
   {
     wifiManagerUpdate();
+    reportStartupWifiStatusToSerial();
     syncNtpTimeIfNeeded();
     webUiUpdate();
   }

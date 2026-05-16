@@ -137,11 +137,13 @@ Current configured values in this repository:
 	- 24h profile files are stored as `/<profileName>-24h.json` (automatic "-24h" suffix)
 - Profile files store: `timerType`, `onTimeValue`, `offTimeValue`, `onTimeUnit`, `offTimeUnit`, `repeatCount`, `triggerMode`, `triggerEdge`, and the 24h quarter-hour states
 - System-level settings such as output polarity, lock input during run, auto-save profile, theme color, and encoder direction are stored separately in Preferences/NVS
+	- Display rotation is a system setting in `System Settings` and is persisted in Preferences/NVS (values: `1` or `3`)
 	- Built-in profiles `default` (cyclic) and `default-24h` (24h) are always available in the Load Profile list
 	- Built-in profiles `default` and `default-24h` cannot be deleted and are hidden from the Delete Profile list
 	- If the active profile is deleted, firmware automatically loads the corresponding default profile based on timer type
 - The fallback access point is open (no password)
 - If no WiFi credentials are found (or STA connection fails), use the local `WiFi Setup` menu: scan nearby APs, select SSID with the rotary encoder, then enter the WiFi password via rotary text input and save/apply.
+- At startup, Serial Monitor prints `WiFi connected. IP address: <ip>` once when STA connects, or `No WiFi Connection` if no STA link is established within the startup connection window.
 - The local UI currently includes timer and profile management
 - Local TFT WiFi credential editing is available through the rotary menu
 - If LittleFS marker file `/firstBoot` exists at startup, firmware skips WiFi startup for that boot, erases stored STA credentials, shows `firstBoot / WiFi init skipped`, and removes the marker file
@@ -164,4 +166,4 @@ Current configured values in this repository:
 ## TFT wiring/configuration hints
 - This project currently targets an ST7789-based 2.4 inch SPI display module.
 - Required signals include power, `CS`, `DC`, `RST`, `BL`, plus SPI `SCK` and `MOSI`.
-- Rotation is configurable via `TFT_ROTATION` in `platformio.ini`.
+- Rotation is configurable in local `System Settings` via `Display Rotation` (`1` or `3`).

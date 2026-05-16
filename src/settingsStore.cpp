@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-12 - 11:43 ***/
+/*** Last Changed: 2026-05-16 - 15:35 ***/
 #include "settingsStore.h"
 #include "appConfig.h"
 
@@ -182,3 +182,33 @@ void settingsStoreSaveThemeColorIndex(uint8_t index)
   ESP_LOGI(logTag, "Theme color index saved: %u", static_cast<unsigned>(index));
 
 } //   settingsStoreSaveThemeColorIndex()
+
+//--- Load TFT display rotation (valid values: 1 or 3)
+uint8_t settingsStoreLoadDisplayRotation()
+{
+  uint8_t rotation = preferences.getUChar("dispRot", static_cast<uint8_t>(DEFAULT_DISPLAY_ROTATION));
+
+  if (rotation != 1U && rotation != 3U)
+  {
+    rotation = static_cast<uint8_t>(DEFAULT_DISPLAY_ROTATION);
+  }
+
+  return rotation;
+
+} //   settingsStoreLoadDisplayRotation()
+
+//--- Save TFT display rotation (valid values: 1 or 3)
+void settingsStoreSaveDisplayRotation(uint8_t rotation)
+{
+  uint8_t safeRotation = rotation;
+
+  if (safeRotation != 1U && safeRotation != 3U)
+  {
+    safeRotation = static_cast<uint8_t>(DEFAULT_DISPLAY_ROTATION);
+  }
+
+  preferences.putUChar("dispRot", safeRotation);
+
+  ESP_LOGI(logTag, "Display rotation saved: %u", static_cast<unsigned>(safeRotation));
+
+} //   settingsStoreSaveDisplayRotation()
