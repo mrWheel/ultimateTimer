@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WiFi and Web UI - Ultimate Timer User Manual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <p><a href="index.html">&larr; Back to manual home</a></p>
+    <h1>WiFi and Web UI</h1>
+    <p>When WiFi is available, Ultimate Timer also provides a browser-based control panel.</p>
+    <nav>
+  <a href="index.html">Manual Home</a>
+  <a href="timer-screen.html">Timer Screen</a>
+  <a href="main-menu.html">Main Menu</a>
+  <a href="cyclic-timer.html">Cyclic Timer</a>
+  <a href="timer-24h.html">24h Timer</a>
+  <a href="remote-access.html">WiFi &amp; Web UI</a>
+</nav>
+  </header>
+  <main>
+    
+<section>
+  <h2>How to open it</h2>
+  <ul>
+    <li>After the device connects to WiFi, the serial monitor prints the IP address.</li>
+    <li>Open <code>http://&lt;device-ip&gt;/</code> in a browser on the same network.</li>
+    <li>If station WiFi is unavailable, use the <a href="menu-wifi-manager.html">WiFi Manager Screen</a> first.</li>
+  </ul>
+</section>
+<section>
+  <h2>Page structure</h2>
+  <pre class="screen">Top bar: Active profile   12:34:56
+
+System | Timer Settings | Profiles
+
+Timer Screen  (always visible)
++--------------------------------+
+| State, output, countdown       |
+| Cycles or 24h timing details   |
+| [Start] [Stop] [Reset]         |
++--------------------------------+</pre>
+  <ul>
+    <li><strong>System</strong> contains device-wide settings.</li>
+    <li><strong>Timer Settings</strong> opens Cyclic Timer Settings and 24h Timer Settings.</li>
+    <li><strong>Profiles</strong> opens Load, Save, New, and Delete Profile pages.</li>
+  </ul>
+</section>
+<section>
+  <h2>Important web behavior</h2>
+  <ul>
+    <li>Opening any web menu tile automatically stops the timer.</li>
+    <li>Closing all menu tiles automatically starts the timer again.</li>
+    <li>The Timer Screen tile is always visible and keeps refreshing.</li>
+    <li>When timer settings differ from the saved profile, the header adds <code>(not saved)</code> after the profile name.</li>
+    <li>For 24h profiles, the Start/Stop/Reset buttons are hidden.</li>
+  </ul>
+</section>
+<section>
+  <h2>Saving rules</h2>
+  <ul>
+    <li><strong>Timer Settings</strong> use live apply while you edit.</li>
+    <li><strong>System</strong> settings only change when you press Save.</li>
+    <li>If <strong>Auto Save Profile</strong> is No, saving timer settings shows a warning because the running state changed but the profile file did not.</li>
+    <li>The <strong>Save Profile</strong> button stays available even while the timer is running.</li>
+  </ul>
+</section>
+<section>
+  <h2>24h editor in the browser</h2>
+  <pre class="screen">Hour | Type | 00-15 | 16-30 | 31-45 | 46-59
+05   |  S   |   -   |   +   |   R   |   -
+06   |  +   | locked| locked| locked| locked</pre>
+  <p>Selecting <code>-</code>, <code>+</code>, <code>R</code>, or <code>r</code> applies that state to the full hour. Select <code>S</code> to unlock the quarter cells.</p>
+</section>
+
+  </main>
+  <footer>
+    <p>Ultimate Timer user manual for the ESP32 TFT + rotary encoder firmware.</p>
+  </footer>
+</body>
+</html>

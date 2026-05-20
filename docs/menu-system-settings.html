@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>System Settings Menu - Ultimate Timer User Manual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <p><a href="index.html">&larr; Back to manual home</a></p>
+    <h1>System Settings Menu</h1>
+    <p>Use this menu for device-wide settings that are stored separately from timer profiles.</p>
+    <nav>
+  <a href="index.html">Manual Home</a>
+  <a href="timer-screen.html">Timer Screen</a>
+  <a href="main-menu.html">Main Menu</a>
+  <a href="cyclic-timer.html">Cyclic Timer</a>
+  <a href="timer-24h.html">24h Timer</a>
+  <a href="remote-access.html">WiFi &amp; Web UI</a>
+</nav>
+  </header>
+  <main>
+    
+<section>
+  <h2>Screen layout</h2>
+  <pre class="screen">System Settings
+  SSID: HomeWiFi
+  IP: 192.168.1.55
+  MAC: AA:BB:CC:DD:EE:FF
+  Firmware: v2.1.2
+> Encoder Order: A-B <
+  Warp Speed: Disabled
+  Display Rotation: 3
+  Erase WiFi credentials
+  Start WiFi Manager
+  Output Polarity
+  Auto Save Profile
+  Theme Color
+  Restart ultimateTimer
+  Exit</pre>
+</section>
+<section>
+  <h2>What each setting does</h2>
+  <div class="table-like">
+    <div><strong>SSID / IP / MAC / Firmware</strong></div><div>Read-only information.</div>
+    <div><strong>Encoder Order</strong></div><div>Reverse encoder direction if left/right feels wrong.</div>
+    <div><strong>Warp Speed</strong></div><div>Enable or disable 60x cyclic timer acceleration.</div>
+    <div><strong>Display Rotation</strong></div><div>Switch between rotation 1 and rotation 3.</div>
+    <div><strong>Erase WiFi credentials</strong></div><div>Clear saved station WiFi name and password.</div>
+    <div><strong>Start WiFi Manager</strong></div><div>Launch the WiFi setup portal and restart into WiFi-enabled mode.</div>
+    <div><strong>Output Polarity</strong></div><div>Choose Active High or Active Low output behavior.</div>
+    <div><strong>Auto Save Profile</strong></div><div>Choose whether timer-setting changes also update the active profile automatically.</div>
+    <div><strong>Theme Color</strong></div><div>Choose Red, Green, Blue, Indigo, Violet, or Yellow.</div>
+    <div><strong>Restart ultimateTimer</strong></div><div>Restart the device after confirmation.</div>
+  </div>
+</section>
+<section>
+  <h2>Button-style selections</h2>
+  <pre class="screen">Output Polarity
+[High]   [Low]
+
+Theme Color
+[Red] [Green] [Blue]
+[Indigo] [Violet] [Yellow]</pre>
+  <p>Rotate to move between buttons, then short press to confirm the selected button.</p>
+</section>
+<section>
+  <h2>Persistence</h2>
+  <p>These settings are stored in device preferences, not in individual timer profile files.</p>
+</section>
+
+  </main>
+  <footer>
+    <p>Ultimate Timer user manual for the ESP32 TFT + rotary encoder firmware.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New Profile Menu - Ultimate Timer User Manual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <p><a href="index.html">&larr; Back to manual home</a></p>
+    <h1>New Profile Menu</h1>
+    <p>Use this menu to create a new profile name directly from the rotary encoder.</p>
+    <nav>
+  <a href="index.html">Manual Home</a>
+  <a href="timer-screen.html">Timer Screen</a>
+  <a href="main-menu.html">Main Menu</a>
+  <a href="cyclic-timer.html">Cyclic Timer</a>
+  <a href="timer-24h.html">24h Timer</a>
+  <a href="remote-access.html">WiFi &amp; Web UI</a>
+</nav>
+  </header>
+  <main>
+    
+<section>
+  <h2>Screen layout</h2>
+  <pre class="screen">New Profile Menu
+Profile: Abc-----
+          ^
+Turn  = change token
+Short = move right
+K0    = move left
+Hold  = save name</pre>
+</section>
+<section>
+  <h2>How naming works</h2>
+  <ul>
+    <li>The name is entered one position at a time.</li>
+    <li>Available characters include letters, digits, and the dash.</li>
+    <li>If the current character is <code>-</code>, a short press does not move to the right.</li>
+    <li>When the current timer type is 24h, the file is stored with an automatic <code>-24h</code> suffix.</li>
+  </ul>
+</section>
+<section>
+  <h2>Saving the new name</h2>
+  <ul>
+    <li>Encoder medium/long press saves the new profile name and returns.</li>
+    <li>PIN_KEY0 medium/long also saves and returns.</li>
+    <li>PIN_KEY0 short on the first position exits without saving.</li>
+  </ul>
+</section>
+
+  </main>
+  <footer>
+    <p>Ultimate Timer user manual for the ESP32 TFT + rotary encoder firmware.</p>
+  </footer>
+</body>
+</html>

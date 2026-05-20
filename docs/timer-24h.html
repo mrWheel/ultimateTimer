@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>24h Timer - Ultimate Timer User Manual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <p><a href="index.html">&larr; Back to manual home</a></p>
+    <h1>24h Timer</h1>
+    <p>The 24h timer follows a daily schedule made of 96 quarter-hour blocks. It works like an electronic version of a mechanical 24-hour timer.</p>
+    <nav>
+  <a href="index.html">Manual Home</a>
+  <a href="timer-screen.html">Timer Screen</a>
+  <a href="main-menu.html">Main Menu</a>
+  <a href="cyclic-timer.html">Cyclic Timer</a>
+  <a href="timer-24h.html">24h Timer</a>
+  <a href="remote-access.html">WiFi &amp; Web UI</a>
+</nav>
+  </header>
+  <main>
+    
+<section>
+  <h2>How the schedule works</h2>
+  <ul>
+    <li>The day is split into 24 hours.</li>
+    <li>Each hour has 4 quarter-hour blocks: 00-15, 16-30, 31-45, and 46-59.</li>
+    <li>Each quarter block stores one state.</li>
+  </ul>
+  <pre class="screen">Quarter-hour symbols
+-  OFF for the full quarter
++  ON for the full quarter
+R  random ON transition inside the quarter or combined random span
+r  random OFF transition inside the quarter or combined random span
+S  split hour shown on screen when the four quarter values differ</pre>
+</section>
+<section>
+  <h2>What happens while it runs</h2>
+  <ul>
+    <li>The timer follows local time, not elapsed cycle time.</li>
+    <li>When you load a 24h profile, the output immediately jumps to the correct state for the current time.</li>
+    <li>Consecutive <code>R</code> blocks combine into one possible ON window.</li>
+    <li>Consecutive <code>r</code> blocks combine into one possible OFF window.</li>
+    <li>The Timer Screen shows the next possible switch window as <code>hh:mm - hh:mm</code>.</li>
+  </ul>
+</section>
+<section>
+  <h2>How it looks on screen</h2>
+  <pre class="screen">24h Timer
++--------------------------------+
+| Hour                Type       |
+| >05<                [S]        |
++--------------------------------+
+| [00-15] [16-30] [31-45] [46-59]|
+| [-]     [+]     [R]     [-]    |
+| Turn=Select   Short=Lock/Edit  |
+| Hold=Save+Back   K0=Back       |
++--------------------------------+</pre>
+</section>
+<section>
+  <h2>Important differences from the cyclic timer</h2>
+  <ul>
+    <li>No Start/Stop/Reset buttons are shown.</li>
+    <li>The status screen adds <strong>Next Change Between</strong>.</li>
+    <li>24h profile filenames automatically use the <code>-24h</code> suffix.</li>
+  </ul>
+</section>
+<section>
+  <h2>Where to edit it</h2>
+  <p>Use the <a href="menu-24h-settings.html">24h Timer Settings Menu</a> on the TFT display or the <a href="remote-access.html">Web UI</a>.</p>
+</section>
+
+  </main>
+  <footer>
+    <p>Ultimate Timer user manual for the ESP32 TFT + rotary encoder firmware.</p>
+  </footer>
+</body>
+</html>
