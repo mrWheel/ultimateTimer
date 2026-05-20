@@ -77,6 +77,9 @@ static bool findNextTransition(const uint32_t transitionSeconds[], const bool tr
 //--- Find next transition index after second-of-day
 static bool findNextTransitionIndex(const uint32_t transitionSeconds[], const bool transitionStates[], size_t transitionCount, uint32_t nowSeconds, bool targetStateOnly, bool targetState, size_t& foundIndex);
 
+//--- Check whether cyclic runtime should use warp speed
+static bool shouldApplyWarpSpeedToCyclicRuntime();
+
 //--- Lock timer state
 static inline void lockTimerState()
 {
@@ -96,6 +99,24 @@ static inline void unlockTimerState()
   }
 
 } //   unlockTimerState()
+
+//--- Check whether cyclic runtime should use warp speed
+static bool shouldApplyWarpSpeedToCyclicRuntime()
+{
+  if (appSettings.timerType != TIMER_TYPE_CYCLIC || !settingsStoreLoadWarpSpeedEnabled())
+  {
+    return false;
+  }
+
+  bool hasMinuteUnit = (appSettings.onTimeUnit == TIME_UNIT_MINUTES) ||
+                       (appSettings.offTimeUnit == TIME_UNIT_MINUTES);
+  TimeUnit activePhaseUnit = runtimeStatus.inOnPhase ? appSettings.onTimeUnit : appSettings.offTimeUnit;
+  bool activeUnitSupportsWarp = (activePhaseUnit == TIME_UNIT_SECONDS) ||
+                                (activePhaseUnit == TIME_UNIT_MINUTES);
+
+  return hasMinuteUnit || activeUnitSupportsWarp;
+
+} //   shouldApplyWarpSpeedToCyclicRuntime()
 
 //--- Initialize timer engine
 void timerInit()
@@ -156,9 +177,8 @@ void timerUpdate()
   //-- Calculate elapsed time with optional warp speed factor
   uint32_t elapsedRealMs = nowMs - phaseStartMs;
 
-  //-- In warp mode, apply 60x acceleration only for time-based units (seconds/minutes)
-  if ((appSettings.onTimeUnit == TIME_UNIT_SECONDS || appSettings.onTimeUnit == TIME_UNIT_MINUTES) &&
-      settingsStoreLoadWarpSpeedEnabled())
+  //-- In warp mode, apply 60x acceleration for cyclic timers with time-based phases
+  if (shouldApplyWarpSpeedToCyclicRuntime())
   {
     runtimeStatus.currentPhaseElapsedMs = elapsedRealMs * 60UL;
   }
@@ -307,8 +327,7 @@ void timerResume()
 
   //-- Calculate real elapsed time, accounting for warp speed factor
   uint32_t elapsedRealMs = runtimeStatus.currentPhaseElapsedMs;
-  if ((appSettings.onTimeUnit == TIME_UNIT_SECONDS || appSettings.onTimeUnit == TIME_UNIT_MINUTES) &&
-      settingsStoreLoadWarpSpeedEnabled())
+  if (shouldApplyWarpSpeedToCyclicRuntime())
   {
     //-- In warp mode, currentPhaseElapsedMs was multiplied by 60, so divide back
     elapsedRealMs = runtimeStatus.currentPhaseElapsedMs / 60UL;

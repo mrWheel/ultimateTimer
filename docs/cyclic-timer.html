@@ -57,7 +57,8 @@ External Trigger</pre>
   <h2>Warp Speed</h2>
   <ul>
     <li>Warp Speed is only for cyclic timers.</li>
-    <li>When enabled and the active phase unit is seconds or minutes, one real second advances the timer by 60 seconds.</li>
+    <li>When enabled, one real second advances the cyclic runtime by 60 seconds for time-based phases.</li>
+    <li>If either cyclic unit is set to <code>Min</code>, warp acceleration also applies while the other phase is active.</li>
     <li>The countdown still looks normal in <code>MMM:SS</code> format.</li>
     <li>The Cycles tile also shows <strong>Warp mode</strong>.</li>
     <li>Warp Speed is forced back to Disabled on every reboot.</li>
