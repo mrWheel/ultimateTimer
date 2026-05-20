@@ -93,8 +93,8 @@ read `colorSettings.md`
 	- cyclic timer: `State`, `On time`, `Off time`, `Output`, and `Cycles`
 	- 24h timer: `State`, `Next Change Between`, `Last State Change (ON/OFF)`, `Next State Change (OFF/ON)`, `Output` (no `Cycles` tile)
 - `Output` line includes a live countdown timer (`MMM:SS`) to the next ON/OFF switch while running/paused.
-- For cyclic timers, when `Warp Speed` is enabled, elapsed runtime advances at 60x speed (1 real second = 60 countdown seconds) for time-based phases while the countdown format remains `MMM:SS`.
-- If either cyclic phase unit is `Min`, warp acceleration also applies while the other phase is active.
+- For cyclic timers, when `Warp Speed` is enabled, elapsed runtime advances at 60x speed (1 real second = 60 countdown seconds) for phases using `s` or `Min`, while the countdown format remains `MMM:SS`.
+- If either cyclic phase unit is `Min`, warp acceleration remains active across both phases.
 - For cyclic timers, the `Cycles` tile always keeps the cycle counter visible; when `Warp Speed` is enabled it also shows `Warp mode` near the right side of the same tile.
 - For 24h timers, the `Next Change Between` tile shows `hh:mm - hh:mm` for the next possible switch span.
 - When `Warp Speed` is enabled, the TFT header keeps showing the warped clock (`HH:MM`) even if WiFi is disconnected.
