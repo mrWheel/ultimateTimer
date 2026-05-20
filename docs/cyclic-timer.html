@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cyclic Timer - Ultimate Timer User Manual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <p><a href="index.html">&larr; Back to manual home</a></p>
+    <h1>Cyclic Timer</h1>
+    <p>The cyclic timer repeats an ON phase and an OFF phase until the cycle count is finished or forever when the repeat count is zero.</p>
+    <nav>
+  <a href="index.html">Manual Home</a>
+  <a href="timer-screen.html">Timer Screen</a>
+  <a href="main-menu.html">Main Menu</a>
+  <a href="cyclic-timer.html">Cyclic Timer</a>
+  <a href="timer-24h.html">24h Timer</a>
+  <a href="remote-access.html">WiFi &amp; Web UI</a>
+</nav>
+  </header>
+  <main>
+    
+<section>
+  <h2>What it is for</h2>
+  <ul>
+    <li>Use it when you need repeating ON/OFF output timing.</li>
+    <li>You can define the ON time, OFF time, units, number of cycles, trigger mode, and trigger edge.</li>
+    <li><code>repeatCount = 0</code> means run forever.</li>
+  </ul>
+</section>
+<section>
+  <h2>Main fields</h2>
+  <div class="table-like">
+    <div><strong>On Time</strong></div><div>Duration of the ON phase.</div>
+    <div><strong>Off Time</strong></div><div>Duration of the OFF phase.</div>
+    <div><strong>Units</strong></div><div>Each time can use <code>ms</code>, <code>s</code>, or <code>Min</code>.</div>
+    <div><strong>Number of Cycles</strong></div><div>How many ON/OFF repetitions to run. Zero means infinite.</div>
+    <div><strong>Trigger Mode</strong></div><div><strong>Manual</strong> shows Start/Stop/Reset buttons. <strong>External</strong> waits for the trigger input.</div>
+    <div><strong>Trigger Edge</strong></div><div>Select Rising or Falling for the external trigger input.</div>
+  </div>
+</section>
+<section>
+  <h2>Manual and external trigger behavior</h2>
+  <pre class="screen">Manual trigger mode
+[Start] [Stop] [Reset]
+
+External trigger mode
+External Trigger</pre>
+  <ul>
+    <li>In <strong>Manual</strong> mode, start and stop the timer from the Timer Screen or the web page.</li>
+    <li>In <strong>External</strong> mode, the Timer Screen hides the action buttons and shows <strong>External Trigger</strong>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Warp Speed</h2>
+  <ul>
+    <li>Warp Speed is only for cyclic timers.</li>
+    <li>When enabled and the active phase unit is seconds or minutes, one real second advances the timer by 60 seconds.</li>
+    <li>The countdown still looks normal in <code>MMM:SS</code> format.</li>
+    <li>The Cycles tile also shows <strong>Warp mode</strong>.</li>
+    <li>Warp Speed is forced back to Disabled on every reboot.</li>
+  </ul>
+</section>
+<section>
+  <h2>Where to edit it</h2>
+  <p>Use the <a href="menu-cyclic-settings.html">Cyclic Timer Settings Menu</a> on the TFT display or the <a href="remote-access.html">Web UI</a>.</p>
+</section>
+
+  </main>
+  <footer>
+    <p>Ultimate Timer user manual for the ESP32 TFT + rotary encoder firmware.</p>
+  </footer>
+</body>
+</html>

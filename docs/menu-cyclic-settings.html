@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cyclic Timer Settings Menu - Ultimate Timer User Manual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <p><a href="index.html">&larr; Back to manual home</a></p>
+    <h1>Cyclic Timer Settings Menu</h1>
+    <p>Use this menu to edit the cyclic timer values that control repeated ON/OFF timing.</p>
+    <nav>
+  <a href="index.html">Manual Home</a>
+  <a href="timer-screen.html">Timer Screen</a>
+  <a href="main-menu.html">Main Menu</a>
+  <a href="cyclic-timer.html">Cyclic Timer</a>
+  <a href="timer-24h.html">24h Timer</a>
+  <a href="remote-access.html">WiFi &amp; Web UI</a>
+</nav>
+  </header>
+  <main>
+    
+<section>
+  <h2>Screen layout</h2>
+  <pre class="screen">Cyclic Timer Settings Menu
+> On Time <
+  On Time Unit
+  Off Time
+  Off Time Unit
+  Number of Cycles
+  Trigger Mode
+  Trigger Edge
+  Lock Input During Run
+  Exit</pre>
+</section>
+<section>
+  <h2>What you can edit</h2>
+  <ul>
+    <li><strong>On Time / Off Time</strong>: numeric field input.</li>
+    <li><strong>On Time Unit / Off Time Unit</strong>: choose <code>ms</code>, <code>s</code>, or <code>Min</code>.</li>
+    <li><strong>Number of Cycles</strong>: zero means infinite cycles.</li>
+    <li><strong>Trigger Mode</strong>: Manual or External.</li>
+    <li><strong>Trigger Edge</strong>: Rising or Falling.</li>
+    <li><strong>Lock Input During Run</strong>: block trigger/reset changes while the timer is busy.</li>
+  </ul>
+</section>
+<section>
+  <h2>Editing rules</h2>
+  <pre class="screen">Field input example
+Title: On Time
+Value: 0005
+Turn  = change current digit
+Short = move right
+K0    = move left
+Hold  = save and return</pre>
+  <ul>
+    <li>Short press the encoder to enter the selected field.</li>
+    <li>Encoder medium/long press saves the current field and returns.</li>
+    <li>PIN_KEY0 short moves left one position.</li>
+    <li>PIN_KEY0 medium/long saves and returns.</li>
+  </ul>
+</section>
+<section>
+  <h2>Saving behavior</h2>
+  <ul>
+    <li>Changes always affect the running timer immediately.</li>
+    <li>If <strong>Auto Save Profile</strong> is Yes, the active profile is updated immediately too.</li>
+    <li>If <strong>Auto Save Profile</strong> is No, use <a href="menu-save-profile.html">Save Profile</a> later to keep the new values.</li>
+  </ul>
+</section>
+
+  </main>
+  <footer>
+    <p>Ultimate Timer user manual for the ESP32 TFT + rotary encoder firmware.</p>
+  </footer>
+</body>
+</html>

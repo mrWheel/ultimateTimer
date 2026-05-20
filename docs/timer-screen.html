@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Timer Screen - Ultimate Timer User Manual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <p><a href="index.html">&larr; Back to manual home</a></p>
+    <h1>Timer Screen</h1>
+    <p>The Timer Screen is the home screen. It shows the live timer state and is the only screen you see during normal operation.</p>
+    <nav>
+  <a href="index.html">Manual Home</a>
+  <a href="timer-screen.html">Timer Screen</a>
+  <a href="main-menu.html">Main Menu</a>
+  <a href="cyclic-timer.html">Cyclic Timer</a>
+  <a href="timer-24h.html">24h Timer</a>
+  <a href="remote-access.html">WiFi &amp; Web UI</a>
+</nav>
+  </header>
+  <main>
+    
+<section>
+  <h2>How to open it</h2>
+  <p>The Timer Screen appears automatically at startup and after you leave menus.</p>
+</section>
+<section>
+  <h2>Cyclic timer view</h2>
+  <pre class="screen">Timer Screen
++--------------------------------+
+| State              Running     |
+| On Time            5 s         |
+| Off Time           5 s         |
+| Output             ON  004:22  |
+| Cycles             3/INF       |
+|                                |
+| [Start] [Stop] [Reset]         |
++--------------------------------+</pre>
+  <ul>
+    <li><strong>State</strong> shows Idle, Running, Paused, or Finished.</li>
+    <li><strong>Output</strong> also shows the countdown to the next output change in <code>MMM:SS</code>.</li>
+    <li><strong>Cycles</strong> shows the current cycle and the total cycle limit. <code>INF</code> means infinite cycles.</li>
+    <li>In manual trigger mode you can select <strong>Start</strong>, <strong>Stop</strong>, or <strong>Reset</strong> with the encoder and confirm with a short press.</li>
+  </ul>
+</section>
+<section>
+  <h2>24h timer view</h2>
+  <pre class="screen">Timer Screen
++--------------------------------+
+| State              Running     |
+| Next Change Between 18:16-18:30|
+| Last Change        ON  17:45   |
+| Next Change        OFF 18:24   |
+| Output             ON  038:00  |
+|                                |
+|        24h auto mode           |
++--------------------------------+</pre>
+  <ul>
+    <li><strong>Next Change Between</strong> shows the possible window for the next scheduled change.</li>
+    <li><strong>Last Change</strong> and <strong>Next Change</strong> show the last and next output transitions.</li>
+    <li>There are no Start/Stop/Reset buttons in 24h mode.</li>
+  </ul>
+</section>
+<section>
+  <h2>Header information</h2>
+  <ul>
+    <li>The right side of the header shows <strong>No WiFi</strong> when the device is offline.</li>
+    <li>When WiFi and time sync are available, the header shows the current time.</li>
+    <li>When Warp Speed is enabled, the header keeps showing the warped clock for cyclic timers.</li>
+  </ul>
+</section>
+<section>
+  <h2>Open the menu</h2>
+  <p>Press and hold the encoder to open the <a href="main-menu.html">Main Menu</a>.</p>
+</section>
+
+  </main>
+  <footer>
+    <p>Ultimate Timer user manual for the ESP32 TFT + rotary encoder firmware.</p>
+  </footer>
+</body>
+</html>

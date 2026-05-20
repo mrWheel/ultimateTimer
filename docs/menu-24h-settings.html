@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>24h Timer Settings Menu - Ultimate Timer User Manual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <p><a href="index.html">&larr; Back to manual home</a></p>
+    <h1>24h Timer Settings Menu</h1>
+    <p>Use this menu to build or change the daily 24-hour schedule one hour and one quarter at a time.</p>
+    <nav>
+  <a href="index.html">Manual Home</a>
+  <a href="timer-screen.html">Timer Screen</a>
+  <a href="main-menu.html">Main Menu</a>
+  <a href="cyclic-timer.html">Cyclic Timer</a>
+  <a href="timer-24h.html">24h Timer</a>
+  <a href="remote-access.html">WiFi &amp; Web UI</a>
+</nav>
+  </header>
+  <main>
+    
+<section>
+  <h2>Focus flow</h2>
+  <ol>
+    <li>Select the hour.</li>
+    <li>Select the hour type.</li>
+    <li>If the hour is split, select the quarter slot.</li>
+    <li>Set the quarter type.</li>
+  </ol>
+</section>
+<section>
+  <h2>Hour focus</h2>
+  <pre class="screen">24h Timer
++--------------------------------+
+| Hour                Type       |
+| >05<                [R]        |
++--------------------------------+
+Turn=Select hour   Short=Lock
+Hold=Save+Back     K0=Back</pre>
+  <p>If the hour type is <code>S</code>, the quarter blocks are shown immediately.</p>
+</section>
+<section>
+  <h2>Split-hour editing</h2>
+  <pre class="screen">24h Timer
++--------------------------------+
+| Hour                Type       |
+| [05]                >S<        |
++--------------------------------+
+| [00-15] [16-30] [31-45] [46-59]|
+| [-]     [+]     [R]     [-]    |
+| Turn=Type   Short=Edit quarters|
++--------------------------------+
+
+>00-15< [16-30] [31-45] [46-59]
+[-]     [+]     [R]     [-]</pre>
+  <ul>
+    <li>Choosing <code>+</code>, <code>-</code>, <code>R</code>, or <code>r</code> applies that value to the full hour.</li>
+    <li>Choosing <code>S</code> unlocks the 4 quarter blocks.</li>
+    <li>Quarter blocks wrap within the hour and use the same short-press confirm behavior.</li>
+  </ul>
+</section>
+<section>
+  <h2>How to finish</h2>
+  <ul>
+    <li>Encoder medium press or long press saves all current 24h edits and returns to the Main Menu.</li>
+    <li>PIN_KEY0 medium or long does the same.</li>
+  </ul>
+</section>
+
+  </main>
+  <footer>
+    <p>Ultimate Timer user manual for the ESP32 TFT + rotary encoder firmware.</p>
+  </footer>
+</body>
+</html>

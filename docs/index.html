@@ -1,3 +1,112 @@
-<html>
-  User Manual Ultimate Timer
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ultimate Timer User Manual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Ultimate Timer User Manual</h1>
+    <p>End-user guide for the ESP32-based Ultimate Timer with local TFT control, profiles, WiFi setup, and browser access.</p>
+    <div class="note">
+      <p>This project controls real hardware. Follow all electrical and installation safety rules for the device you built around it.</p>
+    </div>
+    <nav>
+  <a href="index.html">Manual Home</a>
+  <a href="timer-screen.html">Timer Screen</a>
+  <a href="main-menu.html">Main Menu</a>
+  <a href="cyclic-timer.html">Cyclic Timer</a>
+  <a href="timer-24h.html">24h Timer</a>
+  <a href="remote-access.html">WiFi &amp; Web UI</a>
+</nav>
+  </header>
+  <main>
+    <section>
+      <h2>What this software does</h2>
+      <p>Ultimate Timer is a programmable timer with two operating modes:</p>
+      <ul>
+        <li><strong>Cyclic Timer</strong>: repeats ON and OFF periods for a fixed number of cycles or forever.</li>
+        <li><strong>24h Timer</strong>: follows a 24-hour schedule built from 15-minute blocks.</li>
+      </ul>
+      <p>You can use it from the local TFT display with the rotary encoder, or from a web browser when WiFi is available.</p>
+      <pre class="screen">Timer Screen
++--------------------------------+
+| State              Running     |
+| On Time            5 s         |
+| Off Time           5 s         |
+| Output             ON  004:22  |
+| Cycles             3/INF       |
+|                                |
+| [Start] [Stop] [Reset]         |
++--------------------------------+</pre>
+    </section>
+
+    <section>
+      <h2>Quick start</h2>
+      <div class="table-like">
+        <div><strong>Turn encoder</strong></div><div>Move through menus or change the current value.</div>
+        <div><strong>Short press encoder</strong></div><div>Select a menu item, lock a field, or confirm a value.</div>
+        <div><strong>Long press encoder</strong></div><div>Open the main menu from the Timer Screen.</div>
+        <div><strong>PIN_KEY0 short</strong></div><div>Move one step left in field input, or exit if you are already at the first position.</div>
+        <div><strong>PIN_KEY0 medium/long</strong></div><div>Back out of the current menu, or save and return from field input.</div>
+      </div>
+      <p class="small">Default press times in this repository: short 50 ms, medium 1000 ms, long 2000 ms.</p>
+    </section>
+
+    <section>
+      <h2>Manual pages</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>Operating screens</h3>
+          <ul>
+            <li><a href="timer-screen.html">Timer Screen</a></li>
+            <li><a href="cyclic-timer.html">Cyclic Timer</a></li>
+            <li><a href="timer-24h.html">24h Timer</a></li>
+            <li><a href="remote-access.html">WiFi &amp; Web UI</a></li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Main navigation</h3>
+          <ul>
+            <li><a href="main-menu.html">Main Menu</a></li>
+            <li><a href="menu-cyclic-settings.html">Cyclic Timer Settings Menu</a></li>
+            <li><a href="menu-24h-settings.html">24h Timer Settings Menu</a></li>
+            <li><a href="menu-system-settings.html">System Settings Menu</a></li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Profile menus</h3>
+          <ul>
+            <li><a href="menu-save-profile.html">Save Profile Menu</a></li>
+            <li><a href="menu-load-profile.html">Load Profile Menu</a></li>
+            <li><a href="menu-new-profile.html">New Profile Menu</a></li>
+            <li><a href="menu-delete-profile.html">Delete Profile Menu</a></li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>Network setup</h3>
+          <ul>
+            <li><a href="menu-wifi-manager.html">WiFi Manager Screen</a></li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>Important behavior to know</h2>
+      <ul>
+        <li><strong>Profiles:</strong> cyclic profiles are stored normally, while 24h profiles use an automatic <code>-24h</code> suffix.</li>
+        <li><strong>Default profiles:</strong> <code>default</code> and <code>default-24h</code> are always available and cannot be deleted.</li>
+        <li><strong>Auto Save Profile = No:</strong> timer-setting changes affect the running timer immediately, but you must use <strong>Save Profile</strong> to keep them permanently.</li>
+        <li><strong>24h timer:</strong> start/stop/reset buttons are hidden because the schedule follows wall clock time automatically.</li>
+        <li><strong>Warp Speed:</strong> only affects cyclic timers, and it resets to Disabled after every restart.</li>
+      </ul>
+    </section>
+  </main>
+  <footer>
+    <p>Use the links above as the manual table of contents.</p>
+  </footer>
+</body>
 </html>

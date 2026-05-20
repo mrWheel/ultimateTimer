@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WiFi Manager Screen - Ultimate Timer User Manual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <p><a href="index.html">&larr; Back to manual home</a></p>
+    <h1>WiFi Manager Screen</h1>
+    <p>This screen appears when the device opens its WiFi configuration portal.</p>
+    <nav>
+  <a href="index.html">Manual Home</a>
+  <a href="timer-screen.html">Timer Screen</a>
+  <a href="main-menu.html">Main Menu</a>
+  <a href="cyclic-timer.html">Cyclic Timer</a>
+  <a href="timer-24h.html">24h Timer</a>
+  <a href="remote-access.html">WiFi &amp; Web UI</a>
+</nav>
+  </header>
+  <main>
+    
+<section>
+  <h2>When it appears</h2>
+  <ul>
+    <li>When there are no working WiFi station credentials.</li>
+    <li>After repeated connection failures.</li>
+    <li>After you select <strong>Start WiFi Manager</strong> in <a href="menu-system-settings.html">System Settings</a>.</li>
+  </ul>
+</section>
+<section>
+  <h2>Screen layout</h2>
+  <pre class="screen">WiFi Manager Started
+Connect to AP
+UTimer-aabbccddeeff
+192.168.4.1
+[Cancel WiFi Manager]</pre>
+</section>
+<section>
+  <h2>How to use it</h2>
+  <ol>
+    <li>Connect your phone or laptop to the shown access point.</li>
+    <li>Open the shown IP address if the captive portal does not open automatically.</li>
+    <li>Choose your local WiFi network and enter its password.</li>
+    <li>After credentials are accepted, the device stores them and restarts.</li>
+  </ol>
+  <p class="small">The fallback access point in this repository has no password.</p>
+</section>
+<section>
+  <h2>Cancel behavior</h2>
+  <p>Select <strong>Cancel WiFi Manager</strong> to leave WiFi Manager, keep WiFi disabled for now, and return to the Timer Screen.</p>
+</section>
+
+  </main>
+  <footer>
+    <p>Ultimate Timer user manual for the ESP32 TFT + rotary encoder firmware.</p>
+  </footer>
+</body>
+</html>
