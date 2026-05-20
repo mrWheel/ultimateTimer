@@ -95,13 +95,39 @@
     </section>
 
     <section>
+      <h2>Complete document index</h2>
+      <div class="table-like">
+        <div><strong>index.html</strong></div><div><a href="index.html">Manual Home</a> (landing page)</div>
+        <div><strong>timer-screen.html</strong></div><div><a href="timer-screen.html">Timer Screen</a></div>
+        <div><strong>main-menu.html</strong></div><div><a href="main-menu.html">Main Menu</a></div>
+        <div><strong>cyclic-timer.html</strong></div><div><a href="cyclic-timer.html">Cyclic Timer</a></div>
+        <div><strong>timer-24h.html</strong></div><div><a href="timer-24h.html">24h Timer</a></div>
+        <div><strong>remote-access.html</strong></div><div><a href="remote-access.html">WiFi &amp; Web UI</a></div>
+        <div><strong>menu-cyclic-settings.html</strong></div><div><a href="menu-cyclic-settings.html">Cyclic Timer Settings Menu</a></div>
+        <div><strong>menu-24h-settings.html</strong></div><div><a href="menu-24h-settings.html">24h Timer Settings Menu</a></div>
+        <div><strong>menu-system-settings.html</strong></div><div><a href="menu-system-settings.html">System Settings Menu</a></div>
+        <div><strong>menu-save-profile.html</strong></div><div><a href="menu-save-profile.html">Save Profile Menu</a></div>
+        <div><strong>menu-load-profile.html</strong></div><div><a href="menu-load-profile.html">Load Profile Menu</a></div>
+        <div><strong>menu-new-profile.html</strong></div><div><a href="menu-new-profile.html">New Profile Menu</a></div>
+        <div><strong>menu-delete-profile.html</strong></div><div><a href="menu-delete-profile.html">Delete Profile Menu</a></div>
+        <div><strong>menu-wifi-manager.html</strong></div><div><a href="menu-wifi-manager.html">WiFi Manager Screen</a></div>
+        <div><strong>README.md</strong></div><div><a href="../README.md">Repository overview</a></div>
+        <div><strong>codingRules.md</strong></div><div><a href="../codingRules.md">Coding conventions and sync rules</a></div>
+        <div><strong>menuStructure.md</strong></div><div><a href="../menuStructure.md">Menu flow and event handling</a></div>
+        <div><strong>colorSettings.md</strong></div><div><a href="../colorSettings.md">Display color profile and mapping</a></div>
+        <div><strong>webUI.md</strong></div><div><a href="../webUI.md">Web UI behavior and API</a></div>
+        <div><strong>24hTimer.md</strong></div><div><a href="../24hTimer.md">24h timer model and behavior</a></div>
+      </div>
+    </section>
+
+    <section>
       <h2>Important behavior to know</h2>
       <ul>
         <li><strong>Profiles:</strong> cyclic profiles are stored normally, while 24h profiles use an automatic <code>-24h</code> suffix.</li>
         <li><strong>Default profiles:</strong> <code>default</code> and <code>default-24h</code> are always available and cannot be deleted.</li>
         <li><strong>Auto Save Profile = No:</strong> timer-setting changes affect the running timer immediately, but you must use <strong>Save Profile</strong> to keep them permanently.</li>
         <li><strong>24h timer:</strong> start/stop/reset buttons are hidden because the schedule follows wall clock time automatically.</li>
-        <li><strong>Warp Speed:</strong> only affects cyclic timers, and it resets to Disabled after every restart.</li>
+        <li><strong>Warp Speed:</strong> only affects cyclic timers, resets to Disabled after every restart, and accelerates 60x (remaining active across both phases when either cyclic unit uses minutes).</li>
       </ul>
     </section>
   </main>

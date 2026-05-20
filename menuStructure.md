@@ -39,7 +39,8 @@
   - Text `External Trigger` is shown near the bottom of the screen
 - Warp Speed = Enabled (cyclic timer):
   - `Output` countdown keeps format `MMM:SS`
-  - If active phase unit is `s` or `Min`, remaining time decrements 60 countdown seconds per real second
+  - Remaining time decrements 60 countdown seconds per real second for phases using `s` or `Min`
+  - If either cyclic phase unit is `Min`, warp acceleration remains active across both phases
   - `Cycles` tile keeps the cycle counter and also shows `Warp mode` near the right side
 - Timer Type = 24h:
   - Action row buttons are hidden
@@ -260,7 +261,8 @@ When `positionCount == 1` and `tokenCount` is 2–6, the field input renders as 
 
 ## Status output countdown:
 - Format is MMM:SS while running/paused.
-- With Warp Speed enabled for cyclic timer phases using unit `s` or `Min`, countdown progression is accelerated by 60x while keeping the same `MMM:SS` display format.
+- With Warp Speed enabled, cyclic countdown progression is accelerated by 60x for phases using `s` or `Min` while keeping the same `MMM:SS` display format.
+- If either cyclic phase unit is `Min`, this acceleration remains active across both phases.
 - Idle placeholder is ---:--.
 
 [← Back to README](README.md)

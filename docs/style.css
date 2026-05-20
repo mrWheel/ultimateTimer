@@ -1,15 +1,15 @@
 :root {
-  color-scheme: light dark;
-  --bg: #0f172a;
-  --panel: #111827;
-  --panel-soft: #1f2937;
-  --text: #e5e7eb;
-  --muted: #cbd5e1;
-  --accent: #38bdf8;
+  color-scheme: light;
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --panel-soft: #f1f5f9;
+  --text: #0f172a;
+  --muted: #475569;
+  --accent: #0284c7;
   --accent-soft: #0ea5e9;
-  --border: #334155;
-  --card: #111827;
-  --screen-bg: #020617;
+  --border: #cbd5e1;
+  --card: #ffffff;
+  --screen-bg: #f1f5f9;
 }
 body {
   margin: 0;
@@ -18,8 +18,8 @@ body {
   background: var(--bg);
   color: var(--text);
 }
-a { color: #7dd3fc; }
-a:hover { color: #bae6fd; }
+a { color: #0369a1; }
+a:hover { color: #0284c7; }
 header, main, footer {
   max-width: 980px;
   margin: 0 auto;
@@ -40,10 +40,10 @@ nav a {
   padding: 0.45rem 0.7rem;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(255,255,255,0.03);
+  background: var(--panel-soft);
 }
 section, article {
-  background: rgba(255,255,255,0.03);
+  background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1rem 1.1rem;
@@ -62,8 +62,8 @@ ul {
 }
 pre.screen {
   background: var(--screen-bg);
-  color: #d1fae5;
-  border: 1px solid #475569;
+  color: #0f172a;
+  border: 1px solid #94a3b8;
   border-radius: 12px;
   padding: 1rem;
   overflow-x: auto;
