@@ -111,11 +111,9 @@ static bool shouldApplyWarpSpeedForCurrentRuntime()
   bool hasMinuteUnit = (appSettings.onTimeUnit == TIME_UNIT_MINUTES) ||
                        (appSettings.offTimeUnit == TIME_UNIT_MINUTES);
   TimeUnit activePhaseUnit = runtimeStatus.inOnPhase ? appSettings.onTimeUnit : appSettings.offTimeUnit;
-  bool activeUnitSupportsWarp = (activePhaseUnit == TIME_UNIT_SECONDS) ||
-                                (activePhaseUnit == TIME_UNIT_MINUTES);
 
   //-- Keep warp active for both phases when either unit is minutes
-  return hasMinuteUnit || activeUnitSupportsWarp;
+  return hasMinuteUnit || (activePhaseUnit == TIME_UNIT_SECONDS);
 
 } //   shouldApplyWarpSpeedForCurrentRuntime()
 
