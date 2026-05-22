@@ -1,8 +1,8 @@
-/*** Last Changed: 2026-05-22 - 12:43 ***/
+/*** Last Changed: 2026-05-22 - 12:52 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
-#include "displayDriver.h"
+#include "DisplayDriver.h"
 #include "encoderInput.h"
 #include "profileManager.h"
 #include "settingsStore.h"

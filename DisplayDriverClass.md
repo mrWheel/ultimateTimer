@@ -258,7 +258,7 @@ Reuse `drawButton()` whenever you need a button that should match the rest of th
 ## Example
 
 ```cpp
-#include "displayDriver.h"
+#include "DisplayDriver.h"
 
 void setup()
 {

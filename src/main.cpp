@@ -1,8 +1,8 @@
-/*** Last Changed: 2026-05-22 - 12:43 ***/
+/*** Last Changed: 2026-05-22 - 12:52 ***/
 #include <Arduino.h>
 
 #include "buttonInput.h"
-#include "displayDriver.h"
+#include "DisplayDriver.h"
 #include "encoderInput.h"
 #include "ioControl.h"
 #include "profileManager.h"
