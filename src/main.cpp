@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 14:00 ***/
+/*** Last Changed: 2026-05-22 - 14:42 ***/
 #include <Arduino.h>
 
 #include "DisplayDriver.h"
@@ -23,7 +23,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v2.2.1";
+const char* PROG_VERSION = "v2.2.2";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -485,11 +485,13 @@ static void drawTestColorScreen()
 static void handleTestColorPatternInput()
 {
   EncoderEvent event;
+  ButtonEvent auxEvent;
 
   input.update();
   event = input.getEncoderEvent();
+  auxEvent = input.getAuxButtonEvent();
 
-  if (event == ENCODER_EVENT_NONE)
+  if (event == ENCODER_EVENT_NONE && auxEvent == BUTTON_EVENT_NONE)
   {
     return;
   }
@@ -523,7 +525,11 @@ static void handleTestColorPatternInput()
     return;
   }
 
-  if (event == ENCODER_EVENT_MEDIUM_PRESS)
+  if (event == ENCODER_EVENT_SHORT_PRESS ||
+      event == ENCODER_EVENT_MEDIUM_PRESS ||
+      auxEvent == BUTTON_EVENT_SHORT_PRESS ||
+      auxEvent == BUTTON_EVENT_MEDIUM_PRESS ||
+      auxEvent == BUTTON_EVENT_LONG_PRESS)
   {
     testColorScreen = TEST_COLOR_SCREEN_PALETTE;
     drawTestColorScreen();
