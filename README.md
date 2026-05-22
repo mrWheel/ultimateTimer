@@ -7,6 +7,7 @@
 | [codingRules.md](codingRules.md) | Coding conventions and rules for this project |
 | [menuStructure.md](menuStructure.md) | Menu layout, navigation, and event handling specification |
 | [colorSettings.md](colorSettings.md) | Display color theme and UI color rules |
+| [DisplayDriverClass.md](DisplayDriverClass.md) | Technical and API documentation for the reusable display driver class |
 | [webUI.md](webUI.md) | Web UI architecture, behavior, menus, and API endpoints |
 | [24hTimer.md](24hTimer.md) | 24 hour timer, behavior, menus, and API endpoints |
 
@@ -87,6 +88,7 @@ read `colorSettings.md`
 - TFT status updates while running with partial line redraw (no full-screen flicker)
 - Build-time configuration through `build_flags` in `platformio.ini`
 - Optional color test mode through `TEST_COLOR_PATERN`
+- Reusable `DisplayDriver` class for the current ST7789 hardware, with generic init, theme, tile, header, button, and screen helpers; legacy free-function wrappers remain for existing firmware call sites
 
 ## Local TFT controls
 - Timer screen shows:

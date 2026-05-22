@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-16 - 15:35 ***/
+/*** Last Changed: 2026-05-22 - 12:43 ***/
 #include "uiMenu.h"
 #include "buttonInput.h"
 #include "colorSettings.h"
@@ -102,6 +102,24 @@ enum FieldInputTarget
   FIELD_INPUT_TARGET_WIFI_MANAGER_CONFIRM = 16
 };
 
+//--- Format remaining duration text from milliseconds
+static std::string formatRemainingMsUi(uint32_t remainingMs);
+
+//--- Format seconds-of-day as HH:MM
+static std::string formatHhMmFromSecondsOfDayUi(uint32_t secondsOfDay);
+
+//--- Format next change span label text
+static std::string formatChangeWindowLabelUi(uint32_t startSecondsOfDay, uint32_t endSecondsOfDay);
+
+//--- Format duration in seconds as HH:MM:SS
+static std::string formatDurationHhMmSsUi(uint32_t totalSeconds);
+
+//--- Build header right text for the status screen
+static std::string buildStatusHeaderRightText();
+
+//--- Build reusable status screen data
+static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings, const RuntimeStatus& runtimeStatus, int statusActionIndex);
+
 //--- Main menu labels
 static const String mainMenuItems[] =
     {
@@ -144,6 +162,284 @@ static const String systemSettingsMenuItems[] =
         "Theme Color",
         "Restart ultimateTimer",
         "Exit"};
+
+//--- Build reusable status screen data
+static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings, const RuntimeStatus& runtimeStatus, int statusActionIndex)
+{
+  DisplayStatusScreenData data;
+  Timer24hStatusInfo status24h = timerGet24hStatusInfo();
+  bool warpSpeedEnabled = settingsStoreLoadWarpSpeedEnabled();
+  std::string stateValue = timerGetStateLabel(runtimeStatus.state);
+  std::string profileValue = settings.profileName.c_str();
+  std::string leftTimeTileLabel = "ON TIME";
+  std::string rightTimeTileLabel = "OFF TIME";
+  std::string leftTimeTileValue;
+  std::string rightTimeTileValue;
+  std::string centerTileLabel;
+  std::string centerTileValue;
+  std::string bottomTileLabel;
+  std::string bottomTileValue;
+  bool is24hTimer = (settings.timerType == TIMER_TYPE_24H);
+
+  data.title = "Universal Timer";
+  data.headerRightText = buildStatusHeaderRightText();
+  data.actionRowMessage = warpSpeedEnabled ? "24h warp mode" : "24h auto mode";
+  data.is24hTimer = is24hTimer;
+  data.externalTriggerMode = (settings.triggerMode == TRIGGER_MODE_EXTERNAL);
+  data.warpSpeedEnabled = warpSpeedEnabled;
+  data.hideActionsFor24h = is24hTimer;
+  data.statusActionIndex = statusActionIndex;
+
+  if (profileValue.empty())
+  {
+    profileValue = "-";
+  }
+
+  if (is24hTimer)
+  {
+    stateValue = timerGetTimerTypeLabel(settings.timerType);
+
+    bool outputActive24h = status24h.timeValid ? status24h.outputActive : runtimeStatus.outputActive;
+    leftTimeTileLabel = outputActive24h ? "LAST STATE CHANGE ON" : "LAST STATE CHANGE OFF";
+    rightTimeTileLabel = outputActive24h ? "NEXT STATE CHANGE OFF" : "NEXT STATE CHANGE ON";
+
+    if (status24h.timeValid)
+    {
+      std::string nextSwitchClock = status24h.hasNextSwitch ? formatHhMmFromSecondsOfDayUi(status24h.nextSwitchSecondsOfDay) : "--:--";
+      std::string nextOffClock = status24h.hasNextOff ? formatHhMmFromSecondsOfDayUi(status24h.nextOffSecondsOfDay) : "--:--";
+      std::string lastOnClock = status24h.hasLastOn ? formatHhMmFromSecondsOfDayUi(status24h.lastOnSecondsOfDay) : "--:--";
+      std::string lastOffClock = status24h.hasLastOff ? formatHhMmFromSecondsOfDayUi(status24h.lastOffSecondsOfDay) : "--:--";
+
+      leftTimeTileValue = outputActive24h ? lastOnClock : lastOffClock;
+      rightTimeTileValue = outputActive24h ? nextOffClock : nextSwitchClock;
+      centerTileLabel = "NEXT CHANGE BETWEEN";
+      centerTileValue = status24h.hasNextSwitch ? formatChangeWindowLabelUi(status24h.nextSwitchWindowStartSecondsOfDay, status24h.nextSwitchWindowEndSecondsOfDay) : "--:-- - --:--";
+      bottomTileLabel = "OUTPUT";
+      bottomTileValue = std::string(outputActive24h ? "ON  " : "OFF ") + (status24h.hasNextSwitch ? formatDurationHhMmSsUi(status24h.nextSwitchInSeconds) : "--:--:--");
+    }
+    else
+    {
+      leftTimeTileValue = "--:--";
+      rightTimeTileValue = "--:--";
+      centerTileLabel = "NEXT CHANGE BETWEEN";
+      centerTileValue = "--:-- - --:--";
+      bottomTileLabel = "OUTPUT";
+      bottomTileValue = std::string(outputActive24h ? "ON  " : "OFF ") + "--:--:--";
+    }
+  }
+  else
+  {
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.onTimeValue), timerGetTimeUnitLabel(settings.onTimeUnit));
+    leftTimeTileValue = buffer;
+    snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.offTimeValue), timerGetTimeUnitLabel(settings.offTimeUnit));
+    rightTimeTileValue = buffer;
+
+    uint32_t remainingMs = 0;
+
+    if (runtimeStatus.currentPhaseDurationMs > runtimeStatus.currentPhaseElapsedMs)
+    {
+      remainingMs = runtimeStatus.currentPhaseDurationMs - runtimeStatus.currentPhaseElapsedMs;
+    }
+
+    std::string outputValue = runtimeStatus.outputActive ? "ON" : "OFF";
+
+    if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
+    {
+      if (runtimeStatus.currentPhaseDurationMs >= 2000UL)
+      {
+        outputValue += "  ";
+        outputValue += formatRemainingMsUi(remainingMs);
+      }
+    }
+    else
+    {
+      outputValue += "  ---:--";
+    }
+
+    uint32_t displayCycle = runtimeStatus.currentCycle;
+
+    if (runtimeStatus.state == TIMER_STATE_RUNNING || runtimeStatus.state == TIMER_STATE_PAUSED)
+    {
+      if (runtimeStatus.totalCycles == 0 || displayCycle < runtimeStatus.totalCycles)
+      {
+        displayCycle++;
+      }
+    }
+    else if (runtimeStatus.state == TIMER_STATE_FINISHED)
+    {
+      if (runtimeStatus.totalCycles > 0)
+      {
+        displayCycle = runtimeStatus.totalCycles;
+      }
+    }
+
+    centerTileLabel = "OUTPUT";
+    centerTileValue = outputValue;
+
+    if (runtimeStatus.totalCycles == 0)
+    {
+      snprintf(buffer, sizeof(buffer), "%lu / Inf.", static_cast<unsigned long>(displayCycle));
+      bottomTileValue = buffer;
+    }
+    else
+    {
+      snprintf(buffer, sizeof(buffer), "%lu/%lu", static_cast<unsigned long>(displayCycle), static_cast<unsigned long>(runtimeStatus.totalCycles));
+      bottomTileValue = buffer;
+    }
+
+    bottomTileLabel = "CYCLES";
+
+    if (warpSpeedEnabled)
+    {
+      bottomTileValue += "|warp";
+    }
+  }
+
+  data.stateValue = stateValue;
+  data.profileValue = profileValue;
+  data.leftTimeTileLabel = leftTimeTileLabel;
+  data.leftTimeTileValue = leftTimeTileValue;
+  data.rightTimeTileLabel = rightTimeTileLabel;
+  data.rightTimeTileValue = rightTimeTileValue;
+  data.centerTileLabel = centerTileLabel;
+  data.centerTileValue = centerTileValue;
+  data.bottomTileLabel = bottomTileLabel;
+  data.bottomTileValue = bottomTileValue;
+
+  return data;
+
+} //   buildStatusScreenData()
+
+//--- Format remaining duration text from milliseconds
+static std::string formatRemainingMsUi(uint32_t remainingMs)
+{
+  uint32_t totalSeconds = remainingMs / 1000UL;
+  uint32_t minutes = totalSeconds / 60UL;
+  uint32_t seconds = totalSeconds % 60UL;
+  char buffer[16];
+
+  if (minutes > 999UL)
+  {
+    minutes = 999UL;
+  }
+
+  snprintf(buffer, sizeof(buffer), "%03lu:%02lu", static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+
+  return std::string(buffer);
+
+} //   formatRemainingMsUi()
+
+//--- Format seconds-of-day as HH:MM
+static std::string formatHhMmFromSecondsOfDayUi(uint32_t secondsOfDay)
+{
+  uint32_t normalized = secondsOfDay % 86400UL;
+  uint32_t hours = normalized / 3600UL;
+  uint32_t minutes = (normalized % 3600UL) / 60UL;
+  char buffer[16];
+
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes));
+
+  return std::string(buffer);
+
+} //   formatHhMmFromSecondsOfDayUi()
+
+//--- Format next change span label text
+static std::string formatChangeWindowLabelUi(uint32_t startSecondsOfDay, uint32_t endSecondsOfDay)
+{
+  uint32_t displayStartSeconds = startSecondsOfDay;
+  uint32_t displayEndSeconds = endSecondsOfDay;
+
+  if (startSecondsOfDay != endSecondsOfDay)
+  {
+    if ((displayStartSeconds % 60UL) == 0)
+    {
+      displayStartSeconds += 60UL;
+    }
+    else
+    {
+      displayStartSeconds = ((displayStartSeconds / 60UL) + 1UL) * 60UL;
+    }
+
+    if ((displayEndSeconds % 60UL) != 0)
+    {
+      displayEndSeconds = ((displayEndSeconds / 60UL) + 1UL) * 60UL;
+    }
+  }
+
+  return formatHhMmFromSecondsOfDayUi(displayStartSeconds) + " - " + formatHhMmFromSecondsOfDayUi(displayEndSeconds);
+
+} //   formatChangeWindowLabelUi()
+
+//--- Format duration in seconds as HH:MM:SS
+static std::string formatDurationHhMmSsUi(uint32_t totalSeconds)
+{
+  uint32_t hours = totalSeconds / 3600UL;
+  uint32_t minutes = (totalSeconds % 3600UL) / 60UL;
+  uint32_t seconds = totalSeconds % 60UL;
+  char buffer[16];
+
+  if (hours > 99UL)
+  {
+    hours = 99UL;
+  }
+
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+
+  return std::string(buffer);
+
+} //   formatDurationHhMmSsUi()
+
+//--- Build header right text for the status screen
+static std::string buildStatusHeaderRightText()
+{
+  bool warpSpeedEnabled = settingsStoreLoadWarpSpeedEnabled();
+
+  if (warpSpeedEnabled)
+  {
+    time_t now = warpMachineNow();
+
+    if (now <= 0)
+    {
+      uint32_t elapsedWarpedSeconds = (millis() / 1000UL) * 60UL;
+
+      return formatHhMmFromSecondsOfDayUi(elapsedWarpedSeconds);
+    }
+
+    struct tm localTimeInfo;
+
+    if (localtime_r(&now, &localTimeInfo) == nullptr)
+    {
+      uint32_t elapsedWarpedSeconds = (millis() / 1000UL) * 60UL;
+
+      return formatHhMmFromSecondsOfDayUi(elapsedWarpedSeconds);
+    }
+
+    char timeBuffer[6];
+    strftime(timeBuffer, sizeof(timeBuffer), "%H:%M", &localTimeInfo);
+
+    return std::string(timeBuffer);
+  }
+
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    return "No WiFi";
+  }
+
+  time_t now = warpMachineNow();
+  struct tm localTimeInfo;
+
+  if (now <= 0 || localtime_r(&now, &localTimeInfo) == nullptr || localTimeInfo.tm_year < (2020 - 1900))
+  {
+    return "--:--";
+  }
+
+  char timeBuffer[6];
+  strftime(timeBuffer, sizeof(timeBuffer), "%H:%M", &localTimeInfo);
+
+  return std::string(timeBuffer);
+
+} //   buildStatusHeaderRightText()
 
 //--- Numeric field tokens
 static const char* numericTokens[] =
@@ -1006,7 +1302,7 @@ static void drawCurrentScreen()
   switch (currentScreen)
   {
   case UI_SCREEN_STATUS:
-    displayDrawStatusScreen(settings, runtimeStatus, true, statusActionIndex);
+    display.drawStatusScreen(buildStatusScreenData(settings, runtimeStatus, statusActionIndex));
     break;
 
   case UI_SCREEN_MAIN_MENU:
@@ -2112,7 +2408,7 @@ void uiMenuUpdate()
   }
 
   //--- Update header time/WiFi text without redrawing full screens
-  displayRefreshHeaderIfNeeded(headerRefreshIntervalMs);
+  displayRefreshHeaderIfNeeded(buildStatusHeaderRightText().c_str(), headerRefreshIntervalMs);
 
   switch (currentScreen)
   {
