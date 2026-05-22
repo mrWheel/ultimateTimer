@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 10:34 ***/
+/*** Last Changed: 2026-05-22 - 13:48 ***/
 #ifndef TIMER_TYPES_H
 #define TIMER_TYPES_H
 
@@ -110,16 +110,6 @@ struct Timer24hStatusInfo
   uint32_t nextSwitchWindowStartSecondsOfDay;
   uint32_t nextSwitchWindowEndSecondsOfDay;
   uint32_t nextSwitchInSeconds;
-};
-
-//--- WiFi settings
-struct WifiSettings
-{
-  String staSsid;
-  String staPassword;
-  String apSsid;
-  String apPassword;
-  String hostName;
 };
 
 #endif

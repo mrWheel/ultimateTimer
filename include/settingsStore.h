@@ -1,8 +1,9 @@
-/*** Last Changed: 2026-05-16 - 15:35 ***/
+/*** Last Changed: 2026-05-22 - 13:48 ***/
 #ifndef SETTINGS_STORE_H
 #define SETTINGS_STORE_H
 
 #include <Arduino.h>
+#include "WifiSettings.h"
 #include "timerTypes.h"
 
 //--- Initialize settings storage

@@ -1,152 +1,285 @@
-/*** Last Changed: 2026-05-13 - 12:05 ***/
+/*** Last Changed: 2026-05-22 - 13:48 ***/
 #include "WiFiManagerExt.h"
 
 #include "appConfig.h"
-#include "settingsStore.h"
-#include "webUi.h"
 
 #include <WiFi.h>
-#include <WiFiManager.h>
 #include <ctype.h>
-#include <esp_mac.h>
 #include <esp_log.h>
-#include <esp_system.h>
+#include <esp_mac.h>
 
 //--- Logging tag
 static const char* logTag = "WiFiManagerExt";
 
-//--- WiFiManager instance
-static WiFiManager wm;
+//--- Shared project instance
+WiFiManagerExt wifiManagerExt;
 
-//--- Cached settings
-static WifiSettings currentSettings;
+//--- Constructor
+WiFiManagerExt::WiFiManagerExt() : portalActive(false),
+                                   newCredentialsPending(false),
+                                   lastRetryMs(0),
+                                   retryCount(0),
+                                   portalStartedPending(false),
+                                   lastPortalApSsid(""),
+                                   wifiManagerDisabled(false),
+                                   portalSuspendCallback(nullptr),
+                                   portalResumeCallback(nullptr)
+{
+  currentSettings.apPassword = "";
 
-//--- Portal and retry state
-static bool portalActive = false;
-static bool newCredentialsPending = false;
-static uint32_t lastRetryMs = 0;
-static uint8_t retryCount = 0;
-static bool portalStartedPending = false;
-static String lastPortalApSsid = "";
-static bool wifiManagerDisabled = false;
+} //   WiFiManagerExt()
 
-//--- Retry policy before opening portal
-static const uint8_t maxRetriesBeforePortal = 2;
-static const uint32_t retryIntervalMs = 15000UL;
+//--- Replace the current WiFi settings snapshot
+void WiFiManagerExt::setSettings(const WifiSettings& wifiSettings)
+{
+  currentSettings = wifiSettings;
+  currentSettings.apPassword = "";
+  normalizePortalIdentity();
 
-//--- Start non-blocking config portal
-static void startPortal();
-
-//--- Start station connection attempt
-static void startStationAttempt();
-
-//--- Build MAC suffix using full six bytes (aabbccddeeff)
-static String buildMacSuffix();
-
-//--- Remove trailing identity MAC suffix if present
-static String stripMacSuffixIfPresent(const String& value);
-
-//--- Build identity text: first 8 chars + "-" + MAC suffix
-static String buildIdentityWithMacSuffix(const String& baseValue, const String& fallbackValue);
-
-//--- Normalize current AP SSID and hostname for portal identity
-static void normalizePortalIdentity();
+} //   setSettings()
 
 //--- Initialize WiFi manager service
-void wifiManagerInit()
+void WiFiManagerExt::begin(bool disabled)
 {
-  wifiManagerDisabled = settingsStoreLoadWifiDisabled();
+  portalActive = false;
+  newCredentialsPending = false;
+  portalStartedPending = false;
+  lastPortalApSsid = "";
+  retryCount = 0;
+  lastRetryMs = 0;
 
-  if (wifiManagerDisabled)
+  if (disabled)
   {
-    WiFi.mode(WIFI_OFF);
-    portalActive = false;
-    portalStartedPending = false;
-    newCredentialsPending = false;
+    setDisabled(true);
 
     ESP_LOGI(logTag, "WiFi manager init skipped: disabled");
 
     return;
   }
 
-  settingsStoreLoadWifiSettings(currentSettings);
-  normalizePortalIdentity();
-  currentSettings.apPassword = "";
-  wifiManagerExtInit(currentSettings);
+  wifiManagerDisabled = false;
+
+  if (currentSettings.staSsid.isEmpty())
+  {
+    startPortal();
+
+    return;
+  }
+
+  startStationAttempt();
 
   ESP_LOGI(logTag, "AP started: %s", currentSettings.apSsid.c_str());
 
-} //   wifiManagerInit()
+} //   begin()
+
+//--- Set portal suspend/resume callbacks
+void WiFiManagerExt::setPortalCallbacks(PortalCallback suspendCallback, PortalCallback resumeCallback)
+{
+  portalSuspendCallback = suspendCallback;
+  portalResumeCallback = resumeCallback;
+
+} //   setPortalCallbacks()
 
 //--- Update WiFi manager service
-void wifiManagerUpdate()
+void WiFiManagerExt::update()
 {
   if (wifiManagerDisabled)
   {
     return;
   }
 
-  wifiManagerExtUpdate();
-
-  WifiSettings newSettings;
-
-  if (wifiManagerExtConsumeNewStaCredentials(newSettings))
+  if (portalActive)
   {
-    newSettings.apPassword = "";
-    currentSettings = newSettings;
-    settingsStoreSaveWifiSettings(currentSettings);
+    wm.process();
 
-    ESP_LOGI(logTag, "Saved new STA credentials from portal - restarting");
-    delay(500);
-    esp_restart();
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      portalActive = false;
+      retryCount = 0;
+      newCredentialsPending = true;
+
+      if (portalResumeCallback != nullptr)
+      {
+        portalResumeCallback();
+      }
+
+      ESP_LOGI(logTag, "Portal completed, STA connected: %s", WiFi.SSID().c_str());
+    }
+
+    return;
   }
 
-} //   wifiManagerUpdate()
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    retryCount = 0;
 
-//--- Apply stored WiFi settings
-void wifiManagerApplySettings(const WifiSettings& newWifiSettings)
+    return;
+  }
+
+  if (retryCount >= maxRetriesBeforePortal)
+  {
+    startPortal();
+
+    return;
+  }
+
+  if (millis() - lastRetryMs >= retryIntervalMs)
+  {
+    startStationAttempt();
+  }
+
+} //   update()
+
+//--- Apply WiFi settings and reconnect flow
+void WiFiManagerExt::applySettings(const WifiSettings& wifiSettings)
 {
+  setSettings(wifiSettings);
+  portalActive = false;
+  newCredentialsPending = false;
+  retryCount = 0;
+
   if (wifiManagerDisabled)
   {
     return;
   }
 
-  currentSettings = newWifiSettings;
-  normalizePortalIdentity();
-  currentSettings.apPassword = "";
-  wifiManagerExtApplySettings(currentSettings);
+  WiFi.disconnect(false, true);
+  delay(50);
 
-  ESP_LOGI(logTag, "WiFi settings applied");
+  if (currentSettings.staSsid.isEmpty())
+  {
+    startPortal();
 
-} //   wifiManagerApplySettings()
+    return;
+  }
+
+  startStationAttempt();
+
+} //   applySettings()
 
 //--- Get current WiFi settings
-const WifiSettings& wifiManagerGetSettings()
+const WiFiManagerExt::WifiSettings& WiFiManagerExt::getSettings() const
 {
   return currentSettings;
 
-} //   wifiManagerGetSettings()
+} //   getSettings()
 
-//--- Save and apply WiFi settings
-void wifiManagerSaveAndApplySettings(const WifiSettings& newWifiSettings)
+//--- Start WiFi manager config portal explicitly
+void WiFiManagerExt::startPortal()
 {
   if (wifiManagerDisabled)
   {
     return;
   }
 
-  WifiSettings updatedSettings = newWifiSettings;
-  updatedSettings.apSsid = buildIdentityWithMacSuffix(updatedSettings.apSsid, DEFAULT_AP_SSID);
-  updatedSettings.hostName = buildIdentityWithMacSuffix(updatedSettings.hostName, DEFAULT_WIFI_HOSTNAME);
-  updatedSettings.apPassword = "";
+  normalizePortalIdentity();
 
-  settingsStoreSaveWifiSettings(updatedSettings);
-  wifiManagerApplySettings(updatedSettings);
+  if (portalActive)
+  {
+    return;
+  }
 
-} //   wifiManagerSaveAndApplySettings()
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.setHostname(currentSettings.hostName.c_str());
+
+  if (portalSuspendCallback != nullptr)
+  {
+    portalSuspendCallback();
+  }
+
+  //--- Trigger async scan at portal start so AP list is ready on first page visit
+  wm._preloadwifiscan = true;
+
+  wm.setConfigPortalBlocking(false);
+  wm.startConfigPortal(currentSettings.apSsid.c_str());
+
+  portalActive = true;
+  portalStartedPending = true;
+  lastPortalApSsid = currentSettings.apSsid;
+
+  ESP_LOGI(logTag, "WiFi config portal started on AP: %s", currentSettings.apSsid.c_str());
+
+} //   startPortal()
+
+//--- Stop WiFi manager config portal explicitly
+void WiFiManagerExt::stopPortal()
+{
+  if (!portalActive)
+  {
+    return;
+  }
+
+  wm.stopConfigPortal();
+  portalActive = false;
+  portalStartedPending = false;
+
+  if (portalResumeCallback != nullptr)
+  {
+    portalResumeCallback();
+  }
+
+  ESP_LOGI(logTag, "WiFi config portal stopped");
+
+} //   stopPortal()
+
+//--- Enable or disable WiFi manager service runtime behavior
+void WiFiManagerExt::setDisabled(bool disabled)
+{
+  wifiManagerDisabled = disabled;
+
+  if (!disabled)
+  {
+    if (currentSettings.staSsid.isEmpty())
+    {
+      startPortal();
+    }
+    else
+    {
+      startStationAttempt();
+    }
+
+    return;
+  }
+
+  stopPortal();
+  WiFi.disconnect(true, true);
+  WiFi.mode(WIFI_OFF);
+
+  ESP_LOGI(logTag, "WiFi manager disabled at runtime");
+
+} //   setDisabled()
+
+//--- Get disabled state
+bool WiFiManagerExt::isDisabled() const
+{
+  return wifiManagerDisabled;
+
+} //   isDisabled()
+
+//--- Get effective AP SSID used by portal
+String WiFiManagerExt::getPortalApSsid() const
+{
+  return currentSettings.apSsid;
+
+} //   getPortalApSsid()
+
+//--- Consume portal started event for UI notification
+bool WiFiManagerExt::consumePortalStartedApSsid(String& apSsid)
+{
+  if (!portalStartedPending)
+  {
+    return false;
+  }
+
+  apSsid = lastPortalApSsid;
+  portalStartedPending = false;
+
+  return true;
+
+} //   consumePortalStartedApSsid()
 
 //--- Scan available access points and return unique SSIDs
-size_t wifiManagerScanNetworks(String ssids[], size_t maxCount)
+size_t WiFiManagerExt::scanNetworks(String ssids[], size_t maxCount)
 {
   if (maxCount == 0)
   {
@@ -197,102 +330,56 @@ size_t wifiManagerScanNetworks(String ssids[], size_t maxCount)
 
   return outputCount;
 
-} //   wifiManagerScanNetworks()
+} //   scanNetworks()
 
 //--- Check whether station is connected
-bool wifiManagerIsStaConnected()
+bool WiFiManagerExt::isStaConnected() const
 {
-  return wifiManagerExtIsStaConnected();
+  return WiFi.status() == WL_CONNECTED;
 
-} //   wifiManagerIsStaConnected()
+} //   isStaConnected()
 
-//--- Check whether WiFi setup portal should be shown
-bool wifiManagerShouldOpenPortal()
+//--- Check whether config portal is active
+bool WiFiManagerExt::shouldOpenPortal() const
 {
-  return wifiManagerExtIsPortalActive();
+  return portalActive;
 
-} //   wifiManagerShouldOpenPortal()
+} //   shouldOpenPortal()
 
-//--- Get local URL string
-String wifiManagerGetAddressString()
+//--- Get current address string (STA or AP)
+String WiFiManagerExt::getAddressString() const
 {
-  return wifiManagerExtGetAddressString();
-
-} //   wifiManagerGetAddressString()
-
-//--- Start WiFi manager config portal explicitly
-void wifiManagerStartPortal()
-{
-  if (wifiManagerDisabled)
+  if (isStaConnected())
   {
-    return;
+    return WiFi.localIP().toString();
   }
 
-  startPortal();
+  return WiFi.softAPIP().toString();
 
-} //   wifiManagerStartPortal()
+} //   getAddressString()
 
-//--- Stop WiFi manager config portal explicitly
-void wifiManagerStopPortal()
+//--- Consume newly configured STA credentials from portal
+bool WiFiManagerExt::consumeNewStaCredentials(WifiSettings& wifiSettings)
 {
-  if (!portalActive)
-  {
-    return;
-  }
-
-  wm.stopConfigPortal();
-  portalActive = false;
-  portalStartedPending = false;
-
-  //--- Hand port 80 back to the app web server
-  webUiResume();
-
-  ESP_LOGI(logTag, "WiFi config portal stopped");
-
-} //   wifiManagerStopPortal()
-
-//--- Enable or disable WiFi manager service runtime behavior
-void wifiManagerSetDisabled(bool disabled)
-{
-  wifiManagerDisabled = disabled;
-
-  if (!disabled)
-  {
-    return;
-  }
-
-  wifiManagerStopPortal();
-  WiFi.disconnect(true, true);
-  WiFi.mode(WIFI_OFF);
-
-  ESP_LOGI(logTag, "WiFi manager disabled at runtime");
-
-} //   wifiManagerSetDisabled()
-
-//--- Get effective AP SSID used by portal
-String wifiManagerGetPortalApSsid()
-{
-  return currentSettings.apSsid;
-
-} //   wifiManagerGetPortalApSsid()
-
-//--- Consume portal started event for UI notification
-bool wifiManagerConsumePortalStartedApSsid(String& apSsid)
-{
-  if (!portalStartedPending)
+  if (!newCredentialsPending)
   {
     return false;
   }
 
-  apSsid = lastPortalApSsid;
-  portalStartedPending = false;
+  wifiSettings = currentSettings;
+  wifiSettings.staSsid = WiFi.SSID();
+  wifiSettings.staPassword = WiFi.psk();
+
+  currentSettings.staSsid = wifiSettings.staSsid;
+  currentSettings.staPassword = wifiSettings.staPassword;
+  newCredentialsPending = false;
 
   return true;
 
-} //   wifiManagerConsumePortalStartedApSsid()
+} //   consumeNewStaCredentials()
 
 //--- Start station connection attempt
-static void startStationAttempt()
+void WiFiManagerExt::startStationAttempt()
 {
   if (currentSettings.staSsid.isEmpty())
   {
@@ -310,176 +397,8 @@ static void startStationAttempt()
 
 } //   startStationAttempt()
 
-//--- Start non-blocking config portal
-static void startPortal()
-{
-  if (wifiManagerDisabled)
-  {
-    return;
-  }
-
-  normalizePortalIdentity();
-
-  if (portalActive)
-  {
-    return;
-  }
-
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.setHostname(currentSettings.hostName.c_str());
-
-  //--- Stop app web server so WiFiManager can own port 80
-  webUiSuspend();
-
-  //--- Trigger async scan at portal start so AP list is ready on first page visit
-  wm._preloadwifiscan = true;
-
-  wm.setConfigPortalBlocking(false);
-  wm.startConfigPortal(currentSettings.apSsid.c_str());
-
-  portalActive = true;
-  portalStartedPending = true;
-  lastPortalApSsid = currentSettings.apSsid;
-
-  ESP_LOGI(logTag, "WiFi config portal started on AP: %s", currentSettings.apSsid.c_str());
-
-} //   startPortal()
-
-//--- Initialize WiFiManager extension
-void wifiManagerExtInit(const WifiSettings& wifiSettings)
-{
-  currentSettings = wifiSettings;
-  normalizePortalIdentity();
-  portalActive = false;
-  newCredentialsPending = false;
-  portalStartedPending = false;
-  lastPortalApSsid = "";
-  retryCount = 0;
-  lastRetryMs = 0;
-
-  if (currentSettings.staSsid.isEmpty())
-  {
-    startPortal();
-
-    return;
-  }
-
-  startStationAttempt();
-
-} //   wifiManagerExtInit()
-
-//--- Update WiFiManager extension
-void wifiManagerExtUpdate()
-{
-  if (portalActive)
-  {
-    wm.process();
-
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      portalActive = false;
-      retryCount = 0;
-      newCredentialsPending = true;
-
-      //--- Hand port 80 back to the app web server
-      webUiResume();
-
-      ESP_LOGI(logTag, "Portal completed, STA connected: %s", WiFi.SSID().c_str());
-    }
-
-    return;
-  }
-
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    retryCount = 0;
-
-    return;
-  }
-
-  if (retryCount >= maxRetriesBeforePortal)
-  {
-    startPortal();
-
-    return;
-  }
-
-  if (millis() - lastRetryMs >= retryIntervalMs)
-  {
-    startStationAttempt();
-  }
-
-} //   wifiManagerExtUpdate()
-
-//--- Apply WiFi settings and reconnect flow
-void wifiManagerExtApplySettings(const WifiSettings& wifiSettings)
-{
-  currentSettings = wifiSettings;
-  normalizePortalIdentity();
-  portalActive = false;
-  newCredentialsPending = false;
-  retryCount = 0;
-
-  WiFi.disconnect(false, true);
-  delay(50);
-
-  if (currentSettings.staSsid.isEmpty())
-  {
-    startPortal();
-
-    return;
-  }
-
-  startStationAttempt();
-
-} //   wifiManagerExtApplySettings()
-
-//--- Check whether STA is connected
-bool wifiManagerExtIsStaConnected()
-{
-  return WiFi.status() == WL_CONNECTED;
-
-} //   wifiManagerExtIsStaConnected()
-
-//--- Check whether config portal is active
-bool wifiManagerExtIsPortalActive()
-{
-  return portalActive;
-
-} //   wifiManagerExtIsPortalActive()
-
-//--- Get current address string (STA or AP)
-String wifiManagerExtGetAddressString()
-{
-  if (wifiManagerExtIsStaConnected())
-  {
-    return WiFi.localIP().toString();
-  }
-
-  return WiFi.softAPIP().toString();
-
-} //   wifiManagerExtGetAddressString()
-
-//--- Consume newly configured STA credentials from portal
-bool wifiManagerExtConsumeNewStaCredentials(WifiSettings& wifiSettings)
-{
-  if (!newCredentialsPending)
-  {
-    return false;
-  }
-
-  wifiSettings = currentSettings;
-  wifiSettings.staSsid = WiFi.SSID();
-  wifiSettings.staPassword = WiFi.psk();
-
-  newCredentialsPending = false;
-
-  return true;
-
-} //   wifiManagerExtConsumeNewStaCredentials()
-
 //--- Build MAC suffix using full six bytes (aabbccddeeff)
-static String buildMacSuffix()
+String WiFiManagerExt::buildMacSuffix() const
 {
   uint8_t macAddress[6];
   char suffixBuffer[18];
@@ -495,27 +414,8 @@ static String buildMacSuffix()
 
 } //   buildMacSuffix()
 
-//--- Build identity text: first 8 chars + "-" + MAC suffix
-static String buildIdentityWithMacSuffix(const String& baseValue, const String& fallbackValue)
-{
-  String base = stripMacSuffixIfPresent(baseValue);
-
-  if (base.isEmpty())
-  {
-    base = fallbackValue;
-  }
-
-  if (base.length() > 8)
-  {
-    base = base.substring(0, 8);
-  }
-
-  return base + "-" + buildMacSuffix();
-
-} //   buildIdentityWithMacSuffix()
-
 //--- Remove trailing identity MAC suffix if present
-static String stripMacSuffixIfPresent(const String& value)
+String WiFiManagerExt::stripMacSuffixIfPresent(const String& value) const
 {
   //--- New format: <base>-aabbccddeeff
   if (value.length() >= 14)
@@ -578,8 +478,27 @@ static String stripMacSuffixIfPresent(const String& value)
 
 } //   stripMacSuffixIfPresent()
 
+//--- Build identity text: first 8 chars + "-" + MAC suffix
+String WiFiManagerExt::buildIdentityWithMacSuffix(const String& baseValue, const String& fallbackValue) const
+{
+  String base = stripMacSuffixIfPresent(baseValue);
+
+  if (base.isEmpty())
+  {
+    base = fallbackValue;
+  }
+
+  if (base.length() > 8)
+  {
+    base = base.substring(0, 8);
+  }
+
+  return base + "-" + buildMacSuffix();
+
+} //   buildIdentityWithMacSuffix()
+
 //--- Normalize current AP SSID and hostname for portal identity
-static void normalizePortalIdentity()
+void WiFiManagerExt::normalizePortalIdentity()
 {
   currentSettings.apSsid = buildIdentityWithMacSuffix(currentSettings.apSsid, DEFAULT_AP_SSID);
   currentSettings.hostName = buildIdentityWithMacSuffix(currentSettings.hostName, DEFAULT_WIFI_HOSTNAME);

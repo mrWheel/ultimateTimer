@@ -1,71 +1,75 @@
-/*** Last Changed: 2026-05-13 - 12:05 ***/
+/*** Last Changed: 2026-05-22 - 13:48 ***/
 #ifndef WIFI_MANAGER_EXT_H
 #define WIFI_MANAGER_EXT_H
 
 #include <Arduino.h>
-#include "timerTypes.h"
+#include <WiFiManager.h>
 
-//--- Initialize WiFi manager service
-void wifiManagerInit();
+//--- WiFi manager service class
+class WiFiManagerExt
+{
+public:
+  //--- WiFi-related settings owned by the manager
+  struct WifiSettings
+  {
+    String staSsid;
+    String staPassword;
+    String apSsid;
+    String apPassword;
+    String hostName;
+  };
 
-//--- Update WiFi manager service
-void wifiManagerUpdate();
+  using PortalCallback = void (*)();
 
-//--- Apply stored WiFi settings
-void wifiManagerApplySettings(const WifiSettings& wifiSettings);
+  WiFiManagerExt();
 
-//--- Get current WiFi settings
-const WifiSettings& wifiManagerGetSettings();
+  void setSettings(const WifiSettings& wifiSettings);
+  const WifiSettings& getSettings() const;
 
-//--- Save and apply WiFi settings
-void wifiManagerSaveAndApplySettings(const WifiSettings& wifiSettings);
+  void begin(bool disabled = false);
+  void update();
+  void applySettings(const WifiSettings& wifiSettings);
 
-//--- Start WiFi manager config portal explicitly
-void wifiManagerStartPortal();
+  void startPortal();
+  void stopPortal();
+  void setDisabled(bool disabled);
+  bool isDisabled() const;
 
-//--- Stop WiFi manager config portal explicitly
-void wifiManagerStopPortal();
+  String getPortalApSsid() const;
+  bool consumePortalStartedApSsid(String& apSsid);
+  size_t scanNetworks(String ssids[], size_t maxCount);
 
-//--- Enable or disable WiFi manager service runtime behavior
-void wifiManagerSetDisabled(bool disabled);
+  bool isStaConnected() const;
+  bool shouldOpenPortal() const;
+  String getAddressString() const;
+  bool consumeNewStaCredentials(WifiSettings& wifiSettings);
 
-//--- Get effective AP SSID used by portal
-String wifiManagerGetPortalApSsid();
+  void setPortalCallbacks(PortalCallback suspendCallback, PortalCallback resumeCallback);
 
-//--- Consume portal started event for UI notification
-bool wifiManagerConsumePortalStartedApSsid(String& apSsid);
+private:
+  void startStationAttempt();
+  void normalizePortalIdentity();
+  String buildMacSuffix() const;
+  String stripMacSuffixIfPresent(const String& value) const;
+  String buildIdentityWithMacSuffix(const String& baseValue, const String& fallbackValue) const;
 
-//--- Scan available access points and return unique SSIDs
-size_t wifiManagerScanNetworks(String ssids[], size_t maxCount);
+  WiFiManager wm;
+  WifiSettings currentSettings;
+  bool portalActive;
+  bool newCredentialsPending;
+  uint32_t lastRetryMs;
+  uint8_t retryCount;
+  bool portalStartedPending;
+  String lastPortalApSsid;
+  bool wifiManagerDisabled;
+  PortalCallback portalSuspendCallback;
+  PortalCallback portalResumeCallback;
 
-//--- Check whether station is connected
-bool wifiManagerIsStaConnected();
+  static const uint8_t maxRetriesBeforePortal = 2;
+  static const uint32_t retryIntervalMs = 15000UL;
+};
 
-//--- Check whether WiFi setup portal should be shown
-bool wifiManagerShouldOpenPortal();
-
-//--- Get local URL string
-String wifiManagerGetAddressString();
-
-//--- Initialize WiFiManager extension
-void wifiManagerExtInit(const WifiSettings& wifiSettings);
-
-//--- Update WiFiManager extension
-void wifiManagerExtUpdate();
-
-//--- Apply WiFi settings and reconnect flow
-void wifiManagerExtApplySettings(const WifiSettings& wifiSettings);
-
-//--- Check whether STA is connected
-bool wifiManagerExtIsStaConnected();
-
-//--- Check whether config portal is active
-bool wifiManagerExtIsPortalActive();
-
-//--- Get current address string (STA or AP)
-String wifiManagerExtGetAddressString();
-
-//--- Consume newly configured STA credentials from portal
-bool wifiManagerExtConsumeNewStaCredentials(WifiSettings& wifiSettings);
+//--- Shared project instance
+extern WiFiManagerExt wifiManagerExt;
 
 #endif

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 12:52 ***/
+/*** Last Changed: 2026-05-22 - 13:48 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -2569,8 +2569,8 @@ static void fillStatusDocument(JsonDocument& doc)
   doc["runtime"]["twentyFourH"]["nextSwitchLabel"] = status24h.hasNextSwitch ? formatHhMmSsFromSecondsOfDay(status24h.nextSwitchSecondsOfDay) : "--:--:--";
   doc["runtime"]["twentyFourH"]["nextOffLabel"] = status24h.hasNextOff ? formatHhMmSsFromSecondsOfDay(status24h.nextOffSecondsOfDay) : "--:--:--";
 
-  doc["network"]["connected"] = wifiManagerIsStaConnected();
-  doc["network"]["address"] = wifiManagerGetAddressString();
+  doc["network"]["connected"] = wifiManagerExt.isStaConnected();
+  doc["network"]["address"] = wifiManagerExt.getAddressString();
   doc["network"]["ssid"] = WiFi.SSID();
   doc["network"]["macAddress"] = WiFi.macAddress();
 

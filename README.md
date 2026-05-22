@@ -9,6 +9,8 @@
 | [colorSettings.md](colorSettings.md) | Display color theme and UI color rules |
 | [DisplayDriverClass.md](DisplayDriverClass.md) | Technical and API documentation for the reusable display driver class |
 | [InputClass.md](InputClass.md) | Technical and API documentation for the reusable encoder + auxiliary button input class |
+| [WifiSettings.md](WifiSettings.md) | Technical and API documentation for the reusable WiFi settings struct |
+| [WiFiManagerExt.md](WiFiManagerExt.md) | Technical and API documentation for the reusable WiFi manager class |
 | [webUI.md](webUI.md) | Web UI architecture, behavior, menus, and API endpoints |
 | [24hTimer.md](24hTimer.md) | 24 hour timer, behavior, menus, and API endpoints |
 

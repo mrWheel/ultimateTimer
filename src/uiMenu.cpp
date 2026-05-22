@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 13:10 ***/
+/*** Last Changed: 2026-05-22 - 13:48 ***/
 #include "uiMenu.h"
 #include "colorSettings.h"
 #include "DisplayDriver.h"
@@ -181,7 +181,6 @@ static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings
   bool is24hTimer = (settings.timerType == TIMER_TYPE_24H);
 
   data.title = "Universal Timer";
-  data.headerRightText = buildStatusHeaderRightText();
   data.actionRowMessage = warpSpeedEnabled ? "24h warp mode" : "24h auto mode";
   data.is24hTimer = is24hTimer;
   data.externalTriggerMode = (settings.triggerMode == TRIGGER_MODE_EXTERNAL);
@@ -1260,7 +1259,6 @@ static void openSystemSettingsMenu()
   drawCurrentScreen();
 
 } //   openSystemSettingsMenu()
-
 //--- Open profile list screen
 static void openProfileList(ProfileListMode mode)
 {
@@ -1271,7 +1269,6 @@ static void openProfileList(ProfileListMode mode)
   refreshProfileListWithExit();
 
   currentScreen = UI_SCREEN_PROFILE_LIST;
-
   if (mode == PROFILE_LIST_LOAD)
   {
     logActiveScreen("Load Profile Menu");
@@ -1280,8 +1277,6 @@ static void openProfileList(ProfileListMode mode)
   {
     logActiveScreen("Delete Profile Menu");
   }
-
-  drawCurrentScreen();
 
 } //   openProfileList()
 
@@ -1399,8 +1394,13 @@ static void drawCurrentScreen()
     int visibleItemCount = 0;
     int selectedVisibleIndex = 0;
     int firstVisibleIndex = 0;
-    String wifiSsid = wifiManagerGetSettings().staSsid;
+    String wifiSsid = wifiManagerExt.getSettings().staSsid;
     bool wifiDisabled = settingsStoreLoadWifiDisabled();
+
+    if (wifiSsid.isEmpty() && wifiManagerExt.isStaConnected())
+    {
+      wifiSsid = WiFi.SSID();
+    }
 
     if (wifiSsid.isEmpty())
     {
@@ -1413,7 +1413,7 @@ static void drawCurrentScreen()
       visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_WIFI_SSID;
       visibleItemCount++;
 
-      dynamicSystemSettingsItems[visibleItemCount] = String("IP: ") + wifiManagerGetAddressString();
+      dynamicSystemSettingsItems[visibleItemCount] = String("IP: ") + wifiManagerExt.getAddressString();
       visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_IP_ADDRESS;
       visibleItemCount++;
     }
@@ -1530,7 +1530,7 @@ static void drawCurrentScreen()
     std::string line2;
     std::string line3;
 
-    buildPortalApLines(wifiManagerGetPortalApSsid().c_str(), line1, line2);
+    buildPortalApLines(wifiManagerExt.getPortalApSsid().c_str(), line1, line2);
     line3 = line2;
 
     if (line3.empty())
@@ -1943,7 +1943,7 @@ static void handleWifiPortalScreen(EncoderEvent encoderEvent)
   }
 
   settingsStoreSaveWifiDisabled(true);
-  wifiManagerSetDisabled(true);
+  wifiManagerExt.setDisabled(true);
 
   currentScreen = UI_SCREEN_STATUS;
   logActiveScreen("Timer Screen");
@@ -2326,7 +2326,7 @@ void uiMenuUpdate()
   EncoderEvent encoderEvent = input.getEncoderEvent();
   ButtonEvent buttonEvent = input.getAuxButtonEvent();
   uint32_t nowMs = millis();
-  bool portalActive = wifiManagerShouldOpenPortal();
+  bool portalActive = wifiManagerExt.shouldOpenPortal();
 
   if (currentScreen == UI_SCREEN_FIELD_INPUT && buttonEvent != BUTTON_EVENT_NONE)
   {

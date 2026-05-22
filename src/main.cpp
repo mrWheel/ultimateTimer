@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 13:10 ***/
+/*** Last Changed: 2026-05-22 - 13:48 ***/
 #include <Arduino.h>
 
 #include "DisplayDriver.h"
@@ -23,7 +23,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v2.1.3";
+const char* PROG_VERSION = "v2.2.0";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -87,6 +87,9 @@ static void logNtpSyncResult();
 
 //--- Handle first-boot marker file in LittleFS
 static bool handleFirstBootMarker();
+
+//--- Persist newly provisioned STA credentials after portal completion
+static void persistNewWifiCredentialsIfAny();
 
 #ifdef TEST_COLOR_PATERN
 //--- Test pattern screens
@@ -222,7 +225,7 @@ static void syncNtpTimeIfNeeded()
     return;
   }
 
-  bool wifiConnected = wifiManagerIsStaConnected();
+  bool wifiConnected = wifiManagerExt.isStaConnected();
 
   if (!wifiConnected)
   {
@@ -270,10 +273,10 @@ static void reportStartupWifiStatusToSerial()
     return;
   }
 
-  if (wifiManagerIsStaConnected())
+  if (wifiManagerExt.isStaConnected())
   {
     Serial.println("===================================================");
-    Serial.printf("WiFi connected. IP address: %s\n", wifiManagerGetAddressString().c_str());
+    Serial.printf("WiFi connected. IP address: %s\n", wifiManagerExt.getAddressString().c_str());
     Serial.println("===================================================");
     startupWifiStatusPrinted = true;
 
@@ -326,6 +329,23 @@ static bool handleFirstBootMarker()
   return true;
 
 } //   handleFirstBootMarker()
+
+//--- Persist newly provisioned STA credentials after portal completion
+static void persistNewWifiCredentialsIfAny()
+{
+  WifiSettings wifiSettings;
+
+  if (!wifiManagerExt.consumeNewStaCredentials(wifiSettings))
+  {
+    return;
+  }
+
+  settingsStoreSaveWifiSettings(wifiSettings);
+  wifiManagerExt.setSettings(wifiSettings);
+
+  ESP_LOGI(logTag, "Stored new WiFi STA credentials for SSID: %s", wifiSettings.staSsid.c_str());
+
+} //   persistNewWifiCredentialsIfAny()
 
 #ifdef TEST_COLOR_PATERN
 //--- Get number of enabled palette colors
@@ -555,10 +575,10 @@ void setup()
   {
     showStartupWifiConnectionMessage();
     delay(600);
-    wifiManagerInit();
+    WiFi.mode(WIFI_AP_STA);
+    webUiInit();
     startupWifiStartMs = millis();
     startupWifiStatusPrinted = false;
-    webUiInit();
   }
   else
   {
@@ -566,6 +586,12 @@ void setup()
     startupWifiStatusPrinted = true;
     ESP_LOGI(logTag, "WiFi stack disabled by user indicator");
   }
+
+  WifiSettings wifiSettings;
+  settingsStoreLoadWifiSettings(wifiSettings);
+  wifiManagerExt.setPortalCallbacks(webUiSuspend, webUiResume);
+  wifiManagerExt.setSettings(wifiSettings);
+  wifiManagerExt.begin(wifiDisabled);
 
   uiMenuInit();
 
@@ -576,7 +602,7 @@ void setup()
 
   if (!wifiDisabled)
   {
-    ESP_LOGI(logTag, "Open web UI at: http://%s", wifiManagerGetAddressString().c_str());
+    ESP_LOGI(logTag, "Open web UI at: http://%s", wifiManagerExt.getAddressString().c_str());
   }
 
 } //   setup()
@@ -593,7 +619,8 @@ void loop()
 
   if (!wifiDisabled)
   {
-    wifiManagerUpdate();
+    wifiManagerExt.update();
+    persistNewWifiCredentialsIfAny();
     reportStartupWifiStatusToSerial();
     syncNtpTimeIfNeeded();
     webUiUpdate();
