@@ -43,7 +43,9 @@ no guarantees, no warranties, and absolutely no assurance that this design
 is correct, safe, or suitable for any purpose whatsoever.
 
 ## What it is
-ESP32 cyclic and 24h timer for a 2.4 inch SPI TFT + EC11 rotary encoder module.
+ESP32 cyclic and 24h timer for a 2.4 inch SPI TFT + EC11 rotary encoder module with the 
+<a href="https://willem.aandewiel.nl/index.php/2026/05/19/tft-lcd-display-ec11-piggy-back-board/">Piggy Back 
+Board</a> attached.
 
 <div align="center">
 <img src="assets/TFT_LCD_RotaryModule1.png" width="300" align="center">

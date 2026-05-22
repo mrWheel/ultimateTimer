@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 13:48 ***/
+/*** Last Changed: 2026-05-22 - 14:00 ***/
 #include "uiMenu.h"
 #include "colorSettings.h"
 #include "DisplayDriver.h"
@@ -287,11 +287,6 @@ static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings
     }
 
     bottomTileLabel = "CYCLES";
-
-    if (warpSpeedEnabled)
-    {
-      bottomTileValue += "|warp";
-    }
   }
 
   data.stateValue = stateValue;

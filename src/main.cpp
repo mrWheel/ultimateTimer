@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 13:48 ***/
+/*** Last Changed: 2026-05-22 - 14:00 ***/
 #include <Arduino.h>
 
 #include "DisplayDriver.h"
@@ -23,7 +23,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v2.2.0";
+const char* PROG_VERSION = "v2.2.1";
 
 //--- Logging tag
 static const char* logTag = "main";

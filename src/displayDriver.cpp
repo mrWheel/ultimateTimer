@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 12:52 ***/
+/*** Last Changed: 2026-05-22 - 14:00 ***/
 #include "DisplayDriver.h"
 #include "appConfig.h"
 #include "colorSettings.h"
@@ -283,15 +283,16 @@ void DisplayDriver::drawStatusScreen(const DisplayStatusScreenData& data)
         {
           int16_t textX1;
           int16_t textY1;
-          uint16_t charWidth;
-          uint16_t charHeight;
+          uint16_t textWidth;
+          uint16_t textHeight;
           int warpModeX;
           int tileY = tileStartY + 3 * (tileH + tileGap);
+          const char* warpLabel = "Warp Mode";
 
           tft.setTextSize(2);
-          tft.getTextBounds("0", 0, 0, &textX1, &textY1, &charWidth, &charHeight);
+          tft.getTextBounds(warpLabel, 0, 0, &textX1, &textY1, &textWidth, &textHeight);
 
-          warpModeX = col1X + fullW - 4 - static_cast<int>(charWidth) * 10;
+          warpModeX = col1X + fullW - 4 - static_cast<int>(textWidth);
           if (warpModeX < col1X + 4)
           {
             warpModeX = col1X + 4;
@@ -299,7 +300,7 @@ void DisplayDriver::drawStatusScreen(const DisplayStatusScreenData& data)
 
           tft.setTextColor(getUiSelectedTextColor(), getUiSelectedFillColor());
           tft.setCursor(warpModeX, tileY + 14);
-          tft.print("Warp mode");
+          tft.print(warpLabel);
         }
       }
       break;
