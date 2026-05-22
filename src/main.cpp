@@ -1,9 +1,8 @@
-/*** Last Changed: 2026-05-22 - 12:52 ***/
+/*** Last Changed: 2026-05-22 - 13:10 ***/
 #include <Arduino.h>
 
-#include "buttonInput.h"
 #include "DisplayDriver.h"
-#include "encoderInput.h"
+#include "InputClass.h"
 #include "ioControl.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -139,7 +138,7 @@ static void loadStartupSettings()
   }
 
   settingsStoreLoadSystemSettings(activeSettings);
-  encoderSetDirectionReversed(settingsStoreLoadEncoderDirectionReversed());
+  input.setEncoderDirectionReversed(settingsStoreLoadEncoderDirectionReversed());
   displaySetThemeColorIndex(settingsStoreLoadThemeColorIndex());
 
   timerSetSettings(activeSettings);
@@ -188,8 +187,7 @@ static void inputTask(void* taskParameter)
 
   for (;;)
   {
-    encoderUpdate();
-    buttonUpdate();
+    input.update();
     updateExternalInputs();
     uiMenuUpdate();
 
@@ -468,8 +466,8 @@ static void handleTestColorPatternInput()
 {
   EncoderEvent event;
 
-  encoderUpdate();
-  event = encoderGetEvent();
+  input.update();
+  event = input.getEncoderEvent();
 
   if (event == ENCODER_EVENT_NONE)
   {
@@ -521,7 +519,7 @@ void setup()
   delay(100);
 
 #ifdef TEST_COLOR_PATERN
-  encoderInit();
+  input.begin();
   displayInit();
   printColorShadeDumpToSerial();
   drawTestColorScreen();
@@ -543,8 +541,7 @@ void setup()
 
   timerInit();
   loadStartupSettings();
-  encoderInit();
-  buttonInit();
+  input.begin();
   ioInit();
   displayInit();
 

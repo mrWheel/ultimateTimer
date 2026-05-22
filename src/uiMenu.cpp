@@ -1,9 +1,8 @@
-/*** Last Changed: 2026-05-22 - 12:52 ***/
+/*** Last Changed: 2026-05-22 - 13:10 ***/
 #include "uiMenu.h"
-#include "buttonInput.h"
 #include "colorSettings.h"
 #include "DisplayDriver.h"
-#include "encoderInput.h"
+#include "InputClass.h"
 #include "profileManager.h"
 #include "settingsStore.h"
 #include "timerEngine.h"
@@ -1434,7 +1433,7 @@ static void drawCurrentScreen()
       visibleItemCount++;
     }
 
-    dynamicSystemSettingsItems[visibleItemCount] = String("Encoder Order: ") + String(encoderGetDirectionReversed() ? "B-A" : "A-B");
+    dynamicSystemSettingsItems[visibleItemCount] = String("Encoder Order: ") + String(input.getEncoderDirectionReversed() ? "B-A" : "A-B");
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
     visibleItemCount++;
 
@@ -1980,9 +1979,9 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
   {
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_ENCODER_ORDER)
     {
-      bool reversed = !encoderGetDirectionReversed();
+      bool reversed = !input.getEncoderDirectionReversed();
 
-      encoderSetDirectionReversed(reversed);
+      input.setEncoderDirectionReversed(reversed);
       settingsStoreSaveEncoderDirectionReversed(reversed);
       drawCurrentScreen();
 
@@ -2324,8 +2323,8 @@ void uiMenuInit()
 //--- Update UI menu
 void uiMenuUpdate()
 {
-  EncoderEvent encoderEvent = encoderGetEvent();
-  ButtonEvent buttonEvent = buttonGetEvent();
+  EncoderEvent encoderEvent = input.getEncoderEvent();
+  ButtonEvent buttonEvent = input.getAuxButtonEvent();
   uint32_t nowMs = millis();
   bool portalActive = wifiManagerShouldOpenPortal();
 
