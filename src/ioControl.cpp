@@ -1,35 +1,37 @@
+/*** Last Changed: 2026-09-22 - 16:46 ***/
 #include "ioControl.h"
 #include "appConfig.h"
 
 #include <esp_log.h>
 
 //--- Logging tag
-static const char *logTag = "ioControl";
+static const char* logTag = "ioControl";
 
 //--- Input edge tracking
 static bool lastTriggerState = false;
 static bool lastResetState = false;
 
 //--- Initialize I/O control
-void ioInit()
+void ioInit(const AppSettings& settings)
 {
   pinMode(PIN_OUTPUT, OUTPUT);
   pinMode(PIN_TRIGGER, INPUT_PULLUP);
   pinMode(PIN_RESET, INPUT_PULLUP);
 
-  digitalWrite(PIN_OUTPUT, LOW);
+  //-- The output driver is electrically inverted relative to the timer state.
+  digitalWrite(PIN_OUTPUT, settings.outputPolarityHigh ? HIGH : LOW);
 
   lastTriggerState = ioGetRawTriggerState();
   lastResetState = ioGetRawResetState();
 
   ESP_LOGI(logTag, "I/O initialized");
 
-}   //   ioInit()
+} //   ioInit()
 
 //--- Update output according to runtime status and settings
-void ioUpdate(const RuntimeStatus &runtimeStatus, const AppSettings &settings)
+void ioUpdate(const RuntimeStatus& runtimeStatus, const AppSettings& settings)
 {
-  bool effectiveState = runtimeStatus.outputActive;
+  bool effectiveState = !runtimeStatus.outputActive;
 
   if (!settings.outputPolarityHigh)
   {
@@ -38,7 +40,7 @@ void ioUpdate(const RuntimeStatus &runtimeStatus, const AppSettings &settings)
 
   digitalWrite(PIN_OUTPUT, effectiveState ? HIGH : LOW);
 
-}   //   ioUpdate()
+} //   ioUpdate()
 
 //--- Detect trigger edge
 bool ioTriggerActivated(TriggerEdge edge)
@@ -59,7 +61,7 @@ bool ioTriggerActivated(TriggerEdge edge)
 
   return activated;
 
-}   //   ioTriggerActivated()
+} //   ioTriggerActivated()
 
 //--- Detect reset input edge
 bool ioResetActivated()
@@ -71,18 +73,18 @@ bool ioResetActivated()
 
   return activated;
 
-}   //   ioResetActivated()
+} //   ioResetActivated()
 
 //--- Get raw trigger input state
 bool ioGetRawTriggerState()
 {
   return digitalRead(PIN_TRIGGER) == HIGH;
 
-}   //   ioGetRawTriggerState()
+} //   ioGetRawTriggerState()
 
 //--- Get raw reset input state
 bool ioGetRawResetState()
 {
   return digitalRead(PIN_RESET) == HIGH;
 
-}   //   ioGetRawResetState()
+} //   ioGetRawResetState()

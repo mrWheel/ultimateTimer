@@ -1,3 +1,4 @@
+/*** Last Changed: 2026-09-22 - 16:46 ***/
 #ifndef IO_CONTROL_H
 #define IO_CONTROL_H
 
@@ -5,10 +6,10 @@
 #include "timerTypes.h"
 
 //--- Initialize I/O control
-void ioInit();
+void ioInit(const AppSettings& settings);
 
 //--- Update output according to runtime status and settings
-void ioUpdate(const RuntimeStatus &runtimeStatus, const AppSettings &settings);
+void ioUpdate(const RuntimeStatus& runtimeStatus, const AppSettings& settings);
 
 //--- Detect trigger edge
 bool ioTriggerActivated(TriggerEdge edge);

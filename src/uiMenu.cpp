@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 14:00 ***/
+/*** Last Changed: 2026-09-22 - 16:46 ***/
 #include "uiMenu.h"
 #include "colorSettings.h"
 #include "DisplayDriver.h"
@@ -528,6 +528,8 @@ static uint32_t transientMessageUntilMs = 0;
 //--- Status refresh timing
 static const uint32_t statusRefreshIntervalMs = 100;
 static uint32_t lastStatusRefreshMs = 0;
+static bool systemOutputPolarityDisplayInitialized = false;
+static bool lastSystemOutputPolarityHigh = false;
 static const uint32_t headerRefreshIntervalMs = 10000;
 
 //--- Draw current screen
@@ -2121,6 +2123,10 @@ static void handleProfileList(EncoderEvent encoderEvent)
       {
         commitSettings(settings);
         timerReset();
+        if (settings.timerType == TIMER_TYPE_24H)
+        {
+          timerStart();
+        }
         settingsStoreSaveLastProfileName(settings.profileName);
         uiMenuShowTransientMessage("Profile loaded");
       }
@@ -2399,6 +2405,22 @@ void uiMenuUpdate()
     transientMessage = "";
     transientMessageUntilMs = 0;
     drawCurrentScreen();
+  }
+
+  if (currentScreen == UI_SCREEN_SYSTEM_SETTINGS_MENU)
+  {
+    bool outputPolarityHigh = timerGetSettings().outputPolarityHigh;
+
+    if (!systemOutputPolarityDisplayInitialized || outputPolarityHigh != lastSystemOutputPolarityHigh)
+    {
+      lastSystemOutputPolarityHigh = outputPolarityHigh;
+      systemOutputPolarityDisplayInitialized = true;
+      drawCurrentScreen();
+    }
+  }
+  else
+  {
+    systemOutputPolarityDisplayInitialized = false;
   }
 
   //--- Update header time/WiFi text without redrawing full screens

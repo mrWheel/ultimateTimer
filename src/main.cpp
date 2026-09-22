@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 14:42 ***/
+/*** Last Changed: 2026-09-22 - 16:46 ***/
 #include <Arduino.h>
 
 #include "DisplayDriver.h"
@@ -23,7 +23,7 @@
 #include <string>
 #include <time.h>
 
-const char* PROG_VERSION = "v2.2.2";
+const char* PROG_VERSION = "v2.3.0";
 
 //--- Logging tag
 static const char* logTag = "main";
@@ -145,6 +145,15 @@ static void loadStartupSettings()
   displaySetThemeColorIndex(settingsStoreLoadThemeColorIndex());
 
   timerSetSettings(activeSettings);
+
+  if (activeSettings.timerType == TIMER_TYPE_24H)
+  {
+    timerStart();
+  }
+  else
+  {
+    timerStop();
+  }
 
 } //   loadStartupSettings()
 
@@ -568,7 +577,7 @@ void setup()
   timerInit();
   loadStartupSettings();
   input.begin();
-  ioInit();
+  ioInit(activeSettings);
   displayInit();
 
   if (firstBootDetected)

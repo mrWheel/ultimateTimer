@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 12:37 ***/
+/*** Last Changed: 2026-09-22 - 16:46 ***/
 #include "timerEngine.h"
 #include "appConfig.h"
 #include "warpMachine.h"
@@ -20,6 +20,9 @@ static RuntimeStatus runtimeStatus;
 
 //--- Internal timing
 static uint32_t phaseStartMs = 0;
+
+//--- Tracks whether the 24h timer was explicitly stopped by the user (Web UI Stop button)
+static bool timer24hStoppedByUser = false;
 
 //--- Shared state protection
 static SemaphoreHandle_t timerMutex = nullptr;
@@ -45,7 +48,7 @@ static void startOnPhase();
 static void startOffPhase();
 
 //--- Update 24h runtime snapshot
-static void update24hRuntimeState();
+static bool update24hRuntimeState();
 
 //--- Get 24h quarter-hour index in settings storage
 static int get24hQuarterIndex(uint8_t hourIndex, uint8_t quarterIndex);
@@ -79,6 +82,9 @@ static bool findNextTransitionIndex(const uint32_t transitionSeconds[], const bo
 
 //--- Check whether current runtime should use warp speed
 static bool shouldApplyWarpSpeedForCurrentRuntime();
+
+//--- Check whether the system clock contains a usable date
+static bool isValidClockTime(const struct tm& timeInfo);
 
 //--- Lock timer state
 static inline void lockTimerState()
@@ -137,6 +143,7 @@ void timerInit()
   runtimeStatus.currentPhaseElapsedMs = 0;
   runtimeStatus.inOnPhase = true;
   phaseStartMs = 0;
+  timer24hStoppedByUser = false;
 
   unlockTimerState();
 
@@ -151,14 +158,21 @@ void timerUpdate()
 
   if (appSettings.timerType == TIMER_TYPE_24H)
   {
-    if (runtimeStatus.state != TIMER_STATE_RUNNING)
+    if (timer24hStoppedByUser)
     {
       unlockTimerState();
 
       return;
     }
 
-    update24hRuntimeState();
+    if (update24hRuntimeState())
+    {
+      runtimeStatus.state = TIMER_STATE_RUNNING;
+    }
+    else
+    {
+      runtimeStatus.state = TIMER_STATE_IDLE;
+    }
     unlockTimerState();
 
     return;
@@ -226,6 +240,24 @@ void timerStart()
 {
   lockTimerState();
 
+  if (appSettings.timerType == TIMER_TYPE_24H)
+  {
+    timer24hStoppedByUser = false;
+
+    if (update24hRuntimeState())
+    {
+      runtimeStatus.state = TIMER_STATE_RUNNING;
+    }
+    else
+    {
+      runtimeStatus.state = TIMER_STATE_IDLE;
+    }
+    unlockTimerState();
+    ESP_LOGI(logTag, "24h timer start requested");
+
+    return;
+  }
+
   if (runtimeStatus.state == TIMER_STATE_FINISHED)
   {
     unlockTimerState();
@@ -244,16 +276,6 @@ void timerStart()
 
   sanitizeSettings(appSettings, true);
   runtimeStatus.totalCycles = appSettings.repeatCount;
-
-  if (appSettings.timerType == TIMER_TYPE_24H)
-  {
-    runtimeStatus.state = TIMER_STATE_RUNNING;
-    update24hRuntimeState();
-    unlockTimerState();
-    ESP_LOGI(logTag, "24h timer started");
-
-    return;
-  }
 
   if (runtimeStatus.totalCycles > 0 && runtimeStatus.currentCycle >= runtimeStatus.totalCycles)
   {
@@ -284,6 +306,11 @@ void timerStop()
   runtimeStatus.currentPhaseDurationMs = 0;
   runtimeStatus.currentPhaseElapsedMs = 0;
   runtimeStatus.inOnPhase = true;
+
+  if (appSettings.timerType == TIMER_TYPE_24H)
+  {
+    timer24hStoppedByUser = true;
+  }
 
   unlockTimerState();
   ESP_LOGI(logTag, "Timer stopped");
@@ -355,8 +382,16 @@ void timerReset()
 
   if (appSettings.timerType == TIMER_TYPE_24H)
   {
-    runtimeStatus.state = TIMER_STATE_RUNNING;
-    update24hRuntimeState();
+    timer24hStoppedByUser = false;
+
+    if (update24hRuntimeState())
+    {
+      runtimeStatus.state = TIMER_STATE_RUNNING;
+    }
+    else
+    {
+      runtimeStatus.state = TIMER_STATE_IDLE;
+    }
   }
 
   unlockTimerState();
@@ -404,8 +439,15 @@ void timerSetSettings(const AppSettings& settings)
 
   if (appSettings.timerType == TIMER_TYPE_24H)
   {
-    runtimeStatus.state = TIMER_STATE_RUNNING;
-    update24hRuntimeState();
+    if (timer24hStoppedByUser)
+    {
+      runtimeStatus.state = TIMER_STATE_IDLE;
+      runtimeStatus.outputActive = false;
+    }
+    else
+    {
+      runtimeStatus.state = update24hRuntimeState() ? TIMER_STATE_RUNNING : TIMER_STATE_IDLE;
+    }
   }
 
   if (!timerIsBusyLocked())
@@ -499,7 +541,7 @@ Timer24hStatusInfo timerGet24hStatusInfo()
     return info;
   }
 
-  if (now <= 0 || localtime_r(&now, &localTimeInfo) == nullptr)
+  if (now <= 0 || localtime_r(&now, &localTimeInfo) == nullptr || !isValidClockTime(localTimeInfo))
   {
     unlockTimerState();
 
@@ -1129,7 +1171,7 @@ static void build24hRuntimeSegments(const struct tm& timeInfo, uint32_t nowSecon
 } //   build24hRuntimeSegments()
 
 //--- Update 24h runtime snapshot
-static void update24hRuntimeState()
+static bool update24hRuntimeState()
 {
   time_t now = warpMachineNow();
   struct tm localTimeInfo;
@@ -1139,7 +1181,7 @@ static void update24hRuntimeState()
   uint32_t phaseEndSeconds;
   uint32_t cycleIndex;
 
-  if (now <= 0 || localtime_r(&now, &localTimeInfo) == nullptr)
+  if (now <= 0 || localtime_r(&now, &localTimeInfo) == nullptr || !isValidClockTime(localTimeInfo))
   {
     runtimeStatus.outputActive = false;
     runtimeStatus.currentCycle = 0;
@@ -1148,7 +1190,7 @@ static void update24hRuntimeState()
     runtimeStatus.currentPhaseElapsedMs = 0;
     runtimeStatus.inOnPhase = false;
 
-    return;
+    return false;
   }
 
   nowSeconds = static_cast<uint32_t>(localTimeInfo.tm_hour) * 3600UL + static_cast<uint32_t>(localTimeInfo.tm_min) * 60UL + static_cast<uint32_t>(localTimeInfo.tm_sec);
@@ -1162,7 +1204,16 @@ static void update24hRuntimeState()
   runtimeStatus.currentPhaseElapsedMs = (nowSeconds > phaseStartSeconds) ? (nowSeconds - phaseStartSeconds) * 1000UL : 0;
   runtimeStatus.inOnPhase = outputActive;
 
+  return true;
+
 } //   update24hRuntimeState()
+
+//--- Check whether the system clock contains a usable date
+static bool isValidClockTime(const struct tm& timeInfo)
+{
+  return timeInfo.tm_year >= (2020 - 1900);
+
+} //   isValidClockTime()
 
 //--- Get trigger mode label
 const char* timerGetTriggerModeLabel(TriggerMode mode)

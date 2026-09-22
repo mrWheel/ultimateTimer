@@ -211,7 +211,7 @@ When a 24h profile is loaded, the runtime engine must **immediately seek to the 
 
 ### Web UI
 - Timer Settings menu splits into two submenu items: Cyclic Timer Settings and 24h Timer Settings
-- Action buttons (Start/Stop/Reset) are hidden for 24h profiles
+- Action buttons (Start/Stop) are available for 24h profiles; Reset is hidden
 - The Timer Screen shows an extra status tile labeled `Next Change Between`
 - The `Next Change Between` tile value format is `hh:mm - hh:mm`
 - The Web UI includes a full 24h quarter-hour editor (24x4 table) and can save all 96 quarter states

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-13 - 12:05 ***/
+/*** Last Changed: 2026-09-22 - 16:46 ***/
 #include "profileManager.h"
 
 #include <ArduinoJson.h>
@@ -92,6 +92,13 @@ bool profileManagerLoadProfile(const String& profileName, AppSettings& settings)
   String safeName = sanitizeProfileName(profileName);
   String path = buildProfilePath(safeName);
   File file = LittleFS.open(path, "r");
+
+  if (!file && !safeName.endsWith("-24h"))
+  {
+    safeName += "-24h";
+    path = buildProfilePath(safeName);
+    file = LittleFS.open(path, "r");
+  }
 
   if (!file)
   {

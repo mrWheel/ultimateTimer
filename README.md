@@ -147,6 +147,8 @@ Current configured values in this repository:
 - Profile files store: `timerType`, `onTimeValue`, `offTimeValue`, `onTimeUnit`, `offTimeUnit`, `repeatCount`, `triggerMode`, `triggerEdge`, and the 24h quarter-hour states
 - System-level settings such as output polarity, lock input during run, auto-save profile, theme color, and encoder direction are stored separately in Preferences/NVS
 	- Display rotation is a system setting in `System Settings` and is persisted in Preferences/NVS (values: `1` or `3`)
+	- The active profile name is persisted in Preferences/NVS and restored after reset or restart
+	- Cyclic timers are restored in `Stop` mode; 24h timers start immediately and seek to the current wall-clock position
 	- Built-in profiles `default` (cyclic) and `default-24h` (24h) are always available in the Load Profile list
 	- Built-in profiles `default` and `default-24h` cannot be deleted and are hidden from the Delete Profile list
 	- If the active profile is deleted, firmware automatically loads the corresponding default profile based on timer type

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 13:48 ***/
+/*** Last Changed: 2026-09-22 - 16:46 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -896,6 +896,7 @@ body {
       </div>
       <div class="formGrid">
         <div class="fieldRow"><label for="newProfileName">New Profile Name</label><input id="newProfileName" type="text" maxlength="16"></div>
+        <div class="fieldRow"><label for="newProfileTimerType">Timer Type</label><select id="newProfileTimerType"><option value="0">Cyclic</option><option value="1">24h</option></select></div>
       </div>
       <div class="footerActions">
         <button id="cancelNewProfileButton" class="secondaryButton" type="button">Cancel</button>
@@ -912,6 +913,7 @@ let savedProfileName = '';
 let savedProfileSignature = '';
 let profileDirtyResetPending = false;
 let activeMenuId = '';
+let systemOutputPolarityDirty = false;
 let saveNoticeResolve = null;
 
 async function syncTimerForMenuState(previousMenuId, nextMenuId)
@@ -1675,14 +1677,14 @@ async function refreshStatus()
   document.getElementById('headerNetworkInfo').textContent =
     'Network: ' + (data.network.connected ? 'Connected' : 'Not connected') + ' | IP: ' + data.network.address;
 
-  //-- Hide action buttons for 24h timer (timerType === 1)
+  //-- 24h timers can be started and stopped, but cannot be reset from the Web UI
   const startButton = document.getElementById('startButton');
   const stopButton = document.getElementById('stopButton');
   const resetButton = document.getElementById('resetButton');
   if (is24hTimer)
   {
-    startButton.style.display = 'none';
-    stopButton.style.display = 'none';
+    startButton.style.display = '';
+    stopButton.style.display = '';
     resetButton.style.display = 'none';
   }
   else
@@ -1750,11 +1752,16 @@ async function refreshStatus()
     render24hEditorFromArray(data.settings.timer24hQuarterStates || []);
   }
 
-  // Update System Settings fields only if menu is NOT open
+  // Keep output polarity synchronized unless the user has a pending GUI change.
+  if (!systemOutputPolarityDirty)
+  {
+    document.getElementById('systemOutputPolarity').value = data.settings.outputPolarityHigh ? '1' : '0';
+  }
+
+  // Update the remaining System Settings fields only if the menu is closed.
   const systemCard = document.getElementById('systemCard');
   if (systemCard && systemCard.getAttribute('aria-hidden') === 'true')
   {
-    document.getElementById('systemOutputPolarity').value = data.settings.outputPolarityHigh ? '1' : '0';
     document.getElementById('systemAutoSaveLastProfile').value = data.settings.autoSaveLastProfile ? '1' : '0';
     document.getElementById('systemThemeIndex').value = String(data.settings.themeColorIndex || 0);
     document.getElementById('systemWarpSpeed').value = data.settings.warpSpeedEnabled ? '1' : '0';
@@ -1823,19 +1830,26 @@ async function callPost(url, body)
 {
   try
   {
-    await fetch(url, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : '{}'
     });
+
+    if (!response.ok)
+    {
+      return false;
+    }
   }
   catch (_error)
   {
-    return;
+    return false;
   }
 
   await refreshStatus();
   await refreshProfiles();
+
+  return true;
 }
 
 async function saveSettings()
@@ -1880,7 +1894,15 @@ function readSystemFromForm()
 
 async function saveSystem()
 {
-  await callPost('/api/system/save', readSystemFromForm());
+  const saved = await callPost('/api/system/save', readSystemFromForm());
+
+  if (!saved)
+  {
+    return;
+  }
+
+  systemOutputPolarityDirty = false;
+  await refreshStatus();
   document.getElementById('systemRestart').value = '0';
   setActiveMenu('');
 }
@@ -1993,9 +2015,11 @@ async function createNewProfile()
   }
 
   await callPost('/api/profile/save', {
-    profileName: newProfileName
+    profileName: newProfileName,
+    timerType: Number(document.getElementById('newProfileTimerType').value)
   });
   document.getElementById('newProfileName').value = '';
+  document.getElementById('newProfileTimerType').value = '0';
   setActiveMenu('');
 }
 
@@ -2046,7 +2070,13 @@ function bindActionButtons()
   });
   document.getElementById('systemCancelButton').addEventListener('click', () =>
   {
+    systemOutputPolarityDirty = false;
+    refreshStatus();
     setActiveMenu('');
+  });
+  document.getElementById('systemOutputPolarity').addEventListener('change', () =>
+  {
+    systemOutputPolarityDirty = true;
   });
   document.getElementById('systemSaveButton').addEventListener('click', saveSystem);
   document.getElementById('saveProfileButton').addEventListener('click', saveProfile);
@@ -2383,6 +2413,7 @@ static void handleSaveProfile()
 
   AppSettings settings = timerGetSettings();
   String profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
+  settings.timerType = static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
   settings.profileName = profileName;
 
   bool ok = profileManagerSaveProfile(profileName, settings);
@@ -2417,6 +2448,10 @@ static void handleLoadProfile()
   {
     timerSetSettings(settings);
     timerReset();
+    if (settings.timerType == TIMER_TYPE_24H)
+    {
+      timerStart();
+    }
     settingsStoreSaveLastProfileName(profileName);
   }
 
@@ -2463,14 +2498,14 @@ static void handleSaveSystem()
     themeColorIndex = 0;
   }
 
-  bool outputPolarityHigh = doc["outputPolarityHigh"] | settingsStoreLoadOutputPolarityHigh();
-  bool warpSpeedEnabled = doc["warpSpeedEnabled"] | settingsStoreLoadWarpSpeedEnabled();
-  bool restartRequested = doc["restart"] | false;
+  bool outputPolarityHigh = doc["outputPolarityHigh"].is<bool>() ? doc["outputPolarityHigh"].as<bool>() : settingsStoreLoadOutputPolarityHigh();
+  bool warpSpeedEnabled = doc["warpSpeedEnabled"].is<bool>() ? doc["warpSpeedEnabled"].as<bool>() : settingsStoreLoadWarpSpeedEnabled();
+  bool restartRequested = doc["restart"].is<bool>() ? doc["restart"].as<bool>() : false;
   bool themeChanged = (displayGetThemeColorIndex() != static_cast<int>(themeColorIndex));
 
   AppSettings settings = timerGetSettings();
   settings.outputPolarityHigh = outputPolarityHigh;
-  settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
+  settings.autoSaveLastProfile = doc["autoSaveLastProfile"].is<bool>() ? doc["autoSaveLastProfile"].as<bool>() : settings.autoSaveLastProfile;
   settingsStoreSaveSystemSettings(settings);
   timerSetSettings(settings);
 
@@ -2483,7 +2518,7 @@ static void handleSaveSystem()
     uiMenuForceTimerScreen();
   }
 
-  server.send(200, "application/json", "{\"ok\":true}");
+  handleStatus();
 
   if (restartRequested)
   {
