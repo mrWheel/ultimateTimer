@@ -1,0 +1,10 @@
+{
+  "name": "ultimateTimer",
+  "long_name_nl": "Ultimate Timer - ESP32 timer met TFT-bediening",
+  "long_name_en": "Ultimate Timer - ESP32 timer with TFT control",
+  "description_en": "ESP32 timer firmware with a TFT and rotary encoder UI, Web UI, cyclic timers, 24-hour quarter-hour schedules, LittleFS profiles, and NVS-persisted settings.",
+  "description_nl": "ESP32-timerfirmware met TFT- en rotary-encoderbediening, Web UI, cyclische timers, 24-uurschema's per kwartier, LittleFS-profielen en instellingen in NVS.",
+  "github_url": "https://github.com/mrWheel/ultimateTimer",
+  "post_url": "https://willem.aandewiel.nl/",
+  "image": "UltimateTimer.png"
+}
