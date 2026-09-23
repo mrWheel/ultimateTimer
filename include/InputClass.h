@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-22 - 13:10 ***/
+/*** Last Changed: 2026-09-23 - 19:42 ***/
 #ifndef INPUT_CLASS_H
 #define INPUT_CLASS_H
 
@@ -72,6 +72,7 @@ public:
 
   EncoderEvent getEncoderEvent();
   void clearEncoderEvent();
+  bool consumeActivity();
 
   ButtonEvent getAuxButtonEvent();
   void clearAuxButtonEvent();
@@ -87,6 +88,7 @@ private:
 
   int32_t encoderDelta;
   uint8_t lastEncoderState;
+  bool activityDetected;
   EncoderEvent pendingEncoderEvent;
 
   bool encoderButtonPressed;

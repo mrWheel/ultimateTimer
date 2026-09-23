@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-09-22 - 16:46 ***/
+/*** Last Changed: 2026-09-23 - 19:42 ***/
 #include "uiMenu.h"
 #include "colorSettings.h"
 #include "DisplayDriver.h"
@@ -117,53 +117,41 @@ static std::string formatDurationHhMmSsUi(uint32_t totalSeconds);
 static std::string buildStatusHeaderRightText();
 
 //--- Build reusable status screen data
-static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings, const RuntimeStatus& runtimeStatus, int statusActionIndex);
+static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings,
+                                                     const RuntimeStatus& runtimeStatus,
+                                                     int statusActionIndex);
 
 //--- Main menu labels
-static const String mainMenuItems[] =
-    {
-        "Cyclic Timer Settings",
-        "24h Timer Settings",
-        "Save Profile",
-        "Load Profile",
-        "New Profile",
-        "Delete Profile",
-        "System Settings",
-        "Exit"};
+static const String mainMenuItems[] = {
+    "Cyclic Timer Settings", "24h Timer Settings", "Save Profile",    "Load Profile",
+    "New Profile",           "Delete Profile",     "System Settings", "Exit"};
 
 //--- Timer settings menu labels
-static const String timerSettingsMenuItems[] =
-    {
-        "On Time",
-        "On Time Unit",
-        "Off Time",
-        "Off Time Unit",
-        "Number of Cycles",
-        "Trigger Mode",
-        "Trigger (Rise/Fall)",
-        "Exit"};
+static const String timerSettingsMenuItems[] = {
+    "On Time",      "On Time Unit",        "Off Time", "Off Time Unit", "Number of Cycles",
+    "Trigger Mode", "Trigger (Rise/Fall)", "Exit"};
 
 //--- System settings menu labels
-static const String systemSettingsMenuItems[] =
-    {
-        "WiFi SSID",
-        "IP Address",
-        "MAC Address",
-        "Firmware",
-        "WiFi Disabled",
-        "Encoder Order",
-        "Warp Speed",
-        "Display Rotation",
-        "Erase WiFi credentials",
-        "Start WiFi Manager",
-        "Output Polarity",
-        "Auto Save Profile",
-        "Theme Color",
-        "Restart ultimateTimer",
-        "Exit"};
+static const String systemSettingsMenuItems[] = {"WiFi SSID",
+                                                 "IP Address",
+                                                 "MAC Address",
+                                                 "Firmware",
+                                                 "WiFi Disabled",
+                                                 "Encoder Order",
+                                                 "Warp Speed",
+                                                 "Display Rotation",
+                                                 "Erase WiFi credentials",
+                                                 "Start WiFi Manager",
+                                                 "Output Polarity",
+                                                 "Auto Save Profile",
+                                                 "Theme Color",
+                                                 "Restart ultimateTimer",
+                                                 "Exit"};
 
 //--- Build reusable status screen data
-static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings, const RuntimeStatus& runtimeStatus, int statusActionIndex)
+static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings,
+                                                     const RuntimeStatus& runtimeStatus,
+                                                     int statusActionIndex)
 {
   DisplayStatusScreenData data;
   Timer24hStatusInfo status24h = timerGet24hStatusInfo();
@@ -197,23 +185,38 @@ static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings
   {
     stateValue = timerGetTimerTypeLabel(settings.timerType);
 
-    bool outputActive24h = status24h.timeValid ? status24h.outputActive : runtimeStatus.outputActive;
+    bool outputActive24h =
+        status24h.timeValid ? status24h.outputActive : runtimeStatus.outputActive;
     leftTimeTileLabel = outputActive24h ? "LAST STATE CHANGE ON" : "LAST STATE CHANGE OFF";
     rightTimeTileLabel = outputActive24h ? "NEXT STATE CHANGE OFF" : "NEXT STATE CHANGE ON";
 
     if (status24h.timeValid)
     {
-      std::string nextSwitchClock = status24h.hasNextSwitch ? formatHhMmFromSecondsOfDayUi(status24h.nextSwitchSecondsOfDay) : "--:--";
-      std::string nextOffClock = status24h.hasNextOff ? formatHhMmFromSecondsOfDayUi(status24h.nextOffSecondsOfDay) : "--:--";
-      std::string lastOnClock = status24h.hasLastOn ? formatHhMmFromSecondsOfDayUi(status24h.lastOnSecondsOfDay) : "--:--";
-      std::string lastOffClock = status24h.hasLastOff ? formatHhMmFromSecondsOfDayUi(status24h.lastOffSecondsOfDay) : "--:--";
+      std::string nextSwitchClock =
+          status24h.hasNextSwitch ? formatHhMmFromSecondsOfDayUi(status24h.nextSwitchSecondsOfDay)
+                                  : "--:--";
+      std::string nextOffClock = status24h.hasNextOff
+                                     ? formatHhMmFromSecondsOfDayUi(status24h.nextOffSecondsOfDay)
+                                     : "--:--";
+      std::string lastOnClock = status24h.hasLastOn
+                                    ? formatHhMmFromSecondsOfDayUi(status24h.lastOnSecondsOfDay)
+                                    : "--:--";
+      std::string lastOffClock = status24h.hasLastOff
+                                     ? formatHhMmFromSecondsOfDayUi(status24h.lastOffSecondsOfDay)
+                                     : "--:--";
 
       leftTimeTileValue = outputActive24h ? lastOnClock : lastOffClock;
       rightTimeTileValue = outputActive24h ? nextOffClock : nextSwitchClock;
       centerTileLabel = "NEXT CHANGE BETWEEN";
-      centerTileValue = status24h.hasNextSwitch ? formatChangeWindowLabelUi(status24h.nextSwitchWindowStartSecondsOfDay, status24h.nextSwitchWindowEndSecondsOfDay) : "--:-- - --:--";
+      centerTileValue = status24h.hasNextSwitch
+                            ? formatChangeWindowLabelUi(status24h.nextSwitchWindowStartSecondsOfDay,
+                                                        status24h.nextSwitchWindowEndSecondsOfDay)
+                            : "--:-- - --:--";
       bottomTileLabel = "OUTPUT";
-      bottomTileValue = std::string(outputActive24h ? "ON  " : "OFF ") + (status24h.hasNextSwitch ? formatDurationHhMmSsUi(status24h.nextSwitchInSeconds) : "--:--:--");
+      bottomTileValue =
+          std::string(outputActive24h ? "ON  " : "OFF ") +
+          (status24h.hasNextSwitch ? formatDurationHhMmSsUi(status24h.nextSwitchInSeconds)
+                                   : "--:--:--");
     }
     else
     {
@@ -228,9 +231,11 @@ static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings
   else
   {
     char buffer[32];
-    snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.onTimeValue), timerGetTimeUnitLabel(settings.onTimeUnit));
+    snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.onTimeValue),
+             timerGetTimeUnitLabel(settings.onTimeUnit));
     leftTimeTileValue = buffer;
-    snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.offTimeValue), timerGetTimeUnitLabel(settings.offTimeUnit));
+    snprintf(buffer, sizeof(buffer), "%lu %s", static_cast<unsigned long>(settings.offTimeValue),
+             timerGetTimeUnitLabel(settings.offTimeUnit));
     rightTimeTileValue = buffer;
 
     uint32_t remainingMs = 0;
@@ -282,7 +287,8 @@ static DisplayStatusScreenData buildStatusScreenData(const AppSettings& settings
     }
     else
     {
-      snprintf(buffer, sizeof(buffer), "%lu/%lu", static_cast<unsigned long>(displayCycle), static_cast<unsigned long>(runtimeStatus.totalCycles));
+      snprintf(buffer, sizeof(buffer), "%lu/%lu", static_cast<unsigned long>(displayCycle),
+               static_cast<unsigned long>(runtimeStatus.totalCycles));
       bottomTileValue = buffer;
     }
 
@@ -317,7 +323,8 @@ static std::string formatRemainingMsUi(uint32_t remainingMs)
     minutes = 999UL;
   }
 
-  snprintf(buffer, sizeof(buffer), "%03lu:%02lu", static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+  snprintf(buffer, sizeof(buffer), "%03lu:%02lu", static_cast<unsigned long>(minutes),
+           static_cast<unsigned long>(seconds));
 
   return std::string(buffer);
 
@@ -331,7 +338,8 @@ static std::string formatHhMmFromSecondsOfDayUi(uint32_t secondsOfDay)
   uint32_t minutes = (normalized % 3600UL) / 60UL;
   char buffer[16];
 
-  snprintf(buffer, sizeof(buffer), "%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes));
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu", static_cast<unsigned long>(hours),
+           static_cast<unsigned long>(minutes));
 
   return std::string(buffer);
 
@@ -360,7 +368,8 @@ static std::string formatChangeWindowLabelUi(uint32_t startSecondsOfDay, uint32_
     }
   }
 
-  return formatHhMmFromSecondsOfDayUi(displayStartSeconds) + " - " + formatHhMmFromSecondsOfDayUi(displayEndSeconds);
+  return formatHhMmFromSecondsOfDayUi(displayStartSeconds) + " - " +
+         formatHhMmFromSecondsOfDayUi(displayEndSeconds);
 
 } //   formatChangeWindowLabelUi()
 
@@ -377,7 +386,8 @@ static std::string formatDurationHhMmSsUi(uint32_t totalSeconds)
     hours = 99UL;
   }
 
-  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", static_cast<unsigned long>(hours),
+           static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
 
   return std::string(buffer);
 
@@ -422,7 +432,8 @@ static std::string buildStatusHeaderRightText()
   time_t now = warpMachineNow();
   struct tm localTimeInfo;
 
-  if (now <= 0 || localtime_r(&now, &localTimeInfo) == nullptr || localTimeInfo.tm_year < (2020 - 1900))
+  if (now <= 0 || localtime_r(&now, &localTimeInfo) == nullptr ||
+      localTimeInfo.tm_year < (2020 - 1900))
   {
     return "--:--";
   }
@@ -435,46 +446,32 @@ static std::string buildStatusHeaderRightText()
 } //   buildStatusHeaderRightText()
 
 //--- Numeric field tokens
-static const char* numericTokens[] =
-    {
-        "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+static const char* numericTokens[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
 
 //--- Alphanumeric field tokens
-static const char* alphaNumericTokens[] =
-    {
-        "A", "a", "B", "b", "C", "c", "D", "d", "E", "e", "F", "f", "G", "g", "H", "h", "I", "i", "J", "j", "K", "k", "L", "l", "M", "m",
-        "N", "n", "O", "o", "P", "p", "Q", "q", "R", "r", "S", "s", "T", "t", "U", "u", "V", "v", "W", "w", "X", "x", "Y", "y", "Z", "z",
-        "-", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
+static const char* alphaNumericTokens[] = {
+    "A", "a", "B", "b", "C", "c", "D", "d", "E", "e", "F", "f", "G", "g", "H", "h",
+    "I", "i", "J", "j", "K", "k", "L", "l", "M", "m", "N", "n", "O", "o", "P", "p",
+    "Q", "q", "R", "r", "S", "s", "T", "t", "U", "u", "V", "v", "W", "w", "X", "x",
+    "Y", "y", "Z", "z", "-", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
 
 //--- Time unit field tokens
-static const char* timeUnitTokens[] =
-    {
-        "ms", "s", "Min"};
+static const char* timeUnitTokens[] = {"ms", "s", "Min"};
 
 //--- Trigger mode field tokens
-static const char* triggerModeTokens[] =
-    {
-        "Manual", "External"};
+static const char* triggerModeTokens[] = {"Manual", "External"};
 
 //--- Trigger edge field tokens
-static const char* triggerEdgeTokens[] =
-    {
-        "Falling", "Rising"};
+static const char* triggerEdgeTokens[] = {"Falling", "Rising"};
 
 //--- Confirm (No/Yes) button tokens
-static const char* confirmNoYesTokens[] =
-    {
-        "No", "Yes"};
+static const char* confirmNoYesTokens[] = {"No", "Yes"};
 
 //--- Output polarity button tokens
-static const char* outputPolarityTokens[] =
-    {
-        "High", "Low"};
+static const char* outputPolarityTokens[] = {"High", "Low"};
 
 //--- Theme color button tokens (must match colorProfiles[] order, indices 0-5)
-static const char* themeColorTokens[] =
-    {
-        "Red", "Green", "Blue", "Indigo", "Violet", "Yellow"};
+static const char* themeColorTokens[] = {"Red", "Green", "Blue", "Indigo", "Violet", "Yellow"};
 
 //--- Maximum field input positions
 static const int maxFieldPositions = 12;
@@ -575,7 +572,10 @@ static void handleWifiPortalScreen(EncoderEvent encoderEvent);
 static void handleProfileList(EncoderEvent encoderEvent);
 
 //--- Open generic field input
-static void openFieldInput(const std::string& title, const std::string& fieldName, int positionCount, const char* tokens[], int tokenCount, FieldInputTarget target, UiScreen returnScreen, const std::string& initialValue);
+static void openFieldInput(const std::string& title, const std::string& fieldName,
+                           int positionCount, const char* tokens[], int tokenCount,
+                           FieldInputTarget target, UiScreen returnScreen,
+                           const std::string& initialValue);
 
 //--- Handle generic field input
 static void handleFieldInput(EncoderEvent encoderEvent);
@@ -596,7 +596,8 @@ static std::string buildFixedWidthNumber(uint32_t value, int width);
 static void refreshProfileListWithExit();
 
 //--- Check whether a 24h hour uses one uniform value
-static bool hourHasUniformQuarterState(const AppSettings& settings, int hourIndex, Timer24hQuarterState& state);
+static bool hourHasUniformQuarterState(const AppSettings& settings, int hourIndex,
+                                       Timer24hQuarterState& state);
 
 //--- Get 24h editor type label (0-3 = quarter state label, 4 = "S")
 static const char* get24hEditorTypeLabel(uint8_t typeValue);
@@ -675,7 +676,10 @@ static std::string buildFixedWidthNumber(uint32_t value, int width)
 } //   buildFixedWidthNumber()
 
 //--- Open generic field input
-static void openFieldInput(const std::string& title, const std::string& fieldName, int positionCount, const char* tokens[], int tokenCount, FieldInputTarget target, UiScreen returnScreen, const std::string& initialValue)
+static void openFieldInput(const std::string& title, const std::string& fieldName,
+                           int positionCount, const char* tokens[], int tokenCount,
+                           FieldInputTarget target, UiScreen returnScreen,
+                           const std::string& initialValue)
 {
   fieldInputTitle = title;
   fieldInputName = fieldName;
@@ -989,7 +993,8 @@ static void handleFieldInput(EncoderEvent encoderEvent)
   }
   else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
   {
-    bool isButtonMode = (fieldInputPositionCount == 1) && (fieldInputTokenCount >= 2) && (fieldInputTokenCount <= 6);
+    bool isButtonMode = (fieldInputPositionCount == 1) && (fieldInputTokenCount >= 2) &&
+                        (fieldInputTokenCount <= 6);
 
     if (isButtonMode)
     {
@@ -1001,7 +1006,8 @@ static void handleFieldInput(EncoderEvent encoderEvent)
 
     if (fieldInputCursorPosition < fieldInputPositionCount - 1)
     {
-      bool currentIsDash = (strcmp(fieldInputTokenList[fieldInputTokenIndexes[fieldInputCursorPosition]], "-") == 0);
+      bool currentIsDash =
+          (strcmp(fieldInputTokenList[fieldInputTokenIndexes[fieldInputCursorPosition]], "-") == 0);
 
       if (!currentIsDash)
       {
@@ -1115,7 +1121,8 @@ static void refreshProfileListWithExit()
 
     for (size_t index = 0; index < loadedProfiles; index++)
     {
-      if (profileNames[index].equalsIgnoreCase(profileManagerDefaultProfileName) || profileNames[index].equalsIgnoreCase("default-24h"))
+      if (profileNames[index].equalsIgnoreCase(profileManagerDefaultProfileName) ||
+          profileNames[index].equalsIgnoreCase("default-24h"))
       {
         continue;
       }
@@ -1143,7 +1150,8 @@ static void refreshProfileListWithExit()
 } //   refreshProfileListWithExit()
 
 //--- Check whether a 24h hour uses one uniform value
-static bool hourHasUniformQuarterState(const AppSettings& settings, int hourIndex, Timer24hQuarterState& state)
+static bool hourHasUniformQuarterState(const AppSettings& settings, int hourIndex,
+                                       Timer24hQuarterState& state)
 {
   if (hourIndex < 0 || hourIndex >= 24)
   {
@@ -1156,7 +1164,8 @@ static bool hourHasUniformQuarterState(const AppSettings& settings, int hourInde
 
   for (int quarterIndex = 1; quarterIndex < 4; quarterIndex++)
   {
-    if (timerGet24hQuarterState(settings, static_cast<uint8_t>(hourIndex), static_cast<uint8_t>(quarterIndex)) != state)
+    if (timerGet24hQuarterState(settings, static_cast<uint8_t>(hourIndex),
+                                static_cast<uint8_t>(quarterIndex)) != state)
     {
       return false;
     }
@@ -1275,6 +1284,8 @@ static void openProfileList(ProfileListMode mode)
     logActiveScreen("Delete Profile Menu");
   }
 
+  drawCurrentScreen();
+
 } //   openProfileList()
 
 //--- Draw current screen
@@ -1306,12 +1317,16 @@ static void drawCurrentScreen()
       disabledMainMenuItems[i] = isMainMenuItemDisabled(i);
     }
 
-    displayDrawListScreenWithDisabledItems("Edit Timer Menu", mainMenuItems, sizeof(mainMenuItems) / sizeof(mainMenuItems[0]), mainMenuIndex, mainMenuFirstVisibleIndex, disabledMainMenuItems);
+    displayDrawListScreenWithDisabledItems(
+        "Edit Timer Menu", mainMenuItems, sizeof(mainMenuItems) / sizeof(mainMenuItems[0]),
+        mainMenuIndex, mainMenuFirstVisibleIndex, disabledMainMenuItems);
     break;
   }
 
   case UI_SCREEN_TIMER_SETTINGS_MENU:
-    displayDrawListScreen("Cyclic Timer Settings Menu", timerSettingsMenuItems, sizeof(timerSettingsMenuItems) / sizeof(timerSettingsMenuItems[0]), timerSettingsIndex, timerSettingsFirstVisibleIndex);
+    displayDrawListScreen("Cyclic Timer Settings Menu", timerSettingsMenuItems,
+                          sizeof(timerSettingsMenuItems) / sizeof(timerSettingsMenuItems[0]),
+                          timerSettingsIndex, timerSettingsFirstVisibleIndex);
     break;
 
   case UI_SCREEN_24H_TIMER_MENU:
@@ -1329,13 +1344,16 @@ static void drawCurrentScreen()
 
     for (int q = 0; q < 4; q++)
     {
-      quarterStateLabels[q] = timerGet24hQuarterStateLabel(timerGet24hQuarterState(editorSettings, static_cast<uint8_t>(twentyFourHourEditorHourIndex), static_cast<uint8_t>(q)));
+      quarterStateLabels[q] = timerGet24hQuarterStateLabel(timerGet24hQuarterState(
+          editorSettings, static_cast<uint8_t>(twentyFourHourEditorHourIndex),
+          static_cast<uint8_t>(q)));
     }
 
     if (twentyFourHourEditorFocus == EDITOR_FOCUS_HOUR)
     {
       //-- Derive the hour type from the current quarter values
-      typeLabel = timerGet24hHourLabel(editorSettings, static_cast<uint8_t>(twentyFourHourEditorHourIndex));
+      typeLabel =
+          timerGet24hHourLabel(editorSettings, static_cast<uint8_t>(twentyFourHourEditorHourIndex));
       typeIsCursor = false;
       //-- Only show quarters if the type is 'S' (split hour)
       showQuarters = (strcmp(typeLabel, "S") == 0);
@@ -1366,21 +1384,15 @@ static void drawCurrentScreen()
       showQuarters = true;
       quarterCursorSlot = twentyFourHourEditorQuarterSlot;
       quarterSlotHasCursor = false;
-      quarterTypeCursorLabel = timerGet24hQuarterStateLabel(static_cast<Timer24hQuarterState>(twentyFourHourEditorQuarterTypeValue));
+      quarterTypeCursorLabel = timerGet24hQuarterStateLabel(
+          static_cast<Timer24hQuarterState>(twentyFourHourEditorQuarterTypeValue));
       quarterTypeIsCursor = true;
     }
 
-    displayDraw24hTimerEditor(
-        static_cast<uint8_t>(twentyFourHourEditorHourIndex),
-        hourIsCursor,
-        typeLabel,
-        typeIsCursor,
-        showQuarters,
-        quarterStateLabels,
-        quarterCursorSlot,
-        quarterSlotHasCursor,
-        quarterTypeCursorLabel,
-        quarterTypeIsCursor);
+    displayDraw24hTimerEditor(static_cast<uint8_t>(twentyFourHourEditorHourIndex), hourIsCursor,
+                              typeLabel, typeIsCursor, showQuarters, quarterStateLabels,
+                              quarterCursorSlot, quarterSlotHasCursor, quarterTypeCursorLabel,
+                              quarterTypeIsCursor);
     break;
   }
 
@@ -1410,7 +1422,8 @@ static void drawCurrentScreen()
       visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_WIFI_SSID;
       visibleItemCount++;
 
-      dynamicSystemSettingsItems[visibleItemCount] = String("IP: ") + wifiManagerExt.getAddressString();
+      dynamicSystemSettingsItems[visibleItemCount] =
+          String("IP: ") + wifiManagerExt.getAddressString();
       visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_IP_ADDRESS;
       visibleItemCount++;
     }
@@ -1430,15 +1443,19 @@ static void drawCurrentScreen()
       visibleItemCount++;
     }
 
-    dynamicSystemSettingsItems[visibleItemCount] = String("Encoder Order: ") + String(input.getEncoderDirectionReversed() ? "B-A" : "A-B");
+    dynamicSystemSettingsItems[visibleItemCount] =
+        String("Encoder Order: ") + String(input.getEncoderDirectionReversed() ? "B-A" : "A-B");
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_ENCODER_ORDER;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = String("Warp Speed: ") + String(settingsStoreLoadWarpSpeedEnabled() ? "Enabled" : "Disabled");
+    dynamicSystemSettingsItems[visibleItemCount] =
+        String("Warp Speed: ") +
+        String(settingsStoreLoadWarpSpeedEnabled() ? "Enabled" : "Disabled");
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_WARP_SPEED;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = String("Display Rotation: ") + String(displayGetRotation());
+    dynamicSystemSettingsItems[visibleItemCount] =
+        String("Display Rotation: ") + String(displayGetRotation());
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_DISPLAY_ROTATION;
     visibleItemCount++;
 
@@ -1450,15 +1467,18 @@ static void drawCurrentScreen()
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = String("Output: ") + String(settings.outputPolarityHigh ? "Active High" : "Active Low");
+    dynamicSystemSettingsItems[visibleItemCount] =
+        String("Output: ") + String(settings.outputPolarityHigh ? "Active High" : "Active Low");
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_OUTPUT_POLARITY;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = String("Auto Save Profile: ") + String(settings.autoSaveLastProfile ? "Yes" : "No");
+    dynamicSystemSettingsItems[visibleItemCount] =
+        String("Auto Save Profile: ") + String(settings.autoSaveLastProfile ? "Yes" : "No");
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_AUTO_SAVE_PROFILE;
     visibleItemCount++;
 
-    dynamicSystemSettingsItems[visibleItemCount] = String("Theme: ") + colorProfiles[displayGetThemeColorIndex()].colorName;
+    dynamicSystemSettingsItems[visibleItemCount] =
+        String("Theme: ") + colorProfiles[displayGetThemeColorIndex()].colorName;
     visibleItemLogicalIndexes[visibleItemCount] = SYSTEM_SETTINGS_ITEM_THEME_COLOR;
     visibleItemCount++;
 
@@ -1484,18 +1504,21 @@ static void drawCurrentScreen()
       firstVisibleIndex = selectedVisibleIndex - 8;
     }
 
-    displayDrawListScreen("System Settings", dynamicSystemSettingsItems, visibleItemCount, selectedVisibleIndex, firstVisibleIndex);
+    displayDrawListScreen("System Settings", dynamicSystemSettingsItems, visibleItemCount,
+                          selectedVisibleIndex, firstVisibleIndex);
     break;
   }
 
   case UI_SCREEN_PROFILE_LIST:
     if (profileListMode == PROFILE_LIST_LOAD)
     {
-      displayDrawListScreen("Load Profile Menu", profileNames, profileCount, profileIndex, profileFirstVisibleIndex);
+      displayDrawListScreen("Load Profile Menu", profileNames, profileCount, profileIndex,
+                            profileFirstVisibleIndex);
     }
     else
     {
-      displayDrawListScreen("Delete Profile Menu", profileNames, profileCount, profileIndex, profileFirstVisibleIndex);
+      displayDrawListScreen("Delete Profile Menu", profileNames, profileCount, profileIndex,
+                            profileFirstVisibleIndex);
     }
     break;
 
@@ -1516,8 +1539,11 @@ static void drawCurrentScreen()
       nextTokenIndex = 0;
     }
 
-    displayDrawFieldInput(fieldInputTitle.c_str(), fieldInputName.c_str(), fieldValue, fieldInputCursorPosition, fieldInputTokenList[prevTokenIndex], fieldInputTokenList[currentTokenIndex], fieldInputTokenList[nextTokenIndex],
-                          fieldInputTokenList, fieldInputTokenCount, currentTokenIndex);
+    displayDrawFieldInput(fieldInputTitle.c_str(), fieldInputName.c_str(), fieldValue,
+                          fieldInputCursorPosition, fieldInputTokenList[prevTokenIndex],
+                          fieldInputTokenList[currentTokenIndex],
+                          fieldInputTokenList[nextTokenIndex], fieldInputTokenList,
+                          fieldInputTokenCount, currentTokenIndex);
     break;
   }
 
@@ -1672,7 +1698,9 @@ static void handleMainMenu(EncoderEvent encoderEvent)
     case MENU_ITEM_SAVE_PROFILE:
     {
       std::string saveLabel = "Save \"" + std::string(currentSettings.profileName.c_str()) + "\"?";
-      openFieldInput("Save Profile", saveLabel, 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_SAVE_PROFILE, UI_SCREEN_MAIN_MENU, "No");
+      openFieldInput("Save Profile", saveLabel, 1, confirmNoYesTokens,
+                     sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]),
+                     FIELD_INPUT_TARGET_SAVE_PROFILE, UI_SCREEN_MAIN_MENU, "No");
       return;
     }
 
@@ -1681,7 +1709,9 @@ static void handleMainMenu(EncoderEvent encoderEvent)
       return;
 
     case MENU_ITEM_NEW_PROFILE:
-      openFieldInput("New Profile Menu", "Profile", 8, alphaNumericTokens, sizeof(alphaNumericTokens) / sizeof(alphaNumericTokens[0]), FIELD_INPUT_TARGET_NEW_PROFILE, UI_SCREEN_MAIN_MENU, "--------");
+      openFieldInput("New Profile Menu", "Profile", 8, alphaNumericTokens,
+                     sizeof(alphaNumericTokens) / sizeof(alphaNumericTokens[0]),
+                     FIELD_INPUT_TARGET_NEW_PROFILE, UI_SCREEN_MAIN_MENU, "--------");
       return;
 
     case MENU_ITEM_DELETE_PROFILE:
@@ -1749,31 +1779,51 @@ static void handleTimerSettingsMenu(EncoderEvent encoderEvent)
     switch (timerSettingsIndex)
     {
     case TIMER_SETTINGS_ITEM_ON_TIME:
-      openFieldInput("Timer Settings Menu", "On Time", onTimePositionCount, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_ON_TIME, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.onTimeValue, onTimePositionCount));
+      openFieldInput("Timer Settings Menu", "On Time", onTimePositionCount, numericTokens,
+                     sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_ON_TIME,
+                     UI_SCREEN_TIMER_SETTINGS_MENU,
+                     buildFixedWidthNumber(settings.onTimeValue, onTimePositionCount));
       return;
 
     case TIMER_SETTINGS_ITEM_ON_UNIT:
-      openFieldInput("Timer Settings Menu", "On Unit", 1, timeUnitTokens, sizeof(timeUnitTokens) / sizeof(timeUnitTokens[0]), FIELD_INPUT_TARGET_ON_UNIT, UI_SCREEN_TIMER_SETTINGS_MENU, timerGetTimeUnitLabel(settings.onTimeUnit));
+      openFieldInput("Timer Settings Menu", "On Unit", 1, timeUnitTokens,
+                     sizeof(timeUnitTokens) / sizeof(timeUnitTokens[0]), FIELD_INPUT_TARGET_ON_UNIT,
+                     UI_SCREEN_TIMER_SETTINGS_MENU, timerGetTimeUnitLabel(settings.onTimeUnit));
       return;
 
     case TIMER_SETTINGS_ITEM_OFF_TIME:
-      openFieldInput("Timer Settings Menu", "Off Time", offTimePositionCount, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_OFF_TIME, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.offTimeValue, offTimePositionCount));
+      openFieldInput("Timer Settings Menu", "Off Time", offTimePositionCount, numericTokens,
+                     sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_OFF_TIME,
+                     UI_SCREEN_TIMER_SETTINGS_MENU,
+                     buildFixedWidthNumber(settings.offTimeValue, offTimePositionCount));
       return;
 
     case TIMER_SETTINGS_ITEM_OFF_UNIT:
-      openFieldInput("Timer Settings Menu", "Off Unit", 1, timeUnitTokens, sizeof(timeUnitTokens) / sizeof(timeUnitTokens[0]), FIELD_INPUT_TARGET_OFF_UNIT, UI_SCREEN_TIMER_SETTINGS_MENU, timerGetTimeUnitLabel(settings.offTimeUnit));
+      openFieldInput("Timer Settings Menu", "Off Unit", 1, timeUnitTokens,
+                     sizeof(timeUnitTokens) / sizeof(timeUnitTokens[0]),
+                     FIELD_INPUT_TARGET_OFF_UNIT, UI_SCREEN_TIMER_SETTINGS_MENU,
+                     timerGetTimeUnitLabel(settings.offTimeUnit));
       return;
 
     case TIMER_SETTINGS_ITEM_REPEAT_COUNT:
-      openFieldInput("Timer Settings Menu", "Cycles", 3, numericTokens, sizeof(numericTokens) / sizeof(numericTokens[0]), FIELD_INPUT_TARGET_REPEAT_COUNT, UI_SCREEN_TIMER_SETTINGS_MENU, buildFixedWidthNumber(settings.repeatCount, 3));
+      openFieldInput("Timer Settings Menu", "Cycles", 3, numericTokens,
+                     sizeof(numericTokens) / sizeof(numericTokens[0]),
+                     FIELD_INPUT_TARGET_REPEAT_COUNT, UI_SCREEN_TIMER_SETTINGS_MENU,
+                     buildFixedWidthNumber(settings.repeatCount, 3));
       return;
 
     case TIMER_SETTINGS_ITEM_TRIGGER_MODE:
-      openFieldInput("Timer Settings Menu", "Trigger Mode", 1, triggerModeTokens, sizeof(triggerModeTokens) / sizeof(triggerModeTokens[0]), FIELD_INPUT_TARGET_TRIGGER_MODE, UI_SCREEN_TIMER_SETTINGS_MENU, timerGetTriggerModeLabel(settings.triggerMode));
+      openFieldInput("Timer Settings Menu", "Trigger Mode", 1, triggerModeTokens,
+                     sizeof(triggerModeTokens) / sizeof(triggerModeTokens[0]),
+                     FIELD_INPUT_TARGET_TRIGGER_MODE, UI_SCREEN_TIMER_SETTINGS_MENU,
+                     timerGetTriggerModeLabel(settings.triggerMode));
       return;
 
     case TIMER_SETTINGS_ITEM_TRIGGER_EDGE:
-      openFieldInput("Timer Settings Menu", "Trigger", 1, triggerEdgeTokens, sizeof(triggerEdgeTokens) / sizeof(triggerEdgeTokens[0]), FIELD_INPUT_TARGET_TRIGGER_EDGE, UI_SCREEN_TIMER_SETTINGS_MENU, timerGetTriggerEdgeLabel(settings.triggerEdge));
+      openFieldInput("Timer Settings Menu", "Trigger", 1, triggerEdgeTokens,
+                     sizeof(triggerEdgeTokens) / sizeof(triggerEdgeTokens[0]),
+                     FIELD_INPUT_TARGET_TRIGGER_EDGE, UI_SCREEN_TIMER_SETTINGS_MENU,
+                     timerGetTriggerEdgeLabel(settings.triggerEdge));
       return;
 
     case TIMER_SETTINGS_ITEM_EXIT:
@@ -1825,12 +1875,14 @@ static void handle24hTimerMenu(EncoderEvent encoderEvent)
   case EDITOR_FOCUS_HOUR:
     if (encoderEvent == ENCODER_EVENT_LEFT)
     {
-      twentyFourHourEditorHourIndex = (twentyFourHourEditorHourIndex > 0) ? twentyFourHourEditorHourIndex - 1 : 23;
+      twentyFourHourEditorHourIndex =
+          (twentyFourHourEditorHourIndex > 0) ? twentyFourHourEditorHourIndex - 1 : 23;
       redrawRequired = true;
     }
     else if (encoderEvent == ENCODER_EVENT_RIGHT)
     {
-      twentyFourHourEditorHourIndex = (twentyFourHourEditorHourIndex < 23) ? twentyFourHourEditorHourIndex + 1 : 0;
+      twentyFourHourEditorHourIndex =
+          (twentyFourHourEditorHourIndex < 23) ? twentyFourHourEditorHourIndex + 1 : 0;
       redrawRequired = true;
     }
     else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
@@ -1853,12 +1905,14 @@ static void handle24hTimerMenu(EncoderEvent encoderEvent)
   case EDITOR_FOCUS_TYPE:
     if (encoderEvent == ENCODER_EVENT_LEFT)
     {
-      twentyFourHourEditorTypeValue = (twentyFourHourEditorTypeValue == 0) ? 4 : twentyFourHourEditorTypeValue - 1;
+      twentyFourHourEditorTypeValue =
+          (twentyFourHourEditorTypeValue == 0) ? 4 : twentyFourHourEditorTypeValue - 1;
       redrawRequired = true;
     }
     else if (encoderEvent == ENCODER_EVENT_RIGHT)
     {
-      twentyFourHourEditorTypeValue = (twentyFourHourEditorTypeValue >= 4) ? 0 : twentyFourHourEditorTypeValue + 1;
+      twentyFourHourEditorTypeValue =
+          (twentyFourHourEditorTypeValue >= 4) ? 0 : twentyFourHourEditorTypeValue + 1;
       redrawRequired = true;
     }
     else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
@@ -1872,7 +1926,8 @@ static void handle24hTimerMenu(EncoderEvent encoderEvent)
       else
       {
         //-- Apply uniform type to all quarters of this hour
-        timerSet24hHourState(settings, static_cast<uint8_t>(twentyFourHourEditorHourIndex), static_cast<Timer24hQuarterState>(twentyFourHourEditorTypeValue));
+        timerSet24hHourState(settings, static_cast<uint8_t>(twentyFourHourEditorHourIndex),
+                             static_cast<Timer24hQuarterState>(twentyFourHourEditorTypeValue));
         commitSettings(settings);
         twentyFourHourEditorFocus = EDITOR_FOCUS_HOUR;
       }
@@ -1884,19 +1939,22 @@ static void handle24hTimerMenu(EncoderEvent encoderEvent)
   case EDITOR_FOCUS_QUARTER_SLOT:
     if (encoderEvent == ENCODER_EVENT_LEFT)
     {
-      twentyFourHourEditorQuarterSlot = (twentyFourHourEditorQuarterSlot > 0) ? twentyFourHourEditorQuarterSlot - 1 : 3;
+      twentyFourHourEditorQuarterSlot =
+          (twentyFourHourEditorQuarterSlot > 0) ? twentyFourHourEditorQuarterSlot - 1 : 3;
       redrawRequired = true;
     }
     else if (encoderEvent == ENCODER_EVENT_RIGHT)
     {
-      twentyFourHourEditorQuarterSlot = (twentyFourHourEditorQuarterSlot < 3) ? twentyFourHourEditorQuarterSlot + 1 : 0;
+      twentyFourHourEditorQuarterSlot =
+          (twentyFourHourEditorQuarterSlot < 3) ? twentyFourHourEditorQuarterSlot + 1 : 0;
       redrawRequired = true;
     }
     else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
     {
       //-- Lock slot; initialise quarter type from stored state
       twentyFourHourEditorQuarterTypeValue = static_cast<uint8_t>(
-          timerGet24hQuarterState(settings, static_cast<uint8_t>(twentyFourHourEditorHourIndex), static_cast<uint8_t>(twentyFourHourEditorQuarterSlot)));
+          timerGet24hQuarterState(settings, static_cast<uint8_t>(twentyFourHourEditorHourIndex),
+                                  static_cast<uint8_t>(twentyFourHourEditorQuarterSlot)));
       twentyFourHourEditorFocus = EDITOR_FOCUS_QUARTER_TYPE;
       redrawRequired = true;
     }
@@ -1905,18 +1963,25 @@ static void handle24hTimerMenu(EncoderEvent encoderEvent)
   case EDITOR_FOCUS_QUARTER_TYPE:
     if (encoderEvent == ENCODER_EVENT_LEFT)
     {
-      twentyFourHourEditorQuarterTypeValue = (twentyFourHourEditorQuarterTypeValue == 0) ? 3 : twentyFourHourEditorQuarterTypeValue - 1;
+      twentyFourHourEditorQuarterTypeValue = (twentyFourHourEditorQuarterTypeValue == 0)
+                                                 ? 3
+                                                 : twentyFourHourEditorQuarterTypeValue - 1;
       redrawRequired = true;
     }
     else if (encoderEvent == ENCODER_EVENT_RIGHT)
     {
-      twentyFourHourEditorQuarterTypeValue = (twentyFourHourEditorQuarterTypeValue >= 3) ? 0 : twentyFourHourEditorQuarterTypeValue + 1;
+      twentyFourHourEditorQuarterTypeValue = (twentyFourHourEditorQuarterTypeValue >= 3)
+                                                 ? 0
+                                                 : twentyFourHourEditorQuarterTypeValue + 1;
       redrawRequired = true;
     }
     else if (encoderEvent == ENCODER_EVENT_SHORT_PRESS)
     {
       //-- Apply type to this quarter; return to slot selection
-      timerSet24hQuarterState(settings, static_cast<uint8_t>(twentyFourHourEditorHourIndex), static_cast<uint8_t>(twentyFourHourEditorQuarterSlot), static_cast<Timer24hQuarterState>(twentyFourHourEditorQuarterTypeValue));
+      timerSet24hQuarterState(
+          settings, static_cast<uint8_t>(twentyFourHourEditorHourIndex),
+          static_cast<uint8_t>(twentyFourHourEditorQuarterSlot),
+          static_cast<Timer24hQuarterState>(twentyFourHourEditorQuarterTypeValue));
       commitSettings(settings);
       twentyFourHourEditorFocus = EDITOR_FOCUS_QUARTER_SLOT;
       redrawRequired = true;
@@ -2008,21 +2073,27 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
 
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_ERASE_WIFI)
     {
-      openFieldInput("Erase WiFi", "Erase credentials?", 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "No");
+      openFieldInput("Erase WiFi", "Erase credentials?", 1, confirmNoYesTokens,
+                     sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]),
+                     FIELD_INPUT_TARGET_ERASE_WIFI_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "No");
 
       return;
     }
 
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_START_WIFI_MANAGER)
     {
-      openFieldInput("WiFi Manager", "Start portal?", 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_WIFI_MANAGER_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "No");
+      openFieldInput("WiFi Manager", "Start portal?", 1, confirmNoYesTokens,
+                     sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]),
+                     FIELD_INPUT_TARGET_WIFI_MANAGER_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "No");
 
       return;
     }
 
     if (systemSettingsIndex == SYSTEM_SETTINGS_ITEM_RESTART_ULTIMATE_TIMER)
     {
-      openFieldInput("Restart", "Restart timer?", 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_RESTART_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "No");
+      openFieldInput("Restart", "Restart timer?", 1, confirmNoYesTokens,
+                     sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]),
+                     FIELD_INPUT_TARGET_RESTART_CONFIRM, UI_SCREEN_SYSTEM_SETTINGS_MENU, "No");
 
       return;
     }
@@ -2031,7 +2102,10 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
     {
       const char* currentPolarity = settings.outputPolarityHigh ? "High" : "Low";
 
-      openFieldInput("Output Polarity", "Output active", 1, outputPolarityTokens, sizeof(outputPolarityTokens) / sizeof(outputPolarityTokens[0]), FIELD_INPUT_TARGET_OUTPUT_POLARITY_SELECT, UI_SCREEN_SYSTEM_SETTINGS_MENU, currentPolarity);
+      openFieldInput("Output Polarity", "Output active", 1, outputPolarityTokens,
+                     sizeof(outputPolarityTokens) / sizeof(outputPolarityTokens[0]),
+                     FIELD_INPUT_TARGET_OUTPUT_POLARITY_SELECT, UI_SCREEN_SYSTEM_SETTINGS_MENU,
+                     currentPolarity);
 
       return;
     }
@@ -2040,7 +2114,10 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
     {
       const char* currentAutoSave = settings.autoSaveLastProfile ? "Yes" : "No";
 
-      openFieldInput("Auto Save Profile", "Save profile changes", 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_AUTO_SAVE_PROFILE_SELECT, UI_SCREEN_SYSTEM_SETTINGS_MENU, currentAutoSave);
+      openFieldInput("Auto Save Profile", "Save profile changes", 1, confirmNoYesTokens,
+                     sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]),
+                     FIELD_INPUT_TARGET_AUTO_SAVE_PROFILE_SELECT, UI_SCREEN_SYSTEM_SETTINGS_MENU,
+                     currentAutoSave);
 
       return;
     }
@@ -2049,7 +2126,10 @@ static void handleSystemSettingsMenu(EncoderEvent encoderEvent)
     {
       const char* currentColorName = colorProfiles[displayGetThemeColorIndex()].colorName;
 
-      openFieldInput("Theme Color", "Select color", 1, themeColorTokens, sizeof(themeColorTokens) / sizeof(themeColorTokens[0]), FIELD_INPUT_TARGET_THEME_COLOR_SELECT, UI_SCREEN_SYSTEM_SETTINGS_MENU, currentColorName);
+      openFieldInput("Theme Color", "Select color", 1, themeColorTokens,
+                     sizeof(themeColorTokens) / sizeof(themeColorTokens[0]),
+                     FIELD_INPUT_TARGET_THEME_COLOR_SELECT, UI_SCREEN_SYSTEM_SETTINGS_MENU,
+                     currentColorName);
 
       return;
     }
@@ -2138,7 +2218,10 @@ static void handleProfileList(EncoderEvent encoderEvent)
     else
     {
       pendingDeleteProfileName = selectedProfile;
-      openFieldInput("Delete Profile", "Delete \"" + std::string(selectedProfile.c_str()) + "\"?", 1, confirmNoYesTokens, sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]), FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM, UI_SCREEN_PROFILE_LIST, "No");
+      openFieldInput("Delete Profile", "Delete \"" + std::string(selectedProfile.c_str()) + "\"?",
+                     1, confirmNoYesTokens,
+                     sizeof(confirmNoYesTokens) / sizeof(confirmNoYesTokens[0]),
+                     FIELD_INPUT_TARGET_DELETE_PROFILE_CONFIRM, UI_SCREEN_PROFILE_LIST, "No");
 
       return;
     }
@@ -2366,8 +2449,7 @@ void uiMenuUpdate()
 
     if (currentScreen == UI_SCREEN_TIMER_SETTINGS_MENU ||
         currentScreen == UI_SCREEN_24H_TIMER_MENU ||
-        currentScreen == UI_SCREEN_SYSTEM_SETTINGS_MENU ||
-        currentScreen == UI_SCREEN_PROFILE_LIST)
+        currentScreen == UI_SCREEN_SYSTEM_SETTINGS_MENU || currentScreen == UI_SCREEN_PROFILE_LIST)
     {
       openMainMenu(true);
 
@@ -2411,7 +2493,8 @@ void uiMenuUpdate()
   {
     bool outputPolarityHigh = timerGetSettings().outputPolarityHigh;
 
-    if (!systemOutputPolarityDisplayInitialized || outputPolarityHigh != lastSystemOutputPolarityHigh)
+    if (!systemOutputPolarityDisplayInitialized ||
+        outputPolarityHigh != lastSystemOutputPolarityHigh)
     {
       lastSystemOutputPolarityHigh = outputPolarityHigh;
       systemOutputPolarityDisplayInitialized = true;
@@ -2461,7 +2544,8 @@ void uiMenuUpdate()
     break;
   }
 
-  if (currentScreen == UI_SCREEN_STATUS && transientMessage.empty() && nowMs - lastStatusRefreshMs >= statusRefreshIntervalMs)
+  if (currentScreen == UI_SCREEN_STATUS && transientMessage.empty() &&
+      nowMs - lastStatusRefreshMs >= statusRefreshIntervalMs)
   {
     drawCurrentScreen();
     lastStatusRefreshMs = nowMs;

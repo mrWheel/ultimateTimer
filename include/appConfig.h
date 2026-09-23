@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-05-16 - 15:35 ***/
+/*** Last Changed: 2026-09-23 - 19:42 ***/
 #ifndef APP_CONFIG_H
 #define APP_CONFIG_H
 
@@ -91,6 +91,10 @@
 
 #ifndef BUTTON_MEDIUM_PRESS_MS
 #define BUTTON_MEDIUM_PRESS_MS 450
+#endif
+
+#ifndef BACKLIGHT_OFF_TIMEOUT
+#define BACKLIGHT_OFF_TIMEOUT 30000UL
 #endif
 
 #ifndef DEFAULT_AP_SSID

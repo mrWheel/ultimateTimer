@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-09-22 - 16:46 ***/
+/*** Last Changed: 2026-09-23 - 19:42 ***/
 #include <Arduino.h>
 
 #include "DisplayDriver.h"
@@ -56,6 +56,10 @@ static TaskHandle_t inputTaskHandle = nullptr;
 static const TickType_t timerTaskPeriodTicks = pdMS_TO_TICKS(2);
 static const TickType_t inputTaskPeriodTicks = pdMS_TO_TICKS(2);
 
+//--- Backlight idle tracking
+static uint32_t lastBacklightActivityMs = 0;
+static bool backlightIsOn = true;
+
 //--- NTP configuration
 static const char* ntpTimeZone = "CET-1CEST,M3.5.0/2,M10.5.0/3";
 static const char* ntpServer1 = "pool.ntp.org";
@@ -72,6 +76,9 @@ static void timerTask(void* taskParameter);
 
 //--- Update all input-related modules
 static void inputTask(void* taskParameter);
+
+//--- Update backlight state from raw input activity
+static void updateBacklight();
 
 //--- Show startup WiFi connection message
 static void showStartupWifiConnectionMessage();
@@ -109,7 +116,8 @@ static int getUsedTestColorCount();
 static int mapUsedIndexToProfileIndex(int usedIndex);
 
 //--- Blend two RGB565 colors using the same formula as displayDrawTestColorFade
-static uint16_t blendRgb565ForFadeDump(uint16_t darkColor, uint16_t lightColor, uint8_t blendFactor);
+static uint16_t blendRgb565ForFadeDump(uint16_t darkColor, uint16_t lightColor,
+                                       uint8_t blendFactor);
 
 //--- Print generated fade shades and lookup shades for all colors
 static void printColorShadeDumpToSerial();
@@ -200,6 +208,7 @@ static void inputTask(void* taskParameter)
   for (;;)
   {
     input.update();
+    updateBacklight();
     updateExternalInputs();
     uiMenuUpdate();
 
@@ -207,6 +216,32 @@ static void inputTask(void* taskParameter)
   }
 
 } //   inputTask()
+
+//--- Turn the backlight off after the configured input idle timeout
+static void updateBacklight()
+{
+  uint32_t currentTimeMs = millis();
+
+  if (input.consumeActivity())
+  {
+    lastBacklightActivityMs = currentTimeMs;
+
+    if (!backlightIsOn)
+    {
+      displaySetBacklight(true);
+      backlightIsOn = true;
+    }
+
+    return;
+  }
+
+  if (backlightIsOn && (currentTimeMs - lastBacklightActivityMs) >= BACKLIGHT_OFF_TIMEOUT)
+  {
+    displaySetBacklight(false);
+    backlightIsOn = false;
+  }
+
+} //   updateBacklight()
 
 //--- Show startup WiFi connection message
 static void showStartupWifiConnectionMessage()
@@ -407,9 +442,18 @@ static uint16_t blendRgb565ForFadeDump(uint16_t darkColor, uint16_t lightColor, 
   uint8_t lightR = static_cast<uint8_t>((lightColor >> 11) & 0x1FU);
   uint8_t lightG = static_cast<uint8_t>((lightColor >> 5) & 0x3FU);
   uint8_t lightB = static_cast<uint8_t>(lightColor & 0x1FU);
-  uint16_t mixedR = static_cast<uint16_t>((static_cast<uint16_t>(darkR) * static_cast<uint16_t>(255U - blendFactor) + static_cast<uint16_t>(lightR) * static_cast<uint16_t>(blendFactor)) / 255U);
-  uint16_t mixedG = static_cast<uint16_t>((static_cast<uint16_t>(darkG) * static_cast<uint16_t>(255U - blendFactor) + static_cast<uint16_t>(lightG) * static_cast<uint16_t>(blendFactor)) / 255U);
-  uint16_t mixedB = static_cast<uint16_t>((static_cast<uint16_t>(darkB) * static_cast<uint16_t>(255U - blendFactor) + static_cast<uint16_t>(lightB) * static_cast<uint16_t>(blendFactor)) / 255U);
+  uint16_t mixedR = static_cast<uint16_t>(
+      (static_cast<uint16_t>(darkR) * static_cast<uint16_t>(255U - blendFactor) +
+       static_cast<uint16_t>(lightR) * static_cast<uint16_t>(blendFactor)) /
+      255U);
+  uint16_t mixedG = static_cast<uint16_t>(
+      (static_cast<uint16_t>(darkG) * static_cast<uint16_t>(255U - blendFactor) +
+       static_cast<uint16_t>(lightG) * static_cast<uint16_t>(blendFactor)) /
+      255U);
+  uint16_t mixedB = static_cast<uint16_t>(
+      (static_cast<uint16_t>(darkB) * static_cast<uint16_t>(255U - blendFactor) +
+       static_cast<uint16_t>(lightB) * static_cast<uint16_t>(blendFactor)) /
+      255U);
 
   return static_cast<uint16_t>((mixedR << 11) | (mixedG << 5) | mixedB);
 
@@ -486,7 +530,9 @@ static void drawTestColorScreen()
     return;
   }
 
-  displayDrawTestColorFade(selectedProfile.colorName, selectedProfile.getDarkColor(), selectedProfile.getLightColor(), selectedProfile.darkLabelColor, selectedProfile.lightLabelColor);
+  displayDrawTestColorFade(selectedProfile.colorName, selectedProfile.getDarkColor(),
+                           selectedProfile.getLightColor(), selectedProfile.darkLabelColor,
+                           selectedProfile.lightLabelColor);
 
 } //   drawTestColorScreen()
 
@@ -534,10 +580,8 @@ static void handleTestColorPatternInput()
     return;
   }
 
-  if (event == ENCODER_EVENT_SHORT_PRESS ||
-      event == ENCODER_EVENT_MEDIUM_PRESS ||
-      auxEvent == BUTTON_EVENT_SHORT_PRESS ||
-      auxEvent == BUTTON_EVENT_MEDIUM_PRESS ||
+  if (event == ENCODER_EVENT_SHORT_PRESS || event == ENCODER_EVENT_MEDIUM_PRESS ||
+      auxEvent == BUTTON_EVENT_SHORT_PRESS || auxEvent == BUTTON_EVENT_MEDIUM_PRESS ||
       auxEvent == BUTTON_EVENT_LONG_PRESS)
   {
     testColorScreen = TEST_COLOR_SCREEN_PALETTE;

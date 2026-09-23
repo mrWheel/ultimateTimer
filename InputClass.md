@@ -20,6 +20,8 @@ The function inputCreateConfigFromBuildFlags reads these macros:
 - PIN_ENC_B
 - PIN_ENC_BTN
 - PIN_KEY0
+
+`consumeActivity()` reports and clears raw activity detected on the encoder pins, encoder button, or auxiliary button. It can be used by idle services such as display backlight control without waiting for a completed input event.
 - ENCODER_SHORT_PRESS_MS
 - ENCODER_MEDIUM_PRESS_MS
 - ENCODER_LONG_PRESS_MS

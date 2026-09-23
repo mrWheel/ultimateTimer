@@ -94,6 +94,7 @@ read `colorSettings.md`
 - Build-time configuration through `build_flags` in `platformio.ini`
 - Optional color test mode through `TEST_COLOR_PATERN`
 - Reusable `InputClass` for EC11 encoder + auxiliary button (`PIN_KEY0`) with configurable pins, press thresholds, and full in-class event/state logic
+- TFT backlight turns off after `BACKLIGHT_OFF_TIMEOUT` without encoder or button activity and turns on again on any encoder or button activity
 - Reusable `DisplayDriver` class for the current ST7789 hardware, with generic init, theme, tile, header, button, and screen helpers; legacy free-function wrappers remain for existing firmware call sites
 
 ## Local TFT controls

@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-09-22 - 16:46 ***/
+/*** Last Changed: 2026-09-23 - 19:42 ***/
 #include "webUi.h"
 #include "profileManager.h"
 #include "settingsStore.h"
@@ -269,6 +269,12 @@ body {
 }
 
 .actionReset {
+  background: var(--themeTint);
+  border-color: var(--themeAccent);
+  color: var(--themeAccentStrong);
+}
+
+.actionOutput {
   background: var(--themeTint);
   border-color: var(--themeAccent);
   color: var(--themeAccentStrong);
@@ -730,6 +736,8 @@ body {
         <button id="startButton" class="actionButton actionStart" type="button">Start</button>
         <button id="stopButton" class="actionButton actionStop" type="button">Stop</button>
         <button id="resetButton" class="actionButton actionReset" type="button">Reset</button>
+        <button id="outputOnButton" class="actionButton actionOutput" type="button">ON</button>
+        <button id="outputOffButton" class="actionButton actionOutput" type="button">OFF</button>
       </div>
     </div>
   </section>
@@ -2040,6 +2048,16 @@ function bindActionButtons()
     await callPost('/api/reset');
   });
 
+  document.getElementById('outputOnButton').addEventListener('click', async () =>
+  {
+    await callPost('/api/output/on');
+  });
+
+  document.getElementById('outputOffButton').addEventListener('click', async () =>
+  {
+    await callPost('/api/output/off');
+  });
+
   document.getElementById('cancelSettingsButton').addEventListener('click', () =>
   {
     setActiveMenu('');
@@ -2157,24 +2175,41 @@ static bool serverRunning = false;
 //--- Initialize web UI
 void webUiInit()
 {
-  server.on("/", HTTP_GET, []()
-            { server.send(200, "text/html", indexHtml); });
+  server.on("/", HTTP_GET, []() { server.send(200, "text/html", indexHtml); });
 
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/settings", HTTP_POST, handleSaveSettings);
   server.on("/api/settings/apply", HTTP_POST, handleApplySettings);
-  server.on("/api/start", HTTP_POST, []()
+  server.on("/api/start", HTTP_POST,
+            []()
             {
               timerStart();
-              server.send(200, "application/json", "{\"ok\":true}"); });
-  server.on("/api/stop", HTTP_POST, []()
+              server.send(200, "application/json", "{\"ok\":true}");
+            });
+  server.on("/api/stop", HTTP_POST,
+            []()
             {
               timerStop();
-              server.send(200, "application/json", "{\"ok\":true}"); });
-  server.on("/api/reset", HTTP_POST, []()
+              server.send(200, "application/json", "{\"ok\":true}");
+            });
+  server.on("/api/reset", HTTP_POST,
+            []()
             {
               timerReset();
-              server.send(200, "application/json", "{\"ok\":true}"); });
+              server.send(200, "application/json", "{\"ok\":true}");
+            });
+  server.on("/api/output/on", HTTP_POST,
+            []()
+            {
+              timerSetOutputOverride(true);
+              server.send(200, "application/json", "{\"ok\":true}");
+            });
+  server.on("/api/output/off", HTTP_POST,
+            []()
+            {
+              timerSetOutputOverride(false);
+              server.send(200, "application/json", "{\"ok\":true}");
+            });
   server.on("/api/profiles", HTTP_GET, handleProfiles);
   server.on("/api/profile/save", HTTP_POST, handleSaveProfile);
   server.on("/api/profile/load", HTTP_POST, handleLoadProfile);
@@ -2255,14 +2290,19 @@ static void handleSaveSettings()
   }
 
   AppSettings settings = timerGetSettings();
-  settings.timerType = static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
+  settings.timerType =
+      static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
   settings.onTimeValue = doc["onTimeValue"] | settings.onTimeValue;
   settings.offTimeValue = doc["offTimeValue"] | settings.offTimeValue;
-  settings.onTimeUnit = static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
-  settings.offTimeUnit = static_cast<TimeUnit>(doc["offTimeUnit"] | static_cast<int>(settings.offTimeUnit));
+  settings.onTimeUnit =
+      static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
+  settings.offTimeUnit =
+      static_cast<TimeUnit>(doc["offTimeUnit"] | static_cast<int>(settings.offTimeUnit));
   settings.repeatCount = static_cast<uint32_t>(doc["repeatCount"] | settings.repeatCount);
-  settings.triggerMode = static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
-  settings.triggerEdge = static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
+  settings.triggerMode =
+      static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
+  settings.triggerEdge =
+      static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
   {
     JsonArrayConst quarterStates = doc["timer24hQuarterStates"].as<JsonArrayConst>();
 
@@ -2272,7 +2312,8 @@ static void handleSaveSettings()
       {
         if (stateIndex < quarterStates.size())
         {
-          int rawState = quarterStates[stateIndex] | static_cast<int>(settings.timer24hQuarterStates[stateIndex]);
+          int rawState = quarterStates[stateIndex] |
+                         static_cast<int>(settings.timer24hQuarterStates[stateIndex]);
 
           if (rawState < static_cast<int>(TIMER_24H_QUARTER_OFF))
           {
@@ -2291,7 +2332,8 @@ static void handleSaveSettings()
   settings.outputPolarityHigh = doc["outputPolarityHigh"] | settings.outputPolarityHigh;
   settings.lockInputDuringRun = doc["lockInputDuringRun"] | settings.lockInputDuringRun;
   settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
-  settings.profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
+  settings.profileName =
+      String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
   enforceMsMinimum(settings);
 
   timerSetSettings(settings);
@@ -2321,14 +2363,19 @@ static void handleApplySettings()
   }
 
   AppSettings settings = timerGetSettings();
-  settings.timerType = static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
+  settings.timerType =
+      static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
   settings.onTimeValue = doc["onTimeValue"] | settings.onTimeValue;
   settings.offTimeValue = doc["offTimeValue"] | settings.offTimeValue;
-  settings.onTimeUnit = static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
-  settings.offTimeUnit = static_cast<TimeUnit>(doc["offTimeUnit"] | static_cast<int>(settings.offTimeUnit));
+  settings.onTimeUnit =
+      static_cast<TimeUnit>(doc["onTimeUnit"] | static_cast<int>(settings.onTimeUnit));
+  settings.offTimeUnit =
+      static_cast<TimeUnit>(doc["offTimeUnit"] | static_cast<int>(settings.offTimeUnit));
   settings.repeatCount = static_cast<uint32_t>(doc["repeatCount"] | settings.repeatCount);
-  settings.triggerMode = static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
-  settings.triggerEdge = static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
+  settings.triggerMode =
+      static_cast<TriggerMode>(doc["triggerMode"] | static_cast<int>(settings.triggerMode));
+  settings.triggerEdge =
+      static_cast<TriggerEdge>(doc["triggerEdge"] | static_cast<int>(settings.triggerEdge));
   {
     JsonArrayConst quarterStates = doc["timer24hQuarterStates"].as<JsonArrayConst>();
 
@@ -2338,7 +2385,8 @@ static void handleApplySettings()
       {
         if (stateIndex < quarterStates.size())
         {
-          int rawState = quarterStates[stateIndex] | static_cast<int>(settings.timer24hQuarterStates[stateIndex]);
+          int rawState = quarterStates[stateIndex] |
+                         static_cast<int>(settings.timer24hQuarterStates[stateIndex]);
 
           if (rawState < static_cast<int>(TIMER_24H_QUARTER_OFF))
           {
@@ -2357,7 +2405,8 @@ static void handleApplySettings()
   settings.outputPolarityHigh = doc["outputPolarityHigh"] | settings.outputPolarityHigh;
   settings.lockInputDuringRun = doc["lockInputDuringRun"] | settings.lockInputDuringRun;
   settings.autoSaveLastProfile = doc["autoSaveLastProfile"] | settings.autoSaveLastProfile;
-  settings.profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
+  settings.profileName =
+      String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
 
   timerSetSettings(settings);
   settings = timerGetSettings();
@@ -2412,8 +2461,10 @@ static void handleSaveProfile()
   }
 
   AppSettings settings = timerGetSettings();
-  String profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
-  settings.timerType = static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
+  String profileName =
+      String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
+  settings.timerType =
+      static_cast<TimerType>(doc["timerType"] | static_cast<int>(settings.timerType));
   settings.profileName = profileName;
 
   bool ok = profileManagerSaveProfile(profileName, settings);
@@ -2441,7 +2492,8 @@ static void handleLoadProfile()
   }
 
   AppSettings settings = timerGetSettings();
-  String profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
+  String profileName =
+      String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
   bool ok = profileManagerLoadProfile(profileName, settings);
 
   if (ok)
@@ -2472,7 +2524,8 @@ static void handleDeleteProfile()
   }
 
   AppSettings settings = timerGetSettings();
-  String profileName = String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
+  String profileName =
+      String(static_cast<const char*>(doc["profileName"] | settings.profileName.c_str()));
   bool ok = profileManagerDeleteProfile(profileName);
 
   server.send(ok ? 200 : 404, "application/json", ok ? "{\"ok\":true}" : "{\"ok\":false}");
@@ -2491,21 +2544,27 @@ static void handleSaveSystem()
     return;
   }
 
-  uint8_t themeColorIndex = static_cast<uint8_t>(doc["themeColorIndex"] | settingsStoreLoadThemeColorIndex());
+  uint8_t themeColorIndex =
+      static_cast<uint8_t>(doc["themeColorIndex"] | settingsStoreLoadThemeColorIndex());
 
   if (themeColorIndex >= static_cast<uint8_t>(colorProfileCount))
   {
     themeColorIndex = 0;
   }
 
-  bool outputPolarityHigh = doc["outputPolarityHigh"].is<bool>() ? doc["outputPolarityHigh"].as<bool>() : settingsStoreLoadOutputPolarityHigh();
-  bool warpSpeedEnabled = doc["warpSpeedEnabled"].is<bool>() ? doc["warpSpeedEnabled"].as<bool>() : settingsStoreLoadWarpSpeedEnabled();
+  bool outputPolarityHigh = doc["outputPolarityHigh"].is<bool>()
+                                ? doc["outputPolarityHigh"].as<bool>()
+                                : settingsStoreLoadOutputPolarityHigh();
+  bool warpSpeedEnabled = doc["warpSpeedEnabled"].is<bool>() ? doc["warpSpeedEnabled"].as<bool>()
+                                                             : settingsStoreLoadWarpSpeedEnabled();
   bool restartRequested = doc["restart"].is<bool>() ? doc["restart"].as<bool>() : false;
   bool themeChanged = (displayGetThemeColorIndex() != static_cast<int>(themeColorIndex));
 
   AppSettings settings = timerGetSettings();
   settings.outputPolarityHigh = outputPolarityHigh;
-  settings.autoSaveLastProfile = doc["autoSaveLastProfile"].is<bool>() ? doc["autoSaveLastProfile"].as<bool>() : settings.autoSaveLastProfile;
+  settings.autoSaveLastProfile = doc["autoSaveLastProfile"].is<bool>()
+                                     ? doc["autoSaveLastProfile"].as<bool>()
+                                     : settings.autoSaveLastProfile;
   settingsStoreSaveSystemSettings(settings);
   timerSetSettings(settings);
 
@@ -2575,7 +2634,8 @@ static void fillStatusDocument(JsonDocument& doc)
   }
   doc["settings"]["themeColorIndex"] = themeColorIndex;
   doc["settings"]["themeColorName"] = colorProfiles[themeColorIndex].colorName;
-  doc["settings"]["encoderOrderLabel"] = settingsStoreLoadEncoderDirectionReversed() ? "B-A" : "A-B";
+  doc["settings"]["encoderOrderLabel"] =
+      settingsStoreLoadEncoderDirectionReversed() ? "B-A" : "A-B";
   doc["settings"]["warpSpeedEnabled"] = settingsStoreLoadWarpSpeedEnabled();
 
   doc["runtime"]["state"] = static_cast<int>(runtimeStatus.state);
@@ -2596,13 +2656,22 @@ static void fillStatusDocument(JsonDocument& doc)
   doc["runtime"]["twentyFourH"]["lastOffSeconds"] = status24h.lastOffSecondsOfDay;
   doc["runtime"]["twentyFourH"]["nextSwitchSeconds"] = status24h.nextSwitchSecondsOfDay;
   doc["runtime"]["twentyFourH"]["nextOffSeconds"] = status24h.nextOffSecondsOfDay;
-  doc["runtime"]["twentyFourH"]["nextSwitchWindowStartSeconds"] = status24h.nextSwitchWindowStartSecondsOfDay;
-  doc["runtime"]["twentyFourH"]["nextSwitchWindowEndSeconds"] = status24h.nextSwitchWindowEndSecondsOfDay;
+  doc["runtime"]["twentyFourH"]["nextSwitchWindowStartSeconds"] =
+      status24h.nextSwitchWindowStartSecondsOfDay;
+  doc["runtime"]["twentyFourH"]["nextSwitchWindowEndSeconds"] =
+      status24h.nextSwitchWindowEndSecondsOfDay;
   doc["runtime"]["twentyFourH"]["nextSwitchInSeconds"] = status24h.nextSwitchInSeconds;
-  doc["runtime"]["twentyFourH"]["lastOnLabel"] = status24h.hasLastOn ? formatHhMmSsFromSecondsOfDay(status24h.lastOnSecondsOfDay) : "--:--:--";
-  doc["runtime"]["twentyFourH"]["lastOffLabel"] = status24h.hasLastOff ? formatHhMmSsFromSecondsOfDay(status24h.lastOffSecondsOfDay) : "--:--:--";
-  doc["runtime"]["twentyFourH"]["nextSwitchLabel"] = status24h.hasNextSwitch ? formatHhMmSsFromSecondsOfDay(status24h.nextSwitchSecondsOfDay) : "--:--:--";
-  doc["runtime"]["twentyFourH"]["nextOffLabel"] = status24h.hasNextOff ? formatHhMmSsFromSecondsOfDay(status24h.nextOffSecondsOfDay) : "--:--:--";
+  doc["runtime"]["twentyFourH"]["lastOnLabel"] =
+      status24h.hasLastOn ? formatHhMmSsFromSecondsOfDay(status24h.lastOnSecondsOfDay) : "--:--:--";
+  doc["runtime"]["twentyFourH"]["lastOffLabel"] =
+      status24h.hasLastOff ? formatHhMmSsFromSecondsOfDay(status24h.lastOffSecondsOfDay)
+                           : "--:--:--";
+  doc["runtime"]["twentyFourH"]["nextSwitchLabel"] =
+      status24h.hasNextSwitch ? formatHhMmSsFromSecondsOfDay(status24h.nextSwitchSecondsOfDay)
+                              : "--:--:--";
+  doc["runtime"]["twentyFourH"]["nextOffLabel"] =
+      status24h.hasNextOff ? formatHhMmSsFromSecondsOfDay(status24h.nextOffSecondsOfDay)
+                           : "--:--:--";
 
   doc["network"]["connected"] = wifiManagerExt.isStaConnected();
   doc["network"]["address"] = wifiManagerExt.getAddressString();
@@ -2620,7 +2689,8 @@ static String formatHhMmSsFromSecondsOfDay(uint32_t secondsOfDay)
   uint32_t seconds = normalized % 60UL;
   char buffer[16];
 
-  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
+  snprintf(buffer, sizeof(buffer), "%02lu:%02lu:%02lu", static_cast<unsigned long>(hours),
+           static_cast<unsigned long>(minutes), static_cast<unsigned long>(seconds));
 
   return String(buffer);
 

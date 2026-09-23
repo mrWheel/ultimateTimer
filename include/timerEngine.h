@@ -1,4 +1,4 @@
-/*** Last Changed: 2026-09-22 - 16:46 ***/
+/*** Last Changed: 2026-09-23 - 19:42 ***/
 #ifndef TIMER_ENGINE_H
 #define TIMER_ENGINE_H
 
@@ -25,6 +25,9 @@ void timerResume();
 
 //--- Reset timer cycle
 void timerReset();
+
+//--- Override the current output until the next timer transition
+void timerSetOutputOverride(bool outputActive);
 
 //--- Request external trigger
 void timerHandleExternalTrigger();
@@ -63,10 +66,12 @@ const char* timerGet24hQuarterStateLabel(Timer24hQuarterState state);
 const char* timerGet24hHourLabel(const AppSettings& settings, uint8_t hourIndex);
 
 //--- Get 24h quarter-hour state
-Timer24hQuarterState timerGet24hQuarterState(const AppSettings& settings, uint8_t hourIndex, uint8_t quarterIndex);
+Timer24hQuarterState timerGet24hQuarterState(const AppSettings& settings, uint8_t hourIndex,
+                                             uint8_t quarterIndex);
 
 //--- Set 24h quarter-hour state
-void timerSet24hQuarterState(AppSettings& settings, uint8_t hourIndex, uint8_t quarterIndex, Timer24hQuarterState state);
+void timerSet24hQuarterState(AppSettings& settings, uint8_t hourIndex, uint8_t quarterIndex,
+                             Timer24hQuarterState state);
 
 //--- Set all 24h quarter-hour states for one hour
 void timerSet24hHourState(AppSettings& settings, uint8_t hourIndex, Timer24hQuarterState state);
